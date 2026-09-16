@@ -1,4 +1,4 @@
-import type { CartItem, Category, Product, User } from "./types";
+import type { CartItem, Category, OrderRecord, Product, ReturnRecord, User } from "./types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 export const AUTH_TOKEN_KEY = "petshop_auth_token";
@@ -104,5 +104,60 @@ export async function checkoutCart(token?: string | null): Promise<{ ok: boolean
   return request<{ ok: boolean; items: CartItem[] }>("/cart/checkout", {
     method: "POST",
     headers,
+  });
+}
+
+export async function fetchAllOrders(token: string): Promise<OrderRecord[]> {
+  return request<OrderRecord[]>("/orders", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function updateOrderStatus(token: string, orderId: number, estado: string): Promise<OrderRecord> {
+  return request<OrderRecord>(`/orders/${orderId}/status`, {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ estado }),
+  });
+}
+
+export async function createProduct(token: string, product: Partial<Product>): Promise<Product> {
+  return request<Product>("/products", {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(product),
+  });
+}
+
+export async function updateProduct(token: string, id: string, product: Partial<Product>): Promise<Product> {
+  return request<Product>(`/products/${id}`, {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(product),
+  });
+}
+
+export async function deleteProduct(token: string, id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/products/${id}`, {
+    method: "DELETE",
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchAllReturns(token: string): Promise<ReturnRecord[]> {
+  return request<ReturnRecord[]>("/returns", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function updateReturnStatus(
+  token: string,
+  returnId: number,
+  estado: "APROBADA" | "RECHAZADA",
+): Promise<ReturnRecord> {
+  return request<ReturnRecord>(`/returns/${returnId}/status`, {
+    method: "PATCH",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ estado }),
   });
 }

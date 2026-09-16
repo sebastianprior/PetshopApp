@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface ReturnRepository extends JpaRepository<Return, Long> {
     List<Return> findByUserIdOrderByRequestedAtDesc(String userId);
+    List<Return> findAllByOrderByRequestedAtDesc();
 }

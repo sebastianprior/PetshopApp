@@ -30,6 +30,32 @@ export type User = {
   email: string;
   name: string;
   password?: string;
+  role?: "CUSTOMER" | "ADMIN";
 };
 
-export type View = "home" | "products" | "offers" | "categories" | "cart" | "login";
+export type OrderItem = {
+  productId: string;
+  quantity: number;
+  price: number;
+};
+
+export type OrderRecord = {
+  id: number;
+  userId: string;
+  fecha: string;
+  items: OrderItem[];
+  total: number;
+  estado: string;
+};
+
+export type ReturnRecord = {
+  id: number;
+  userId: string;
+  productId: string;
+  cantidad: number;
+  motivo: string;
+  estado: "PENDIENTE" | "APROBADA" | "RECHAZADA" | "PROCESADO";
+  requestedAt: string;
+};
+
+export type View = "home" | "products" | "offers" | "categories" | "cart" | "login" | "admin";

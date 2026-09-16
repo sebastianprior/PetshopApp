@@ -5,6 +5,7 @@ import { CartScreen } from "./screens/CartScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { ProductDetailScreen } from "./screens/ProductDetailScreen";
 import { OffersScreen } from "./screens/OffersScreen";
+import { AdminDashboardScreen } from "./screens/AdminDashboardScreen";
 import {
   addToCart,
   AUTH_TOKEN_KEY,
@@ -239,6 +240,10 @@ function App() {
       return <OffersScreen products={products} onAddToCart={handleAddToCart} onOpenProduct={openProduct} />;
     }
 
+    if (view === "admin" && currentUser?.role === "ADMIN" && authToken) {
+      return <AdminDashboardScreen authToken={authToken} categories={categories} />;
+    }
+
     return (
       <HomeScreen
         categories={categories}
@@ -272,6 +277,9 @@ function App() {
             <button onClick={() => navigateTo("products")}>Productos</button>
             <button onClick={() => navigateTo("offers")}>Ofertas</button>
             <button onClick={() => navigateTo("cart")}>Carrito ({cartCount})</button>
+            {currentUser?.role === "ADMIN" ? (
+              <button onClick={() => navigateTo("admin")}>Admin</button>
+            ) : null}
           </div>
 
           <div className="nav-actions">

@@ -69,6 +69,15 @@ public class ReturnController {
         return ResponseEntity.ok(returnRepository.findByUserIdOrderByRequestedAtDesc(userId));
     }
 
+    @GetMapping
+    public ResponseEntity<?> listAll(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
+        if (!adminGuard.isAdmin(token)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+        }
+
+        return ResponseEntity.ok(returnRepository.findAllByOrderByRequestedAtDesc());
+    }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                            @PathVariable Long id,
