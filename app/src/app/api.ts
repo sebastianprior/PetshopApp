@@ -1,4 +1,4 @@
-import type { CartItem, Category, OrderRecord, Product, ReturnRecord, User } from "./types";
+import type { CartItem, Category, OrderRecord, OrderStats, Product, ReturnRecord, User } from "./types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 export const AUTH_TOKEN_KEY = "petshop_auth_token";
@@ -127,6 +127,12 @@ export async function checkoutCart(token?: string | null): Promise<{ ok: boolean
 
 export async function fetchAllOrders(token: string): Promise<OrderRecord[]> {
   return request<OrderRecord[]>("/orders", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchOrderStats(token: string): Promise<OrderStats> {
+  return request<OrderStats>("/orders/stats", {
     headers: { "X-Auth-Token": token },
   });
 }

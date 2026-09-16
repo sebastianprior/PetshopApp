@@ -72,9 +72,21 @@ export function ProductsScreen({
                   <span>{product.stock} unidades</span>
                 </div>
                 <div className="price-row">
-                  <strong>{formatMoney(product.price)}</strong>
-                  {product.oldPrice ? <span>{formatMoney(product.oldPrice)}</span> : null}
+                  {product.precioPromocional != null ? (
+                    <>
+                      <strong>{formatMoney(product.precioPromocional)}</strong>
+                      <span>{formatMoney(product.price)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{formatMoney(product.price)}</strong>
+                      {product.oldPrice ? <span>{formatMoney(product.oldPrice)}</span> : null}
+                    </>
+                  )}
                 </div>
+                {product.precioPromocional != null && product.tipoPromocion ? (
+                  <span className="promo-tag">{product.tipoPromocion}</span>
+                ) : null}
                 <button className="primary-btn block" onClick={() => onAddToCart(product)}>
                   Agregar al carrito
                 </button>

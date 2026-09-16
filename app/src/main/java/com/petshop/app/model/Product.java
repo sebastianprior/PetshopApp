@@ -19,6 +19,8 @@ public class Product {
     public String badge;
     public String categoryId;
     public int stock;
+    public Double precioPromocional;
+    public String tipoPromocion;
 
     @JsonCreator
     public Product() {}

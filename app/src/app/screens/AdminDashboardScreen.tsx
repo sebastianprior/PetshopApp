@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { Category, OrderRecord, Product, ReturnRecord } from "../types";
+import type { Category, OrderRecord, OrderStats, Product, ReturnRecord } from "../types";
 import {
   createProduct,
   deleteProduct,
   fetchAllOrders,
   fetchAllReturns,
+  fetchOrderStats,
   fetchProducts,
   updateOrderStatus,
   updateProduct,
@@ -16,7 +17,7 @@ type Props = {
   categories: Category[];
 };
 
-type Tab = "orders" | "products" | "returns";
+type Tab = "stats" | "orders" | "products" | "returns";
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(value);
@@ -32,10 +33,15 @@ const EMPTY_PRODUCT_FORM = {
   badge: "",
   categoryId: "",
   stock: "",
+  precioPromocional: "",
+  tipoPromocion: "",
 };
 
 export function AdminDashboardScreen({ authToken, categories }: Props) {
-  const [tab, setTab] = useState<Tab>("orders");
+  const [tab, setTab] = useState<Tab>("stats");
+
+  const [stats, setStats] = useState<OrderStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -51,6 +57,18 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
   const [returnsLoading, setReturnsLoading] = useState(false);
 
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const loadStats = async () => {
+    setStatsLoading(true);
+    try {
+      const data = await fetchOrderStats(authToken);
+      setStats(data);
+    } catch (error) {
+      console.error("No se pudieron cargar las estadísticas", error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   const loadOrders = async () => {
     setOrdersLoading(true);
@@ -89,6 +107,7 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
   };
 
   useEffect(() => {
+    void loadStats();
     void loadOrders();
     void loadProducts();
     void loadReturns();
@@ -124,6 +143,8 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
       badge: product.badge || "",
       categoryId: product.categoryId,
       stock: String(product.stock),
+      precioPromocional: product.precioPromocional != null ? String(product.precioPromocional) : "",
+      tipoPromocion: product.tipoPromocion || "",
     });
     setProductError(null);
   };
@@ -154,6 +175,8 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
       badge: productForm.badge.trim() || undefined,
       categoryId: productForm.categoryId,
       stock: productForm.stock ? Number(productForm.stock) : 0,
+      precioPromocional: productForm.precioPromocional ? Number(productForm.precioPromocional) : null,
+      tipoPromocion: productForm.tipoPromocion.trim() || null,
     };
 
     try {
@@ -201,6 +224,9 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
       </div>
 
       <div className="admin-tabs">
+        <button className={tab === "stats" ? "admin-tab active" : "admin-tab"} onClick={() => setTab("stats")}>
+          Estadísticas
+        </button>
         <button className={tab === "orders" ? "admin-tab active" : "admin-tab"} onClick={() => setTab("orders")}>
           Órdenes
         </button>
@@ -213,6 +239,58 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
       </div>
 
       {actionError ? <div className="error-box">{actionError}</div> : null}
+
+      {tab === "stats" ? (
+        <section className="admin-section">
+          {statsLoading || !stats ? (
+            <div className="empty-state">Cargando estadísticas...</div>
+          ) : (
+            <>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <span>Total de órdenes</span>
+                  <strong>{stats.totalOrders}</strong>
+                </div>
+                <div className="stat-card">
+                  <span>Ingresos totales</span>
+                  <strong>{formatMoney(stats.totalRevenue)}</strong>
+                </div>
+                <div className="stat-card">
+                  <span>Órdenes de hoy</span>
+                  <strong>{stats.ordersToday}</strong>
+                </div>
+              </div>
+
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Producto</th>
+                      <th>Unidades vendidas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.topProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={3}>Todavía no hay ventas.</td>
+                      </tr>
+                    ) : (
+                      stats.topProducts.map((product, index) => (
+                        <tr key={product.productId}>
+                          <td>{index + 1}</td>
+                          <td>{product.name}</td>
+                          <td>{product.totalQuantity}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+      ) : null}
 
       {tab === "orders" ? (
         <section className="admin-section">
@@ -326,6 +404,22 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
               <span>Badge</span>
               <input value={productForm.badge} onChange={(e) => setProductForm({ ...productForm, badge: e.target.value })} />
             </label>
+            <label>
+              <span>Precio promocional</span>
+              <input
+                type="number"
+                value={productForm.precioPromocional}
+                onChange={(e) => setProductForm({ ...productForm, precioPromocional: e.target.value })}
+              />
+            </label>
+            <label>
+              <span>Tipo de promoción</span>
+              <input
+                placeholder="2x1, 20% OFF..."
+                value={productForm.tipoPromocion}
+                onChange={(e) => setProductForm({ ...productForm, tipoPromocion: e.target.value })}
+              />
+            </label>
             <label className="admin-form-wide">
               <span>URL de imagen</span>
               <input value={productForm.imageUrl} onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })} />
@@ -355,6 +449,7 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
                     <th>Nombre</th>
                     <th>Marca</th>
                     <th>Precio</th>
+                    <th>Promoción</th>
                     <th>Stock</th>
                     <th>Categoría</th>
                     <th>Acciones</th>
@@ -366,6 +461,11 @@ export function AdminDashboardScreen({ authToken, categories }: Props) {
                       <td>{product.name}</td>
                       <td>{product.brand}</td>
                       <td>{formatMoney(product.price)}</td>
+                      <td>
+                        {product.precioPromocional != null
+                          ? `${formatMoney(product.precioPromocional)} (${product.tipoPromocion || "s/tipo"})`
+                          : "—"}
+                      </td>
                       <td>{product.stock}</td>
                       <td>{product.categoryId}</td>
                       <td>

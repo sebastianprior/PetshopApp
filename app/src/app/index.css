@@ -138,6 +138,22 @@ img {
   align-items: center;
 }
 
+.promo-banner {
+  background: #16a34a;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.promo-banner-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 20px;
+  text-align: center;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
 .main-nav {
   background: var(--surface);
   backdrop-filter: blur(10px);
@@ -585,6 +601,18 @@ img {
   color: #94a3b8;
   text-decoration: line-through;
   font-size: 0.8rem;
+}
+
+.promo-tag {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: white;
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
 }
 
 .block {
@@ -1068,4 +1096,33 @@ img {
 .admin-form-actions {
   display: flex;
   gap: 12px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-card span {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-card strong {
+  font-size: 1.7rem;
+  color: var(--text, #111827);
 }

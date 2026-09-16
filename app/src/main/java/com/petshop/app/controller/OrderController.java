@@ -1,12 +1,20 @@
 package com.petshop.app.controller;
 
+import com.petshop.app.dto.OrderStatsDTO;
+import com.petshop.app.dto.TopProductStatDTO;
 import com.petshop.app.model.Order;
+import com.petshop.app.model.Product;
 import com.petshop.app.repository.OrderRepository;
+import com.petshop.app.repository.ProductRepository;
 import com.petshop.app.service.AdminGuard;
 import com.petshop.app.service.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -14,11 +22,14 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
     private final JwtUtil jwtUtil;
     private final AdminGuard adminGuard;
 
-    public OrderController(OrderRepository orderRepository, JwtUtil jwtUtil, AdminGuard adminGuard) {
+    public OrderController(OrderRepository orderRepository, ProductRepository productRepository,
+                            JwtUtil jwtUtil, AdminGuard adminGuard) {
         this.orderRepository = orderRepository;
+        this.productRepository = productRepository;
         this.jwtUtil = jwtUtil;
         this.adminGuard = adminGuard;
     }
@@ -40,6 +51,42 @@ public class OrderController {
         }
 
         return ResponseEntity.ok(orderRepository.findAllByOrderByFechaDesc());
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<?> stats(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
+        if (!adminGuard.isAdmin(token)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+        }
+
+        List<Order> orders = orderRepository.findAll();
+
+        long totalOrders = orders.size();
+        double totalRevenue = orders.stream().mapToDouble(o -> o.total).sum();
+
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        long ordersToday = orders.stream()
+                .filter(o -> o.fecha != null && o.fecha.atZone(ZoneId.systemDefault()).toLocalDate().equals(today))
+                .count();
+
+        Map<String, Long> quantityByProduct = new LinkedHashMap<>();
+        for (Order order : orders) {
+            for (Order.OrderItem item : order.items) {
+                quantityByProduct.merge(item.productId, (long) item.quantity, Long::sum);
+            }
+        }
+
+        List<TopProductStatDTO> topProducts = quantityByProduct.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(5)
+                .map(entry -> {
+                    Product product = productRepository.findById(entry.getKey()).orElse(null);
+                    String name = product != null ? product.name : entry.getKey();
+                    return new TopProductStatDTO(entry.getKey(), name, entry.getValue());
+                })
+                .toList();
+
+        return ResponseEntity.ok(new OrderStatsDTO(totalOrders, totalRevenue, ordersToday, topProducts));
     }
 
     @PutMapping("/{id}/status")

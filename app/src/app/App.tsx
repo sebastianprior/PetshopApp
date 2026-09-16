@@ -46,6 +46,11 @@ function App() {
     [cartItems],
   );
 
+  const activePromos = useMemo(
+    () => products.filter((product) => product.precioPromocional != null),
+    [products],
+  );
+
   const loadCategories = async () => {
     try {
       const data = await fetchCategories();
@@ -288,6 +293,14 @@ function App() {
           <span>🏷️ Ofertas semanales</span>
         </div>
       </header>
+
+      {activePromos.length > 0 ? (
+        <div className="promo-banner">
+          <div className="promo-banner-inner">
+            🔥 ¡Ofertas! {activePromos.map((p) => `${p.name} ${p.tipoPromocion || ""}`.trim()).join(" · ")}
+          </div>
+        </div>
+      ) : null}
 
       <nav className="main-nav">
         <div className="nav-inner">

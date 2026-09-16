@@ -42,9 +42,21 @@ export function ProductDetailScreen({ product, onBack, onAddToCart }: Props) {
           </div>
 
           <div className="price-row detail-price-row">
-            <strong>{formatMoney(product.price)}</strong>
-            {product.oldPrice ? <span>{formatMoney(product.oldPrice)}</span> : null}
+            {product.precioPromocional != null ? (
+              <>
+                <strong>{formatMoney(product.precioPromocional)}</strong>
+                <span>{formatMoney(product.price)}</span>
+              </>
+            ) : (
+              <>
+                <strong>{formatMoney(product.price)}</strong>
+                {product.oldPrice ? <span>{formatMoney(product.oldPrice)}</span> : null}
+              </>
+            )}
           </div>
+          {product.precioPromocional != null && product.tipoPromocion ? (
+            <span className="promo-tag">{product.tipoPromocion}</span>
+          ) : null}
 
           <p className="product-description">
             Producto pensado para cuidar a tu mascota con comodidad, estilo y calidad. Ideal para

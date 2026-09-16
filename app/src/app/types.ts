@@ -15,6 +15,8 @@ export type Product = {
   badge?: string;
   categoryId: string;
   stock: number;
+  precioPromocional?: number | null;
+  tipoPromocion?: string | null;
 };
 
 export type CartItem = {
@@ -46,6 +48,19 @@ export type OrderRecord = {
   items: OrderItem[];
   total: number;
   estado: string;
+};
+
+export type TopProductStat = {
+  productId: string;
+  name: string;
+  totalQuantity: number;
+};
+
+export type OrderStats = {
+  totalOrders: number;
+  totalRevenue: number;
+  ordersToday: number;
+  topProducts: TopProductStat[];
 };
 
 export type ReturnRecord = {
