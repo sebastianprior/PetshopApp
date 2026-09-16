@@ -19,7 +19,7 @@ public class User {
 
     public String name;
 
-    public String role = "USER";
+    public String role = "CUSTOMER";
 
     public User() {}
 

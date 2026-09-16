@@ -17,7 +17,7 @@ class JwtUtilTest {
 
     @Test
     void extractUserIdReturnsIdUsedToGenerateToken() {
-        String token = jwtUtil.generateToken("user-123", "user@example.com");
+        String token = jwtUtil.generateToken("user-123", "user@example.com", "CUSTOMER");
 
         String userId = jwtUtil.extractUserId(token);
 
@@ -25,8 +25,15 @@ class JwtUtilTest {
     }
 
     @Test
+    void extractRoleReturnsRoleUsedToGenerateToken() {
+        String token = jwtUtil.generateToken("user-123", "user@example.com", "ADMIN");
+
+        assertThat(jwtUtil.extractRole(token)).isEqualTo("ADMIN");
+    }
+
+    @Test
     void isTokenValidReturnsFalseForCorruptedOrDifferentlySignedToken() {
-        String token = jwtUtil.generateToken("user-123", "user@example.com");
+        String token = jwtUtil.generateToken("user-123", "user@example.com", "CUSTOMER");
         String corrupted = token.substring(0, token.length() - 2) + "xx";
         JwtUtil differentKeyJwtUtil = new JwtUtil("different-secret-different-secret-different-secret", 60_000);
 

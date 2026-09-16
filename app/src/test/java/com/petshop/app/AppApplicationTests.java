@@ -91,7 +91,7 @@ class AppApplicationTests {
         );
         when(productRepository.findById("p-cart-1")).thenReturn(Optional.of(product));
 
-        String token = jwtUtil.generateToken("user-1", "user1@example.com");
+        String token = jwtUtil.generateToken("user-1", "user1@example.com", "CUSTOMER");
 
         ResponseEntity<?> added = cartController.add(token, new CartItem("p-cart-1", "Producto carrito", "alimentos", 1, 950.0));
         assertThat(added.getStatusCode().is2xxSuccessful()).isTrue();

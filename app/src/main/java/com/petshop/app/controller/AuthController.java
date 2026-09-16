@@ -44,7 +44,7 @@ public class AuthController {
 
         User u = userRepository.findByEmail(email).orElse(null);
         if (u != null && passwordEncoder.matches(password, u.password)) {
-            String token = jwtUtil.generateToken(u.id, u.email);
+            String token = jwtUtil.generateToken(u.id, u.email, u.role);
             Map<String,Object> resp = new HashMap<>();
             resp.put("token",token);
             resp.put("user",UserDTO.fromUser(u));
@@ -85,9 +85,10 @@ public class AuthController {
         }
 
         User u = new User(UUID.randomUUID().toString(), email, passwordEncoder.encode(password), name);
+        u.role = "CUSTOMER";
         userRepository.save(u);
         notificationService.notify(u.email, "¡Bienvenido a Petshop, " + u.name + "!");
-        String token = jwtUtil.generateToken(u.id, u.email);
+        String token = jwtUtil.generateToken(u.id, u.email, u.role);
         return ResponseEntity.ok(Map.of("token", token, "user", UserDTO.fromUser(u)));
     }
 
