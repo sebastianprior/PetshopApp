@@ -1,5 +1,6 @@
 package com.petshop.app.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -19,6 +20,7 @@ public class Product {
     public String categoryId;
     public int stock;
 
+    @JsonCreator
     public Product() {}
 
     public Product(String id, String name, String brand, double price, Double oldPrice, double rating, String imageUrl, String badge, String categoryId, int stock) {
