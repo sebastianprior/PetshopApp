@@ -1,10 +1,9 @@
 package com.petshop.app.controller;
 
 import com.petshop.app.model.Return;
-import com.petshop.app.model.User;
 import com.petshop.app.repository.ProductRepository;
 import com.petshop.app.repository.ReturnRepository;
-import com.petshop.app.repository.UserRepository;
+import com.petshop.app.service.AdminGuard;
 import com.petshop.app.service.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,15 +18,15 @@ public class ReturnController {
 
     private final ReturnRepository returnRepository;
     private final ProductRepository productRepository;
-    private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
+    private final AdminGuard adminGuard;
 
     public ReturnController(ReturnRepository returnRepository, ProductRepository productRepository,
-                             UserRepository userRepository, JwtUtil jwtUtil) {
+                             JwtUtil jwtUtil, AdminGuard adminGuard) {
         this.returnRepository = returnRepository;
         this.productRepository = productRepository;
-        this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.adminGuard = adminGuard;
     }
 
     @PostMapping
@@ -74,7 +73,7 @@ public class ReturnController {
     public ResponseEntity<?> updateStatus(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                            @PathVariable Long id,
                                            @RequestBody Map<String, String> body) {
-        if (!isAdmin(token)) {
+        if (!adminGuard.isAdmin(token)) {
             return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
         }
 
@@ -95,13 +94,5 @@ public class ReturnController {
         devolucion.estado = Return.Status.valueOf(nuevoEstado);
         returnRepository.save(devolucion);
         return ResponseEntity.ok(devolucion);
-    }
-
-    private boolean isAdmin(String token) {
-        if (token == null || !jwtUtil.isTokenValid(token)) {
-            return false;
-        }
-        User user = userRepository.findById(jwtUtil.extractUserId(token)).orElse(null);
-        return user != null && "ADMIN".equals(user.role);
     }
 }
