@@ -11,12 +11,14 @@ import {
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
   checkoutCart,
+  decrementCartItem,
   fetchCart,
   fetchCategories,
   fetchCurrentUser,
   fetchProducts,
   getAuthToken,
   getCurrentUser,
+  incrementCartItem,
   login,
   register,
   removeFromCart,
@@ -180,8 +182,22 @@ function App() {
     }
   };
 
-  const handleAddQty = async (product: Product) => {
-    await handleAddToCart(product);
+  const handleIncrementCartItem = async (item: CartItem) => {
+    try {
+      const updated = await incrementCartItem(authToken, item.productId);
+      setCartItems(updated);
+    } catch (error) {
+      console.error("Error sumando cantidad", error);
+    }
+  };
+
+  const handleDecrementCartItem = async (item: CartItem) => {
+    try {
+      const updated = await decrementCartItem(authToken, item.productId);
+      setCartItems(updated);
+    } catch (error) {
+      console.error("Error restando cantidad", error);
+    }
   };
 
   const openProduct = (id: string) => {
@@ -233,7 +249,15 @@ function App() {
     }
 
     if (view === "cart") {
-      return <CartScreen items={cartItems} onRemove={handleRemoveFromCart} onCheckout={handleCheckout} onAddQty={handleAddQty} />;
+      return (
+        <CartScreen
+          items={cartItems}
+          onRemove={handleRemoveFromCart}
+          onCheckout={handleCheckout}
+          onIncrement={handleIncrementCartItem}
+          onDecrement={handleDecrementCartItem}
+        />
+      );
     }
 
     if (view === "offers") {

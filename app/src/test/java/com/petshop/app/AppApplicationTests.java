@@ -62,6 +62,10 @@ class AppApplicationTests {
             persistedCart.removeAll(toDelete);
             return null;
         }).when(cartItemRepository).deleteAll(any());
+        doAnswer(inv -> {
+            persistedCart.remove(inv.getArgument(0));
+            return null;
+        }).when(cartItemRepository).delete(any(CartItem.class));
 
         savedOrders = new ArrayList<>();
         orderRepository = mock(OrderRepository.class);
@@ -127,6 +131,41 @@ class AppApplicationTests {
         assertThat(order.items.get(0).productId).isEqualTo("p-cart-1");
         assertThat(order.items.get(0).quantity).isEqualTo(2);
         assertThat(order.items.get(0).price).isEqualTo(950.0);
+    }
+
+    @Test
+    void incrementAndDecrementAdjustCartItemQuantityAndRemoveAtZero() {
+        Product product = new Product(
+            "p-cart-3",
+            "Producto stepper",
+            "Marca carrito",
+            300.0,
+            null,
+            4.0,
+            "/images/cart-test-3.jpg",
+            "Nuevo",
+            "alimentos",
+            20
+        );
+        when(productRepository.findById("p-cart-3")).thenReturn(Optional.of(product));
+
+        String token = jwtUtil.generateToken("user-1", "user1@example.com", "CUSTOMER");
+        cartController.add(token, new CartItem("p-cart-3", "Producto stepper", "alimentos", 1, 300.0));
+
+        ResponseEntity<?> incremented = cartController.increment(token, "p-cart-3");
+        List<CartItem> afterIncrement = (List<CartItem>) incremented.getBody();
+        assertThat(afterIncrement).hasSize(1);
+        assertThat(afterIncrement.get(0).quantity).isEqualTo(2);
+
+        ResponseEntity<?> decremented = cartController.decrement(token, "p-cart-3");
+        List<CartItem> afterDecrement = (List<CartItem>) decremented.getBody();
+        assertThat(afterDecrement).hasSize(1);
+        assertThat(afterDecrement.get(0).quantity).isEqualTo(1);
+
+        ResponseEntity<?> decrementedAgain = cartController.decrement(token, "p-cart-3");
+        List<CartItem> afterSecondDecrement = (List<CartItem>) decrementedAgain.getBody();
+        assertThat(afterSecondDecrement).isEmpty();
+        assertThat(persistedCart).isEmpty();
     }
 
     @Test

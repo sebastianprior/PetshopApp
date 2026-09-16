@@ -544,6 +544,29 @@ img {
   gap: 8px;
 }
 
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qty-stepper button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.qty-stepper span {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+
 .rating-row {
   color: #64748b;
   font-size: 0.78rem;

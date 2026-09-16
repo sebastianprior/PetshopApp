@@ -98,6 +98,24 @@ export async function removeFromCart(token: string | null, item: CartItem): Prom
   });
 }
 
+export async function incrementCartItem(token: string | null, productId: string): Promise<CartItem[]> {
+  const headers: Record<string, string> = {};
+  if (token) headers["X-Auth-Token"] = token;
+  return request<CartItem[]>(`/cart/items/${productId}/increment`, {
+    method: "PUT",
+    headers,
+  });
+}
+
+export async function decrementCartItem(token: string | null, productId: string): Promise<CartItem[]> {
+  const headers: Record<string, string> = {};
+  if (token) headers["X-Auth-Token"] = token;
+  return request<CartItem[]>(`/cart/items/${productId}/decrement`, {
+    method: "PUT",
+    headers,
+  });
+}
+
 export async function checkoutCart(token?: string | null): Promise<{ ok: boolean; items: CartItem[] }> {
   const headers: Record<string, string> = {};
   if (token) headers["X-Auth-Token"] = token;

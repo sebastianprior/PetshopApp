@@ -104,6 +104,50 @@ public class CartController {
         return ResponseEntity.ok(cartItemRepository.findByUserId(userToken));
     }
 
+    @PutMapping("/items/{productId}/increment")
+    public ResponseEntity<?> increment(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                        @PathVariable String productId) {
+        return adjustQuantity(token, productId, 1);
+    }
+
+    @PutMapping("/items/{productId}/decrement")
+    public ResponseEntity<?> decrement(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                        @PathVariable String productId) {
+        return adjustQuantity(token, productId, -1);
+    }
+
+    private ResponseEntity<?> adjustQuantity(String token, String productId, int delta) {
+        String userToken = resolveToken(token);
+
+        if (isGuest(userToken)) {
+            List<CartItem> cart = store.carts.getOrDefault(userToken, new ArrayList<>());
+            CartItem item = cart.stream().filter(i -> i.productId.equals(productId)).findFirst().orElse(null);
+            if (item == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "El producto no está en el carrito"));
+            }
+            item.quantity += delta;
+            if (item.quantity <= 0) {
+                cart.remove(item);
+            }
+            store.carts.put(userToken, cart);
+            return ResponseEntity.ok(cart);
+        }
+
+        List<CartItem> cart = cartItemRepository.findByUserId(userToken);
+        CartItem item = cart.stream().filter(i -> i.productId.equals(productId)).findFirst().orElse(null);
+        if (item == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El producto no está en el carrito"));
+        }
+
+        item.quantity += delta;
+        if (item.quantity <= 0) {
+            cartItemRepository.delete(item);
+        } else {
+            cartItemRepository.save(item);
+        }
+        return ResponseEntity.ok(cartItemRepository.findByUserId(userToken));
+    }
+
     @PostMapping("/remove")
     public ResponseEntity<?> remove(@RequestHeader(value = "X-Auth-Token", required = false) String token, @RequestBody CartItem item) {
         String userToken = resolveToken(token);

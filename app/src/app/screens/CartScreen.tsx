@@ -1,16 +1,17 @@
-import type { CartItem, Product } from "../types";
+import type { CartItem } from "../types";
 
 type Props = {
   items: CartItem[];
   onRemove: (item: CartItem) => void;
   onCheckout: () => void;
-  onAddQty: (product: Product) => void;
+  onIncrement: (item: CartItem) => void;
+  onDecrement: (item: CartItem) => void;
 };
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(value);
 
-export function CartScreen({ items, onRemove, onCheckout, onAddQty }: Props) {
+export function CartScreen({ items, onRemove, onCheckout, onIncrement, onDecrement }: Props) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shipping = items.length > 0 ? 1500 : 0;
   const total = subtotal + shipping;
@@ -40,20 +41,15 @@ export function CartScreen({ items, onRemove, onCheckout, onAddQty }: Props) {
                   <p>{item.variant}</p>
                   <div className="cart-meta-row">
                     <strong>{formatMoney(item.price)}</strong>
-                    <span>x{item.quantity}</span>
+                    <div className="qty-stepper">
+                      <button className="secondary-btn" onClick={() => onDecrement(item)} aria-label="Restar cantidad">−</button>
+                      <span>{item.quantity}</span>
+                      <button className="secondary-btn" onClick={() => onIncrement(item)} aria-label="Sumar cantidad">+</button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="cart-actions">
-                  <button className="secondary-btn" onClick={() => onAddQty({
-                    id: item.productId,
-                    name: item.name,
-                    brand: "",
-                    price: item.price,
-                    rating: 0,
-                    categoryId: "",
-                    stock: 999,
-                  })}>+1</button>
                   <button className="secondary-btn danger" onClick={() => onRemove(item)}>Quitar</button>
                 </div>
               </div>
