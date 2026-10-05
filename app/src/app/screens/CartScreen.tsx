@@ -4,7 +4,6 @@ import { validateCoupon } from "../api";
 
 type Props = {
   items: CartItem[];
-  requireShipping: boolean;
   onRemove: (item: CartItem) => void;
   onCheckout: (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => void;
   onIncrement: (item: CartItem) => void;
@@ -22,7 +21,7 @@ const EMPTY_SHIPPING: ShippingInfo = {
   telefono: "",
 };
 
-export function CartScreen({ items, requireShipping, onRemove, onCheckout, onIncrement, onDecrement }: Props) {
+export function CartScreen({ items, onRemove, onCheckout, onIncrement, onDecrement }: Props) {
   const [shipping, setShipping] = useState<ShippingInfo>(EMPTY_SHIPPING);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
@@ -68,7 +67,7 @@ export function CartScreen({ items, requireShipping, onRemove, onCheckout, onInc
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onCheckout(requireShipping ? shipping : {}, appliedCoupon?.code, requireShipping ? medioPago : undefined);
+    onCheckout(shipping, appliedCoupon?.code, medioPago);
   };
 
   return (
@@ -159,63 +158,57 @@ export function CartScreen({ items, requireShipping, onRemove, onCheckout, onInc
             </div>
 
             <form onSubmit={handleSubmit} className="shipping-form">
-              {requireShipping ? (
-                <>
-                  <h4>Datos de envío</h4>
-                  <label>
-                    <span>Nombre y apellido</span>
-                    <input
-                      required
-                      value={shipping.nombre}
-                      onChange={(e) => setShipping({ ...shipping, nombre: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    <span>Dirección</span>
-                    <input
-                      required
-                      value={shipping.direccion}
-                      onChange={(e) => setShipping({ ...shipping, direccion: e.target.value })}
-                    />
-                  </label>
-                  <div className="shipping-form-row">
-                    <label>
-                      <span>Ciudad</span>
-                      <input
-                        required
-                        value={shipping.ciudad}
-                        onChange={(e) => setShipping({ ...shipping, ciudad: e.target.value })}
-                      />
-                    </label>
-                    <label>
-                      <span>Código postal</span>
-                      <input
-                        value={shipping.codigoPostal}
-                        onChange={(e) => setShipping({ ...shipping, codigoPostal: e.target.value })}
-                      />
-                    </label>
-                  </div>
-                  <label>
-                    <span>Teléfono (opcional)</span>
-                    <input
-                      value={shipping.telefono}
-                      onChange={(e) => setShipping({ ...shipping, telefono: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    <span>Medio de pago (simulado)</span>
-                    <select value={medioPago} onChange={(e) => setMedioPago(e.target.value)}>
-                      <option value="tok_aprobado">Tarjeta de prueba: aprobada</option>
-                      <option value="tok_rechazado">Tarjeta de prueba: rechazada</option>
-                      <option value="tok_invalido">Tarjeta de prueba: datos inválidos</option>
-                      <option value="tok_demora">Pasarela lenta: queda pendiente y se confirma</option>
-                      <option value="tok_caido">Pasarela caída: queda pendiente y se cancela</option>
-                    </select>
-                  </label>
-                </>
-              ) : (
-                <p className="review-login-hint">Iniciá sesión para guardar tu pedido y ver el historial.</p>
-              )}
+              <h4>Datos de envío</h4>
+              <label>
+                <span>Nombre y apellido</span>
+                <input
+                  required
+                  value={shipping.nombre}
+                  onChange={(e) => setShipping({ ...shipping, nombre: e.target.value })}
+                />
+              </label>
+              <label>
+                <span>Dirección</span>
+                <input
+                  required
+                  value={shipping.direccion}
+                  onChange={(e) => setShipping({ ...shipping, direccion: e.target.value })}
+                />
+              </label>
+              <div className="shipping-form-row">
+                <label>
+                  <span>Ciudad</span>
+                  <input
+                    required
+                    value={shipping.ciudad}
+                    onChange={(e) => setShipping({ ...shipping, ciudad: e.target.value })}
+                  />
+                </label>
+                <label>
+                  <span>Código postal</span>
+                  <input
+                    value={shipping.codigoPostal}
+                    onChange={(e) => setShipping({ ...shipping, codigoPostal: e.target.value })}
+                  />
+                </label>
+              </div>
+              <label>
+                <span>Teléfono (opcional)</span>
+                <input
+                  value={shipping.telefono}
+                  onChange={(e) => setShipping({ ...shipping, telefono: e.target.value })}
+                />
+              </label>
+              <label>
+                <span>Medio de pago (simulado)</span>
+                <select value={medioPago} onChange={(e) => setMedioPago(e.target.value)}>
+                  <option value="tok_aprobado">Tarjeta de prueba: aprobada</option>
+                  <option value="tok_rechazado">Tarjeta de prueba: rechazada</option>
+                  <option value="tok_invalido">Tarjeta de prueba: datos inválidos</option>
+                  <option value="tok_demora">Pasarela lenta: queda pendiente y se confirma</option>
+                  <option value="tok_caido">Pasarela caída: queda pendiente y se cancela</option>
+                </select>
+              </label>
               <button className="primary-btn block" type="submit">Finalizar compra</button>
             </form>
           </aside>

@@ -1,0 +1,347 @@
+openapi: 3.1.0
+info:
+  title: Petshop API REST v1
+  description: "Checkout de ventas con Idempotency-Key, errores Problem Details (RFC\
+    \ 9457) y pago autorizado por una pasarela con timeout. Los invitados se identifican\
+    \ con el header X-Guest-Id y los usuarios con X-Auth-Token (JWT)."
+  version: 1.0.0
+servers:
+- url: http://localhost:8081
+  description: Generated server url
+tags:
+- name: Ventas
+  description: "Checkout, estado del pago y cancelación"
+paths:
+  /api/v1/ventas:
+    get:
+      tags:
+      - Ventas
+      summary: Listar ventas
+      description: Las propias del usuario; el administrador ve todas.
+      operationId: listar
+      parameters:
+      - name: X-Auth-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+    post:
+      tags:
+      - Ventas
+      summary: Crear una venta
+      description: "Toma el carrito del usuario (o invitado), reserva el stock y autoriza\
+        \ el pago. Exige el header Idempotency-Key: repetir la misma clave y el mismo\
+        \ cuerpo devuelve la misma venta."
+      operationId: crear
+      parameters:
+      - name: X-Auth-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Guest-Id
+        in: header
+        description: "Identificador de invitado, usado cuando no hay token"
+        required: false
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VentaRequest"
+      responses:
+        "201":
+          description: "Pago aprobado, venta COMPLETADA"
+          content:
+            '*/*':
+              schema:
+                type: object
+        "202":
+          description: "La pasarela no respondió a tiempo: venta PAGO_PENDIENTE (se\
+            \ confirma o cancela sola)"
+          content:
+            '*/*':
+              schema:
+                type: object
+        "400":
+          description: Falta el header Idempotency-Key
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Sin token ni X-Guest-Id
+          content:
+            '*/*':
+              schema:
+                type: object
+        "402":
+          description: Pago rechazado (el stock se libera)
+          content:
+            '*/*':
+              schema:
+                type: object
+        "403":
+          description: Los administradores no compran
+          content:
+            '*/*':
+              schema:
+                type: object
+        "409":
+          description: Stock insuficiente o Idempotency-Key reutilizada con otro cuerpo
+          content:
+            '*/*':
+              schema:
+                type: object
+        "422":
+          description: "Carrito vacío, datos de envío incompletos o datos de pago\
+            \ inválidos"
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/v1/ventas/{id}/cancelacion:
+    post:
+      tags:
+      - Ventas
+      summary: Cancelar una venta
+      description: "Libera el stock; si ya estaba paga, el pago pasa a REEMBOLSADO."
+      operationId: cancelar
+      parameters:
+      - name: X-Auth-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Guest-Id
+        in: header
+        description: "Identificador de invitado, usado cuando no hay token"
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/v1/ventas/{id}:
+    get:
+      tags:
+      - Ventas
+      summary: Obtener una venta
+      operationId: obtener
+      parameters:
+      - name: X-Auth-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Guest-Id
+        in: header
+        description: "Identificador de invitado, usado cuando no hay token"
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+    patch:
+      tags:
+      - Ventas
+      summary: Cambiar el estado de una venta (solo administrador)
+      operationId: cambiarEstado
+      parameters:
+      - name: X-Auth-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/v1/ventas/{id}/pago:
+    get:
+      tags:
+      - Ventas
+      summary: Consultar el estado del pago
+      description: Sirve para hacer polling cuando la venta quedó PAGO_PENDIENTE.
+      operationId: pago
+      parameters:
+      - name: X-Auth-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Guest-Id
+        in: header
+        description: "Identificador de invitado, usado cuando no hay token"
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/v1/productos:
+    get:
+      tags:
+      - producto-v-1-controller
+      operationId: listar_1
+      parameters:
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+  /api/v1/productos/{id}:
+    get:
+      tags:
+      - producto-v-1-controller
+      operationId: obtener_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+components:
+  schemas:
+    VentaRequest:
+      type: object
+      properties:
+        nombre:
+          type: string
+        direccion:
+          type: string
+        ciudad:
+          type: string
+        codigoPostal:
+          type: string
+        telefono:
+          type: string
+        cupon:
+          type: string
+        medioPago:
+          type: string
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        brand:
+          type: string
+        price:
+          type: number
+          format: double
+        oldPrice:
+          type: number
+          format: double
+        rating:
+          type: number
+          format: double
+        imageUrl:
+          type: string
+        badge:
+          type: string
+        categoryId:
+          type: string
+        stock:
+          type: integer
+          format: int32
+        precioPromocional:
+          type: number
+          format: double
+        tipoPromocion:
+          type: string
+        hasVariants:
+          type: boolean
+  securitySchemes:
+    X-Auth-Token:
+      type: apiKey
+      name: X-Auth-Token
+      in: header

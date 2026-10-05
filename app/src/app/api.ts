@@ -273,18 +273,6 @@ export async function decrementCartItem(token: string | null, productId: string,
   });
 }
 
-export async function checkoutCart(
-  token: string | null,
-  shipping?: Partial<ShippingInfo>,
-  couponCode?: string | null,
-): Promise<CheckoutResult> {
-  return request<CheckoutResult>("/cart/checkout", {
-    method: "POST",
-    headers: cartHeaders(token),
-    body: JSON.stringify({ ...(shipping || {}), ...(couponCode ? { cupon: couponCode } : {}) }),
-  });
-}
-
 type VentaResponse = {
   id: number;
   estado: string;
@@ -298,7 +286,7 @@ type VentaResponse = {
 };
 
 export async function createVenta(
-  token: string,
+  token: string | null,
   shipping: Partial<ShippingInfo>,
   couponCode: string | null | undefined,
   medioPago: string,
@@ -306,7 +294,7 @@ export async function createVenta(
 ): Promise<CheckoutResult> {
   const venta = await request<VentaResponse>("/v1/ventas", {
     method: "POST",
-    headers: { "X-Auth-Token": token, "Idempotency-Key": idempotencyKey },
+    headers: { ...cartHeaders(token), "Idempotency-Key": idempotencyKey },
     body: JSON.stringify({ ...shipping, ...(couponCode ? { cupon: couponCode } : {}), medioPago }),
   });
 

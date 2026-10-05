@@ -29,7 +29,6 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[]}
-        requireShipping={false}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -44,7 +43,6 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
-        requireShipping={false}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -67,7 +65,6 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
-        requireShipping={false}
         onRemove={onRemove}
         onCheckout={vi.fn()}
         onIncrement={onIncrement}
@@ -91,7 +88,6 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
-        requireShipping={false}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -116,7 +112,6 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
-        requireShipping={false}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -138,7 +133,6 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
-        requireShipping
         onRemove={vi.fn()}
         onCheckout={onCheckout}
         onIncrement={vi.fn()}
@@ -169,7 +163,6 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
-        requireShipping
         onRemove={vi.fn()}
         onCheckout={onCheckout}
         onIncrement={vi.fn()}
@@ -184,26 +177,5 @@ describe("CartScreen", () => {
     await user.click(screen.getByText("Finalizar compra"));
 
     expect(onCheckout).toHaveBeenCalledWith(expect.objectContaining({ nombre: "Cliente Demo" }), undefined, "tok_rechazado");
-  });
-
-  it("skips the shipping form and sends no shipping data when requireShipping is false", async () => {
-    const user = userEvent.setup();
-    const onCheckout = vi.fn();
-
-    render(
-      <CartScreen
-        items={[ITEM]}
-        requireShipping={false}
-        onRemove={vi.fn()}
-        onCheckout={onCheckout}
-        onIncrement={vi.fn()}
-        onDecrement={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Iniciá sesión para guardar tu pedido y ver el historial.")).toBeInTheDocument();
-    await user.click(screen.getByText("Finalizar compra"));
-
-    expect(onCheckout).toHaveBeenCalledWith({}, undefined, undefined);
   });
 });

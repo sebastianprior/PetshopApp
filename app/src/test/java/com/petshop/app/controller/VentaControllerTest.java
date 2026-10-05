@@ -22,6 +22,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -63,19 +64,19 @@ class VentaControllerTest {
 
     @Test
     void requiresAValidToken() {
-        assertProblem(controller.crear(null, "key", new VentaRequest()), 401, "no-autorizado");
+        assertProblem(controller.crear(null, null, "key", new VentaRequest()), 401, "no-autorizado");
         assertProblem(controller.listar("basura"), 401, "no-autorizado");
     }
 
     @Test
     void adminsCannotCreateSales() {
-        assertProblem(controller.crear(adminToken, "key", new VentaRequest()), 403, "prohibido");
+        assertProblem(controller.crear(adminToken, null, "key", new VentaRequest()), 403, "prohibido");
     }
 
     @Test
     void createRequiresTheIdempotencyKeyHeader() {
-        assertProblem(controller.crear(customerToken, null, new VentaRequest()), 400, "idempotency-key-requerida");
-        assertProblem(controller.crear(customerToken, "  ", new VentaRequest()), 400, "idempotency-key-requerida");
+        assertProblem(controller.crear(customerToken, null, null, new VentaRequest()), 400, "idempotency-key-requerida");
+        assertProblem(controller.crear(customerToken, null, "  ", new VentaRequest()), 400, "idempotency-key-requerida");
     }
 
     @Test
@@ -84,7 +85,7 @@ class VentaControllerTest {
         when(ventaService.crear(anyString(), anyString(), any())).thenReturn(new VentaOutcome(201, order, null, null, null));
         when(ventaService.toDto(order)).thenReturn(new VentaDTO());
 
-        ResponseEntity<?> response = controller.crear(customerToken, "key", new VentaRequest());
+        ResponseEntity<?> response = controller.crear(customerToken, null, "key", new VentaRequest());
 
         assertThat(response.getStatusCode().value()).isEqualTo(201);
         assertThat(response.getHeaders().getLocation().toString()).isEqualTo("/api/v1/ventas/7");
@@ -96,7 +97,7 @@ class VentaControllerTest {
         when(ventaService.crear(anyString(), anyString(), any())).thenReturn(new VentaOutcome(202, order, null, null, null));
         when(ventaService.toDto(order)).thenReturn(new VentaDTO());
 
-        ResponseEntity<?> response = controller.crear(customerToken, "key", new VentaRequest());
+        ResponseEntity<?> response = controller.crear(customerToken, null, "key", new VentaRequest());
 
         assertThat(response.getStatusCode().value()).isEqualTo(202);
         assertThat(response.getHeaders().getLocation().toString()).isEqualTo("/api/v1/ventas/8");
@@ -107,16 +108,29 @@ class VentaControllerTest {
         when(ventaService.crear(anyString(), anyString(), any()))
                 .thenReturn(new VentaOutcome(402, null, "pago-rechazado", "Pago rechazado", "Fondos insuficientes"));
 
-        assertProblem(controller.crear(customerToken, "key", new VentaRequest()), 402, "pago-rechazado");
+        assertProblem(controller.crear(customerToken, null, "key", new VentaRequest()), 402, "pago-rechazado");
     }
 
     @Test
     void aCustomerCannotSeeSomeoneElsesSale() {
         when(orderRepository.findById(5L)).thenReturn(Optional.of(order(5L, "otro-usuario", "COMPLETADA")));
 
-        assertProblem(controller.obtener(customerToken, 5L), 404, "no-encontrado");
-        assertProblem(controller.pago(customerToken, 5L), 404, "no-encontrado");
-        assertProblem(controller.cancelar(customerToken, 5L), 404, "no-encontrado");
+        assertProblem(controller.obtener(customerToken, null, 5L), 404, "no-encontrado");
+        assertProblem(controller.pago(customerToken, null, 5L), 404, "no-encontrado");
+        assertProblem(controller.cancelar(customerToken, null, 5L), 404, "no-encontrado");
+    }
+
+    @Test
+    void aGuestCanCheckOutAndSeeOnlyItsOwnSale() {
+        Order own = order(7L, "guest:abc", "COMPLETADA");
+        when(ventaService.crear(eq("guest:abc"), anyString(), any())).thenReturn(new VentaOutcome(201, own, null, null, null));
+        when(ventaService.toDto(own)).thenReturn(new VentaDTO());
+        when(orderRepository.findById(7L)).thenReturn(Optional.of(own));
+        when(orderRepository.findById(8L)).thenReturn(Optional.of(order(8L, "guest:otro", "COMPLETADA")));
+
+        assertThat(controller.crear(null, "abc", "key", new VentaRequest()).getStatusCode().value()).isEqualTo(201);
+        assertThat(controller.obtener(null, "abc", 7L).getStatusCode().value()).isEqualTo(200);
+        assertProblem(controller.obtener(null, "abc", 8L), 404, "no-encontrado");
     }
 
     @Test
@@ -125,7 +139,7 @@ class VentaControllerTest {
         when(orderRepository.findById(5L)).thenReturn(Optional.of(order));
         when(ventaService.toDto(order)).thenReturn(new VentaDTO());
 
-        assertThat(controller.obtener(adminToken, 5L).getStatusCode().value()).isEqualTo(200);
+        assertThat(controller.obtener(adminToken, null, 5L).getStatusCode().value()).isEqualTo(200);
     }
 
     @Test

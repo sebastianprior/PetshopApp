@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +48,7 @@ class VentaServiceTest {
     private PaymentGateway gateway;
     private ApplicationEventPublisher publisher;
     private ExecutorService executor;
+    private InMemoryStore store;
     private VentaService service;
 
     private Product product;
@@ -57,6 +59,7 @@ class VentaServiceTest {
 
     @BeforeEach
     void setUp() {
+        store = new InMemoryStore();
         orderRepository = mock(OrderRepository.class);
         cartItemRepository = mock(CartItemRepository.class);
         productRepository = mock(ProductRepository.class);
@@ -94,7 +97,7 @@ class VentaServiceTest {
             return record;
         });
 
-        service = new VentaService(orderRepository, cartItemRepository, productRepository, variantRepository,
+        service = new VentaService(orderRepository, cartItemRepository, store, productRepository, variantRepository,
                 couponRepository, idempotencyRepository, gateway, executor, publisher, 200, 3, 0);
     }
 
@@ -121,6 +124,29 @@ class VentaServiceTest {
             Thread.sleep(1500);
             return new AuthResult(PaymentStatus.APROBADO, null);
         });
+    }
+
+    @Test
+    void aGuestCanCheckOutFromTheInMemoryCart() {
+        gatewayApproves();
+        store.carts.put("guest:abc", new ArrayList<>(List.of(new CartItem("p1", "Collar", "accesorios", 1, 1000.0))));
+
+        VentaOutcome outcome = service.crear("guest:abc", "key-guest", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().userId).isEqualTo("guest:abc");
+        assertThat(outcome.order().total).isEqualTo(2500.0);
+        assertThat(product.stock).isEqualTo(9);
+        assertThat(store.carts).doesNotContainKey("guest:abc");
+        verify(cartItemRepository, never()).deleteAll(any());
+    }
+
+    @Test
+    void aGuestWithoutCartGetsAnEmptyCartProblem() {
+        VentaOutcome outcome = service.crear("guest:vacio", "key-vacio", request());
+
+        assertThat(outcome.status()).isEqualTo(422);
+        assertThat(outcome.problemSlug()).isEqualTo("carrito-vacio");
     }
 
     @Test

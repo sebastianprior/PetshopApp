@@ -63,6 +63,7 @@ public class VentaService {
 
     private final OrderRepository orderRepository;
     private final CartItemRepository cartItemRepository;
+    private final InMemoryStore store;
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
     private final CouponRepository couponRepository;
@@ -74,7 +75,7 @@ public class VentaService {
     private final int maxAttempts;
     private final long minPendingAgeMs;
 
-    public VentaService(OrderRepository orderRepository, CartItemRepository cartItemRepository,
+    public VentaService(OrderRepository orderRepository, CartItemRepository cartItemRepository, InMemoryStore store,
                         ProductRepository productRepository, ProductVariantRepository variantRepository,
                         CouponRepository couponRepository, IdempotencyRecordRepository idempotencyRepository,
                         PaymentGateway gateway, @Qualifier("paymentExecutor") ExecutorService paymentExecutor,
@@ -84,6 +85,7 @@ public class VentaService {
                         @Value("${petshop.payments.min-pending-age-ms:10000}") long minPendingAgeMs) {
         this.orderRepository = orderRepository;
         this.cartItemRepository = cartItemRepository;
+        this.store = store;
         this.productRepository = productRepository;
         this.variantRepository = variantRepository;
         this.couponRepository = couponRepository;
@@ -116,7 +118,7 @@ public class VentaService {
                     "Completá nombre, dirección y ciudad.");
         }
 
-        List<CartItem> cart = cartItemRepository.findByUserId(userId);
+        List<CartItem> cart = cartOf(userId);
         if (cart.isEmpty()) {
             return problem(422, "carrito-vacio", "Carrito vacío", "No hay productos en el carrito.");
         }
@@ -163,13 +165,13 @@ public class VentaService {
         AuthOutcome auth = autorizar(order);
         switch (auth.kind()) {
             case APROBADO -> {
-                consumirCarritoYCupon(cart, coupon);
+                consumirCarritoYCupon(userId, cart, coupon);
                 confirmar(order);
                 remember(idemKey, userId, hash, 201, order.id, null, null, null);
                 return new VentaOutcome(201, order, null, null, null);
             }
             case SIN_RESPUESTA -> {
-                consumirCarritoYCupon(cart, coupon);
+                consumirCarritoYCupon(userId, cart, coupon);
                 orderRepository.save(order);
                 remember(idemKey, userId, hash, 202, order.id, null, null, null);
                 return new VentaOutcome(202, order, null, null, null);
@@ -352,8 +354,24 @@ public class VentaService {
         idempotencyRepository.save(record);
     }
 
-    private void consumirCarritoYCupon(List<CartItem> cart, Coupon coupon) {
-        cartItemRepository.deleteAll(new ArrayList<>(cart));
+    /** Los invitados ("guest:<id>") tienen el carrito en memoria; los usuarios logueados, en la base. */
+    private List<CartItem> cartOf(String userId) {
+        if (isGuest(userId)) {
+            return new ArrayList<>(store.carts.getOrDefault(userId, List.of()));
+        }
+        return cartItemRepository.findByUserId(userId);
+    }
+
+    public static boolean isGuest(String userId) {
+        return userId != null && userId.startsWith("guest:");
+    }
+
+    private void consumirCarritoYCupon(String userId, List<CartItem> cart, Coupon coupon) {
+        if (isGuest(userId)) {
+            store.carts.remove(userId);
+        } else {
+            cartItemRepository.deleteAll(new ArrayList<>(cart));
+        }
         if (coupon != null) {
             coupon.usesCount += 1;
             couponRepository.save(coupon);

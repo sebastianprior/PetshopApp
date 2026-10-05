@@ -16,7 +16,6 @@ import {
   addToWishlist,
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
-  checkoutCart,
   createVenta,
   decrementCartItem,
   fetchCart,
@@ -257,14 +256,9 @@ function App() {
 
   const handleCheckout = async (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => {
     try {
-      let result: CheckoutResult;
-      if (authToken) {
-        idempotencyKeyRef.current ??= crypto.randomUUID();
-        result = await createVenta(authToken, shipping, couponCode, medioPago ?? "tok_aprobado", idempotencyKeyRef.current);
-        idempotencyKeyRef.current = null;
-      } else {
-        result = await checkoutCart(authToken, shipping, couponCode);
-      }
+      idempotencyKeyRef.current ??= crypto.randomUUID();
+      const result = await createVenta(authToken, shipping, couponCode, medioPago ?? "tok_aprobado", idempotencyKeyRef.current);
+      idempotencyKeyRef.current = null;
       setCartItems([]);
       setLastCheckout(result);
       setView("confirmation");
@@ -358,7 +352,6 @@ function App() {
       return (
         <CartScreen
           items={cartItems}
-          requireShipping={!!currentUser}
           onRemove={handleRemoveFromCart}
           onCheckout={handleCheckout}
           onIncrement={handleIncrementCartItem}

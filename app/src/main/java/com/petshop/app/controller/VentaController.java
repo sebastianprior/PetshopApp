@@ -8,6 +8,10 @@ import com.petshop.app.service.AdminGuard;
 import com.petshop.app.service.JwtUtil;
 import com.petshop.app.service.VentaService;
 import com.petshop.app.service.VentaService.VentaOutcome;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +22,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/ventas")
+@Tag(name = "Ventas", description = "Checkout, estado del pago y cancelación")
 public class VentaController {
 
     private final VentaService ventaService;
@@ -34,13 +39,26 @@ public class VentaController {
     }
 
     @PostMapping
+    @Operation(summary = "Crear una venta",
+            description = "Toma el carrito del usuario (o invitado), reserva el stock y autoriza el pago. "
+                    + "Exige el header Idempotency-Key: repetir la misma clave y el mismo cuerpo devuelve la misma venta.")
+    @ApiResponse(responseCode = "201", description = "Pago aprobado, venta COMPLETADA")
+    @ApiResponse(responseCode = "202", description = "La pasarela no respondió a tiempo: venta PAGO_PENDIENTE (se confirma o cancela sola)")
+    @ApiResponse(responseCode = "400", description = "Falta el header Idempotency-Key")
+    @ApiResponse(responseCode = "401", description = "Sin token ni X-Guest-Id")
+    @ApiResponse(responseCode = "402", description = "Pago rechazado (el stock se libera)")
+    @ApiResponse(responseCode = "403", description = "Los administradores no compran")
+    @ApiResponse(responseCode = "409", description = "Stock insuficiente o Idempotency-Key reutilizada con otro cuerpo")
+    @ApiResponse(responseCode = "422", description = "Carrito vacío, datos de envío incompletos o datos de pago inválidos")
     public ResponseEntity<?> crear(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                    @Parameter(description = "Identificador de invitado, usado cuando no hay token") @RequestHeader(value = "X-Guest-Id", required = false) String guestId,
                                     @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                     @RequestBody(required = false) VentaRequest request) {
-        if (!authenticated(token)) {
+        String principal = principal(token, guestId);
+        if (principal == null) {
             return Problems.unauthorized();
         }
-        if (adminGuard.isAdmin(token)) {
+        if (authenticated(token) && adminGuard.isAdmin(token)) {
             return Problems.forbidden("Los administradores no pueden realizar compras.");
         }
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
@@ -48,7 +66,7 @@ public class VentaController {
                     "El POST /ventas exige el header Idempotency-Key.");
         }
 
-        VentaOutcome outcome = ventaService.crear(jwtUtil.extractUserId(token), idempotencyKey.trim(),
+        VentaOutcome outcome = ventaService.crear(principal, idempotencyKey.trim(),
                 request != null ? request : new VentaRequest());
         if (outcome.isProblem()) {
             return Problems.of(outcome.status(), outcome.problemSlug(), outcome.problemTitle(), outcome.problemDetail());
@@ -62,6 +80,7 @@ public class VentaController {
     }
 
     @GetMapping
+    @Operation(summary = "Listar ventas", description = "Las propias del usuario; el administrador ve todas.")
     public ResponseEntity<?> listar(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (!authenticated(token)) {
             return Problems.unauthorized();
@@ -73,12 +92,15 @@ public class VentaController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Obtener una venta")
     public ResponseEntity<?> obtener(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                      @Parameter(description = "Identificador de invitado, usado cuando no hay token") @RequestHeader(value = "X-Guest-Id", required = false) String guestId,
                                       @PathVariable Long id) {
-        if (!authenticated(token)) {
+        String principal = principal(token, guestId);
+        if (principal == null) {
             return Problems.unauthorized();
         }
-        Order order = visibleOrder(token, id);
+        Order order = visibleOrder(token, principal, id);
         if (order == null) {
             return Problems.notFound("No existe la venta " + id + ".");
         }
@@ -86,12 +108,15 @@ public class VentaController {
     }
 
     @GetMapping("/{id}/pago")
+    @Operation(summary = "Consultar el estado del pago", description = "Sirve para hacer polling cuando la venta quedó PAGO_PENDIENTE.")
     public ResponseEntity<?> pago(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                   @Parameter(description = "Identificador de invitado, usado cuando no hay token") @RequestHeader(value = "X-Guest-Id", required = false) String guestId,
                                    @PathVariable Long id) {
-        if (!authenticated(token)) {
+        String principal = principal(token, guestId);
+        if (principal == null) {
             return Problems.unauthorized();
         }
-        Order order = visibleOrder(token, id);
+        Order order = visibleOrder(token, principal, id);
         if (order == null) {
             return Problems.notFound("No existe la venta " + id + ".");
         }
@@ -106,12 +131,15 @@ public class VentaController {
     }
 
     @PostMapping("/{id}/cancelacion")
+    @Operation(summary = "Cancelar una venta", description = "Libera el stock; si ya estaba paga, el pago pasa a REEMBOLSADO.")
     public ResponseEntity<?> cancelar(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                       @Parameter(description = "Identificador de invitado, usado cuando no hay token") @RequestHeader(value = "X-Guest-Id", required = false) String guestId,
                                        @PathVariable Long id) {
-        if (!authenticated(token)) {
+        String principal = principal(token, guestId);
+        if (principal == null) {
             return Problems.unauthorized();
         }
-        Order order = visibleOrder(token, id);
+        Order order = visibleOrder(token, principal, id);
         if (order == null) {
             return Problems.notFound("No existe la venta " + id + ".");
         }
@@ -119,6 +147,7 @@ public class VentaController {
     }
 
     @PatchMapping("/{id}")
+    @Operation(summary = "Cambiar el estado de una venta (solo administrador)")
     public ResponseEntity<?> cambiarEstado(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                             @PathVariable Long id,
                                             @RequestBody(required = false) Map<String, String> body) {
@@ -150,12 +179,20 @@ public class VentaController {
         return token != null && jwtUtil.isTokenValid(token);
     }
 
-    private Order visibleOrder(String token, Long id) {
+    /** Usuario autenticado (id del JWT) o, si no hay token válido, el invitado ("guest:<id>"); null si ninguno. */
+    private String principal(String token, String guestId) {
+        if (authenticated(token)) {
+            return jwtUtil.extractUserId(token);
+        }
+        return guestId != null && !guestId.isBlank() ? "guest:" + guestId.trim() : null;
+    }
+
+    private Order visibleOrder(String token, String principal, Long id) {
         Order order = orderRepository.findById(id).orElse(null);
         if (order == null) {
             return null;
         }
-        boolean owner = order.userId != null && order.userId.equals(jwtUtil.extractUserId(token));
-        return owner || adminGuard.isAdmin(token) ? order : null;
+        boolean owner = principal.equals(order.userId);
+        return owner || (authenticated(token) && adminGuard.isAdmin(token)) ? order : null;
     }
 }
