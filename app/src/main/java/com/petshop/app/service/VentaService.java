@@ -263,8 +263,7 @@ public class VentaService {
     }
 
     private void fallarDefinitivamente(Order order) {
-        LOG.warn("[DLQ pagos.fallidos] venta={} idTransaccion={} intentos={}",
-                order.id, order.idTransaccion, order.intentosPago);
+        publisher.publishEvent(new VentaEvents.PagoFallido(order.id, order.userId, order.idTransaccion, order.intentosPago));
         cancelar(order, "No se pudo procesar el pago tras " + maxAttempts + " intentos");
     }
 

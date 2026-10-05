@@ -258,6 +258,7 @@ class VentaServiceTest {
         assertThat(pending.order().estado).isEqualTo("CANCELADA");
         assertThat(pending.order().intentosPago).isEqualTo(3);
         assertThat(product.stock).isEqualTo(10);
+        verify(publisher).publishEvent(any(VentaEvents.PagoFallido.class));
         verify(publisher).publishEvent(any(VentaEvents.VentaCancelada.class));
     }
 
