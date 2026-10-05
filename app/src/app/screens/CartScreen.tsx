@@ -6,7 +6,7 @@ type Props = {
   items: CartItem[];
   requireShipping: boolean;
   onRemove: (item: CartItem) => void;
-  onCheckout: (shipping: Partial<ShippingInfo>, couponCode?: string | null) => void;
+  onCheckout: (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => void;
   onIncrement: (item: CartItem) => void;
   onDecrement: (item: CartItem) => void;
 };
@@ -28,6 +28,7 @@ export function CartScreen({ items, requireShipping, onRemove, onCheckout, onInc
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [medioPago, setMedioPago] = useState("tok_aprobado");
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingCost = items.length > 0 ? 1500 : 0;
@@ -67,7 +68,7 @@ export function CartScreen({ items, requireShipping, onRemove, onCheckout, onInc
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onCheckout(requireShipping ? shipping : {}, appliedCoupon?.code);
+    onCheckout(requireShipping ? shipping : {}, appliedCoupon?.code, requireShipping ? medioPago : undefined);
   };
 
   return (
@@ -200,6 +201,16 @@ export function CartScreen({ items, requireShipping, onRemove, onCheckout, onInc
                       value={shipping.telefono}
                       onChange={(e) => setShipping({ ...shipping, telefono: e.target.value })}
                     />
+                  </label>
+                  <label>
+                    <span>Medio de pago (simulado)</span>
+                    <select value={medioPago} onChange={(e) => setMedioPago(e.target.value)}>
+                      <option value="tok_aprobado">Tarjeta de prueba: aprobada</option>
+                      <option value="tok_rechazado">Tarjeta de prueba: rechazada</option>
+                      <option value="tok_invalido">Tarjeta de prueba: datos inválidos</option>
+                      <option value="tok_demora">Pasarela lenta: queda pendiente y se confirma</option>
+                      <option value="tok_caido">Pasarela caída: queda pendiente y se cancela</option>
+                    </select>
                   </label>
                 </>
               ) : (

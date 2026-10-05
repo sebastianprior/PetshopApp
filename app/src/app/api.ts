@@ -22,8 +22,9 @@ async function request<T>(input: string, init?: (RequestInit & { skipAuthRedirec
     const text = await response.text();
     let message = text || "Request failed";
     try {
-      const parsed = JSON.parse(text) as { error?: string };
+      const parsed = JSON.parse(text) as { error?: string; detail?: string };
       if (parsed.error) message = parsed.error;
+      else if (parsed.detail) message = parsed.detail;
     } catch {
       // not JSON, keep raw text
     }
@@ -282,6 +283,52 @@ export async function checkoutCart(
     headers: cartHeaders(token),
     body: JSON.stringify({ ...(shipping || {}), ...(couponCode ? { cupon: couponCode } : {}) }),
   });
+}
+
+type VentaResponse = {
+  id: number;
+  estado: string;
+  estadoPago: string;
+  items: { productId: string; name: string; variant: string; variantId: number | null; quantity: number; price: number }[];
+  subtotal: number;
+  shippingCost: number;
+  discountAmount: number;
+  couponCode: string | null;
+  total: number;
+};
+
+export async function createVenta(
+  token: string,
+  shipping: Partial<ShippingInfo>,
+  couponCode: string | null | undefined,
+  medioPago: string,
+  idempotencyKey: string,
+): Promise<CheckoutResult> {
+  const venta = await request<VentaResponse>("/v1/ventas", {
+    method: "POST",
+    headers: { "X-Auth-Token": token, "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify({ ...shipping, ...(couponCode ? { cupon: couponCode } : {}), medioPago }),
+  });
+
+  return {
+    ok: true,
+    items: venta.items.map((item) => ({
+      productId: item.productId,
+      name: item.name,
+      variant: item.variant,
+      variantId: item.variantId,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+    subtotal: venta.subtotal,
+    shippingCost: venta.shippingCost,
+    discountAmount: venta.discountAmount,
+    couponCode: venta.couponCode,
+    total: venta.total,
+    orderId: venta.id,
+    estado: venta.estado,
+    estadoPago: venta.estadoPago,
+  };
 }
 
 export async function validateCoupon(code: string, subtotal: number): Promise<{ code: string; discountAmount: number }> {

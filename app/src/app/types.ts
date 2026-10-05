@@ -119,6 +119,8 @@ export type CheckoutResult = {
   couponCode: string | null;
   total: number;
   orderId: number | null;
+  estado?: string;
+  estadoPago?: string;
 };
 
 export type Coupon = {

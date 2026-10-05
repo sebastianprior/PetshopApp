@@ -158,7 +158,32 @@ describe("CartScreen", () => {
     expect(onCheckout).toHaveBeenCalledWith(
       expect.objectContaining({ nombre: "Cliente Demo", direccion: "Calle Falsa 123", ciudad: "CABA" }),
       "DESC10",
+      "tok_aprobado",
     );
+  });
+
+  it("sends the selected simulated payment method to onCheckout", async () => {
+    const user = userEvent.setup();
+    const onCheckout = vi.fn();
+
+    render(
+      <CartScreen
+        items={[ITEM]}
+        requireShipping
+        onRemove={vi.fn()}
+        onCheckout={onCheckout}
+        onIncrement={vi.fn()}
+        onDecrement={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Nombre y apellido"), "Cliente Demo");
+    await user.type(screen.getByLabelText("Dirección"), "Calle Falsa 123");
+    await user.type(screen.getByLabelText("Ciudad"), "CABA");
+    await user.selectOptions(screen.getByLabelText("Medio de pago (simulado)"), "tok_rechazado");
+    await user.click(screen.getByText("Finalizar compra"));
+
+    expect(onCheckout).toHaveBeenCalledWith(expect.objectContaining({ nombre: "Cliente Demo" }), undefined, "tok_rechazado");
   });
 
   it("skips the shipping form and sends no shipping data when requireShipping is false", async () => {
@@ -179,6 +204,6 @@ describe("CartScreen", () => {
     expect(screen.getByText("Iniciá sesión para guardar tu pedido y ver el historial.")).toBeInTheDocument();
     await user.click(screen.getByText("Finalizar compra"));
 
-    expect(onCheckout).toHaveBeenCalledWith({}, undefined);
+    expect(onCheckout).toHaveBeenCalledWith({}, undefined, undefined);
   });
 });

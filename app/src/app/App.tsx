@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HomeScreen } from "./screens/HomeScreen";
 import { ProductsScreen } from "./screens/ProductsScreen";
 import { CartScreen } from "./screens/CartScreen";
@@ -17,6 +17,7 @@ import {
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
   checkoutCart,
+  createVenta,
   decrementCartItem,
   fetchCart,
   fetchCategories,
@@ -252,13 +253,26 @@ function App() {
     }
   };
 
-  const handleCheckout = async (shipping: Partial<ShippingInfo>, couponCode?: string | null) => {
+  const idempotencyKeyRef = useRef<string | null>(null);
+
+  const handleCheckout = async (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => {
     try {
-      const result = await checkoutCart(authToken, shipping, couponCode);
+      let result: CheckoutResult;
+      if (authToken) {
+        idempotencyKeyRef.current ??= crypto.randomUUID();
+        result = await createVenta(authToken, shipping, couponCode, medioPago ?? "tok_aprobado", idempotencyKeyRef.current);
+        idempotencyKeyRef.current = null;
+      } else {
+        result = await checkoutCart(authToken, shipping, couponCode);
+      }
       setCartItems([]);
       setLastCheckout(result);
       setView("confirmation");
     } catch (error) {
+      // Solo se reutiliza la Idempotency-Key si no hubo respuesta HTTP (corte de red): así el reintento no duplica la venta.
+      if (!(error instanceof TypeError)) {
+        idempotencyKeyRef.current = null;
+      }
       console.error("Error al finalizar la compra", error);
       alert(error instanceof Error ? error.message : "No se pudo completar la compra.");
     }
