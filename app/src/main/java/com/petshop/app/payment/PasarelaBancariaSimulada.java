@@ -7,23 +7,23 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Simula la pasarela bancaria legada (SOAP, sincrónica). Es idempotente por idTransaccion:
+ * Lógica de la pasarela bancaria legada, expuesta por SOAP en /ws (ver soap/PagosEndpoint).
+ * Es idempotente por idTransaccion:
  * reautorizar la misma transacción devuelve el resultado ya registrado, sin cobrar dos veces.
  *
  * Tokens de prueba: tok_rechazado (fondos insuficientes), tok_invalido (fault PG-400),
  * tok_demora (aprueba pero responde tarde), tok_caido (no responde), cualquier otro aprueba.
  */
 @Component
-public class SimulatedSoapPaymentGateway implements PaymentGateway {
+public class PasarelaBancariaSimulada {
 
     private final ConcurrentHashMap<String, AuthResult> transacciones = new ConcurrentHashMap<>();
     private final long simulatedDelayMs;
 
-    public SimulatedSoapPaymentGateway(@Value("${petshop.payments.simulated-delay-ms:6000}") long simulatedDelayMs) {
+    public PasarelaBancariaSimulada(@Value("${petshop.payments.simulated-delay-ms:6000}") long simulatedDelayMs) {
         this.simulatedDelayMs = simulatedDelayMs;
     }
 
-    @Override
     public AuthResult autorizar(String idTransaccion, double monto, String medioPagoToken) {
         if ("tok_invalido".equals(medioPagoToken)) {
             throw new GatewayFaultException(GatewayFaultException.INVALID_DATA, "Datos de pago inválidos");
@@ -44,7 +44,6 @@ public class SimulatedSoapPaymentGateway implements PaymentGateway {
         return result;
     }
 
-    @Override
     public Optional<AuthResult> consultarPago(String idTransaccion) {
         return Optional.ofNullable(transacciones.get(idTransaccion));
     }
