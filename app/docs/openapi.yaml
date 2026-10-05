@@ -6,8 +6,8 @@ info:
     \ con el header X-Guest-Id y los usuarios con X-Auth-Token (JWT)."
   version: 1.0.0
 servers:
-- url: http://localhost:8081
-  description: Generated server url
+- url: http://localhost:8080
+  description: Desarrollo local
 tags:
 - name: Ventas
   description: "Checkout, estado del pago y cancelación"
