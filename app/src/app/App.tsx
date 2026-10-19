@@ -47,6 +47,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
 
 function App() {
   const [view, setView] = useState<View>("home");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -193,6 +194,7 @@ function App() {
   };
 
   const navigateTo = (nextView: View) => {
+    setMenuOpen(false);
     setSelectedProductId(null);
     setView(nextView);
   };
@@ -495,60 +497,79 @@ function App() {
             <span>Petshop</span>
           </button>
 
-          <div className="nav-links">
-            <button onClick={() => navigateTo("home")}>Inicio</button>
-            <button onClick={() => navigateTo("products")}>Productos</button>
-            <button onClick={() => navigateTo("offers")}>Ofertas</button>
+          <div className="nav-quick">
             {currentUser?.role !== "ADMIN" ? (
-              <button onClick={() => navigateTo("cart")}>Carrito ({cartCount})</button>
+              <button className="nav-cart" onClick={() => navigateTo("cart")} aria-label={`Carrito (${cartCount})`}>
+                🛒
+                {cartCount > 0 ? <span className="nav-cart-count">{cartCount}</span> : null}
+              </button>
             ) : null}
-            {currentUser && currentUser.role !== "ADMIN" ? (
-              <button onClick={() => navigateTo("wishlist")}>Favoritos {wishlist.length > 0 ? `(${wishlist.length})` : ""}</button>
-            ) : null}
-            {currentUser ? (
-              <button onClick={() => navigateTo("orders")}>Mis pedidos</button>
-            ) : null}
-            {currentUser?.role === "ADMIN" ? (
-              <button onClick={() => navigateTo("admin")}>Admin</button>
-            ) : null}
+            <button
+              className="nav-toggle"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? "✕" : "☰"}
+            </button>
           </div>
 
-          <div className="nav-actions">
-            <div className="theme-switcher" aria-label="selector de tema">
-              <button
-                className={theme === "light" ? "theme-option active" : "theme-option"}
-                onClick={() => setTheme("light")}
-                aria-label="Tema claro"
-                title="Tema claro"
-              >
-                ☀️
-              </button>
-              <button
-                className={theme === "soft" ? "theme-option active" : "theme-option"}
-                onClick={() => setTheme("soft")}
-                aria-label="Tema medio"
-                title="Tema medio"
-              >
-                ◐
-              </button>
-              <button
-                className={theme === "dark" ? "theme-option active" : "theme-option"}
-                onClick={() => setTheme("dark")}
-                aria-label="Tema oscuro"
-                title="Tema oscuro"
-              >
-                🌙
-              </button>
+          <div className={menuOpen ? "nav-menu open" : "nav-menu"}>
+            <div className="nav-links">
+              <button onClick={() => navigateTo("home")}>Inicio</button>
+              <button onClick={() => navigateTo("products")}>Productos</button>
+              <button onClick={() => navigateTo("offers")}>Ofertas</button>
+              {currentUser?.role !== "ADMIN" ? (
+                <button onClick={() => navigateTo("cart")}>Carrito ({cartCount})</button>
+              ) : null}
+              {currentUser && currentUser.role !== "ADMIN" ? (
+                <button onClick={() => navigateTo("wishlist")}>Favoritos {wishlist.length > 0 ? `(${wishlist.length})` : ""}</button>
+              ) : null}
+              {currentUser ? (
+                <button onClick={() => navigateTo("orders")}>Mis pedidos</button>
+              ) : null}
+              {currentUser?.role === "ADMIN" ? (
+                <button onClick={() => navigateTo("admin")}>Admin</button>
+              ) : null}
             </div>
 
-            {currentUser ? (
-              <>
-                <button className="user-pill" onClick={() => navigateTo("account")}>{currentUser.name}</button>
-                <button className="secondary-btn" onClick={handleLogout}>Salir</button>
-              </>
-            ) : (
-              <button className="primary-btn" onClick={() => navigateTo("login")}>Iniciar sesión</button>
-            )}
+            <div className="nav-actions">
+              <div className="theme-switcher" aria-label="selector de tema">
+                <button
+                  className={theme === "light" ? "theme-option active" : "theme-option"}
+                  onClick={() => setTheme("light")}
+                  aria-label="Tema claro"
+                  title="Tema claro"
+                >
+                  ☀️
+                </button>
+                <button
+                  className={theme === "soft" ? "theme-option active" : "theme-option"}
+                  onClick={() => setTheme("soft")}
+                  aria-label="Tema medio"
+                  title="Tema medio"
+                >
+                  ◐
+                </button>
+                <button
+                  className={theme === "dark" ? "theme-option active" : "theme-option"}
+                  onClick={() => setTheme("dark")}
+                  aria-label="Tema oscuro"
+                  title="Tema oscuro"
+                >
+                  🌙
+                </button>
+              </div>
+
+              {currentUser ? (
+                <>
+                  <button className="user-pill" onClick={() => navigateTo("account")}>{currentUser.name}</button>
+                  <button className="secondary-btn" onClick={handleLogout}>Salir</button>
+                </>
+              ) : (
+                <button className="primary-btn" onClick={() => navigateTo("login")}>Iniciar sesión</button>
+              )}
+            </div>
           </div>
         </div>
       </nav>

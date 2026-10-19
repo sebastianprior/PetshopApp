@@ -1762,3 +1762,315 @@ img {
 .app-footer-links button:hover {
   color: var(--accent, #ef7b2f);
 }
+
+/* ==========================================================================
+   Móvil primero: barra de navegación compacta y ajustes para pantallas chicas.
+   Por defecto (escritorio) el atajo del carrito y la hamburguesa no se ven y
+   el menú se comporta como antes (display: contents).
+   ========================================================================== */
+.nav-quick {
+  display: none;
+}
+
+.nav-menu {
+  display: contents;
+}
+
+.nav-cart,
+.nav-toggle {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.nav-cart-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  /* Evita el zoom automático de iOS al enfocar un campo */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Botones y enlaces con tamaño táctil cómodo */
+  button,
+  .primary-btn,
+  .secondary-btn {
+    min-height: 44px;
+  }
+
+  .topbar-inner,
+  .nav-inner,
+  .page-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* Franja de anuncios en una sola línea que se desliza */
+  .topbar-inner {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 22px;
+    min-height: 34px;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .topbar-inner::-webkit-scrollbar {
+    display: none;
+  }
+
+  .promo-banner-inner {
+    padding: 7px 16px;
+  }
+
+  /* Barra de navegación: logo + carrito + hamburguesa; el resto en un menú plegable */
+  .nav-inner {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    min-height: 60px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    gap: 8px;
+  }
+
+  .brand {
+    font-size: 1.25rem;
+    min-height: 44px;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .nav-quick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-menu {
+    display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+    gap: 12px;
+    padding: 4px 0 14px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .nav-menu.open {
+    display: flex;
+  }
+
+  .nav-links {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .nav-links button {
+    text-align: left;
+    min-height: 46px;
+    font-size: 1rem;
+  }
+
+  .nav-actions {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .page-container {
+    padding-top: 18px;
+    padding-bottom: 28px;
+  }
+
+  .section-header h2,
+  .page-shell h2 {
+    font-size: 1.5rem;
+  }
+
+  /* Catálogo: 2 columnas, tarjetas más compactas */
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .product-image-wrap {
+    height: 150px;
+  }
+
+  .product-card {
+    border-radius: 16px;
+  }
+
+  /* Formularios y paneles a una columna (minmax(0, 1fr): un campo ancho no puede ensanchar la columna) */
+  .admin-form-grid,
+  .shipping-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-form-grid > *,
+  .admin-form-grid label {
+    min-width: 0;
+  }
+
+  .admin-form-grid input[type="file"] {
+    width: 100%;
+    min-height: auto;
+    padding: 10px 12px;
+  }
+
+  .charts-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chart-card {
+    min-width: 0;
+    padding: 14px;
+  }
+
+  /* El tooltip de los gráficos no debe generar scroll horizontal */
+  .recharts-wrapper {
+    overflow: hidden;
+  }
+
+  .product-detail .primary-btn {
+    width: 100%;
+  }
+
+  .admin-form-grid {
+    padding: 14px;
+  }
+
+  .admin-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+  }
+
+  .admin-tab {
+    flex: 0 0 auto;
+  }
+
+  .toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-row select,
+  .toolbar-row input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .app-footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Carrito: la columna única no puede ser más ancha que la pantalla */
+  .cart-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .cart-layout > *,
+  .cart-item-card,
+  .cart-summary,
+  .cart-details {
+    min-width: 0;
+  }
+
+  .cart-item-card {
+    align-items: stretch;
+  }
+
+  .cart-meta-row {
+    flex-wrap: wrap;
+  }
+
+  /* Precio actual y anterior: se acomodan en dos líneas en vez de cortarse */
+  .price-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 2px 8px;
+  }
+
+  /* Controles chicos con tamaño táctil de 44px */
+  .qty-stepper button {
+    width: 44px;
+    height: 44px;
+  }
+
+  select,
+  .toolbar-row select,
+  .toolbar-row input,
+  .auth-form input,
+  .admin-form-grid input,
+  .admin-form-grid select {
+    min-height: 44px;
+  }
+
+  .toolbar-row label,
+  .toolbar-search {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .theme-option {
+    min-width: 40px;
+  }
+
+  .wishlist-heart {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 400px) {
+  .product-grid {
+    gap: 10px;
+  }
+
+  .theme-option {
+    padding: 8px 10px;
+  }
+}
