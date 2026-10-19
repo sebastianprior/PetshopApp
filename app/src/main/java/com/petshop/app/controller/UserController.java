@@ -5,6 +5,7 @@ import com.petshop.app.model.User;
 import com.petshop.app.repository.UserRepository;
 import com.petshop.app.service.AdminGuard;
 import com.petshop.app.service.JwtUtil;
+import com.petshop.app.service.RefreshTokenService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,11 +19,14 @@ public class UserController {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final AdminGuard adminGuard;
+    private final RefreshTokenService refreshTokenService;
 
-    public UserController(UserRepository userRepository, JwtUtil jwtUtil, AdminGuard adminGuard) {
+    public UserController(UserRepository userRepository, JwtUtil jwtUtil, AdminGuard adminGuard,
+                          RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.adminGuard = adminGuard;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @GetMapping
@@ -59,6 +63,8 @@ public class UserController {
 
         user.role = nuevoRol;
         userRepository.save(user);
+        // Fuerza a renovar la sesión: el nuevo rol se aplica en cuanto vence el access token (máx. 15 min).
+        refreshTokenService.revokeAll(user.id);
         return ResponseEntity.ok(UserDTO.fromUser(user));
     }
 
@@ -86,6 +92,9 @@ public class UserController {
 
         user.active = active;
         userRepository.save(user);
+        if (!active) {
+            refreshTokenService.revokeAll(user.id);
+        }
         return ResponseEntity.ok(UserDTO.fromUser(user));
     }
 }

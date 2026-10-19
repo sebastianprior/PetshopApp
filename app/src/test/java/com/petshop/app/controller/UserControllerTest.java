@@ -4,6 +4,7 @@ import com.petshop.app.model.User;
 import com.petshop.app.repository.UserRepository;
 import com.petshop.app.service.AdminGuard;
 import com.petshop.app.service.JwtUtil;
+import com.petshop.app.service.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class UserControllerTest {
@@ -22,6 +26,7 @@ class UserControllerTest {
     private UserRepository userRepository;
     private JwtUtil jwtUtil;
     private AdminGuard adminGuard;
+    private RefreshTokenService refreshTokenService;
     private UserController controller;
     private String adminToken;
     private String adminId;
@@ -31,7 +36,8 @@ class UserControllerTest {
         userRepository = mock(UserRepository.class);
         jwtUtil = new JwtUtil(JWT_SECRET, 60_000);
         adminGuard = new AdminGuard(jwtUtil);
-        controller = new UserController(userRepository, jwtUtil, adminGuard);
+        refreshTokenService = mock(RefreshTokenService.class);
+        controller = new UserController(userRepository, jwtUtil, adminGuard, refreshTokenService);
         adminId = "admin-1";
         adminToken = jwtUtil.generateToken(adminId, "admin@example.com", "ADMIN");
     }
@@ -86,5 +92,27 @@ class UserControllerTest {
         ResponseEntity<?> response = controller.updateRole(adminToken, "user-1", Map.of("role", "SUPERUSER"));
 
         assertThat(response.getStatusCode().is4xxClientError()).isTrue();
+    }
+
+    @Test
+    void changingARoleOrDisablingAnAccountClosesTheirSessions() {
+        User customer = new User("user-1", "cliente@example.com", "hash", "Cliente");
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(customer));
+
+        controller.updateRole(adminToken, "user-1", Map.of("role", "ADMIN"));
+        controller.updateStatus(adminToken, "user-1", Map.of("active", false));
+
+        verify(refreshTokenService, times(2)).revokeAll("user-1");
+    }
+
+    @Test
+    void enablingAnAccountDoesNotCloseSessions() {
+        User customer = new User("user-1", "cliente@example.com", "hash", "Cliente");
+        customer.active = false;
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(customer));
+
+        controller.updateStatus(adminToken, "user-1", Map.of("active", true));
+
+        verify(refreshTokenService, never()).revokeAll("user-1");
     }
 }

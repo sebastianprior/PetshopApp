@@ -43,10 +43,9 @@ export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode }: Pr
     setRecoverLoading(true);
     try {
       const result = await recoverPassword(recoverEmail);
-      setRecoverToken(result.resetToken);
-      setRecoverMessage(
-        `Como esta app no manda emails reales, te mostramos el código directo: ${result.resetToken} (vence en ${result.expiresInMinutes} minutos).`,
-      );
+      // El código nunca viaja en la respuesta: llega por email. En desarrollo no hay servidor de correo y queda en outbox/.
+      const devHint = import.meta.env.DEV ? " (Entorno de desarrollo: el mensaje simulado queda en la carpeta outbox/ del backend.)" : "";
+      setRecoverMessage(`${result.message} El código vence en ${result.expiresInMinutes} minutos.${devHint}`);
       setRecoverMode("reset");
     } catch (err) {
       setRecoverError(err instanceof Error ? err.message : "No se pudo generar el código");

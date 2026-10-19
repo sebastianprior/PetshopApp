@@ -14,6 +14,7 @@ import { WishlistScreen } from "./screens/WishlistScreen";
 import {
   addToCart,
   addToWishlist,
+  AUTH_REFRESH_KEY,
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
   createVenta,
@@ -31,6 +32,8 @@ import {
   register,
   removeFromCart,
   removeFromWishlist,
+  logoutSession,
+  TOKEN_REFRESHED_EVENT,
   UNAUTHORIZED_EVENT,
 } from "./api";
 import type { CartItem, CheckoutResult, Category, Product, ProductVariant, ShippingInfo, SiteSettings, User, View } from "./types";
@@ -173,6 +176,7 @@ function App() {
           : await register(email, password, name || email.split("@")[0]);
 
       localStorage.setItem(AUTH_TOKEN_KEY, response.token);
+      localStorage.setItem(AUTH_REFRESH_KEY, response.refreshToken);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
       setAuthToken(response.token);
       setCurrentUser(response.user);
@@ -194,7 +198,9 @@ function App() {
   };
 
   const handleLogout = () => {
+    void logoutSession();
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_REFRESH_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
     setAuthToken(null);
     setCurrentUser(null);
@@ -210,8 +216,17 @@ function App() {
       setAuthError("Tu sesión expiró. Iniciá sesión de nuevo.");
       setView("login");
     };
+    const handleTokenRefreshed = (event: Event) => {
+      const session = (event as CustomEvent<{ token: string; user: User }>).detail;
+      setAuthToken(session.token);
+      setCurrentUser(session.user);
+    };
     window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
-    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    window.addEventListener(TOKEN_REFRESHED_EVENT, handleTokenRefreshed);
+    return () => {
+      window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+      window.removeEventListener(TOKEN_REFRESHED_EVENT, handleTokenRefreshed);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

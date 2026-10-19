@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createVenta, fetchCategories, getGuestId, login, UNAUTHORIZED_EVENT } from "../api";
+import { AUTH_REFRESH_KEY, AUTH_TOKEN_KEY, createVenta, fetchCategories, fetchCurrentUser, getGuestId, login, TOKEN_REFRESHED_EVENT, UNAUTHORIZED_EVENT } from "../api";
 
 function mockFetchOnce(status: number, body: unknown) {
   return vi.fn().mockResolvedValue({
@@ -89,6 +89,73 @@ describe("createVenta", () => {
     vi.stubGlobal("fetch", mockFetchOnce(402, { type: "urn:petshop:problem:pago-rechazado", title: "Pago rechazado", detail: "Fondos insuficientes" }));
 
     await expect(createVenta("tok", {}, null, "tok_rechazado", "k")).rejects.toThrow("Fondos insuficientes");
+  });
+});
+
+describe("session renewal", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const response = (status: number, body: unknown) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+  });
+
+  it("renews the access token on a 401 and retries the request once with the new token", async () => {
+    localStorage.setItem(AUTH_REFRESH_KEY, "refresh-viejo");
+    const user = { id: "u1", email: "a@a.com", name: "Ana" };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(401, { error: "No autorizado" }))
+      .mockResolvedValueOnce(response(200, { token: "token-nuevo", refreshToken: "refresh-nuevo", user }))
+      .mockResolvedValueOnce(response(200, user));
+    vi.stubGlobal("fetch", fetchMock);
+    const refreshed = vi.fn();
+    window.addEventListener(TOKEN_REFRESHED_EVENT, refreshed);
+
+    const result = await fetchCurrentUser("token-vencido");
+
+    expect(result).toEqual(user);
+    expect(String(fetchMock.mock.calls[1][0])).toContain("/auth/refresh");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ refreshToken: "refresh-viejo" });
+    expect(fetchMock.mock.calls[2][1].headers.get("X-Auth-Token")).toBe("token-nuevo");
+    expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe("token-nuevo");
+    expect(localStorage.getItem(AUTH_REFRESH_KEY)).toBe("refresh-nuevo");
+    expect(refreshed).toHaveBeenCalledTimes(1);
+    window.removeEventListener(TOKEN_REFRESHED_EVENT, refreshed);
+  });
+
+  it("logs the user out when the session cannot be renewed", async () => {
+    localStorage.setItem(AUTH_REFRESH_KEY, "refresh-revocado");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(401, { error: "No autorizado" }))
+      .mockResolvedValueOnce(response(401, { error: "Sesión expirada" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const handler = vi.fn();
+    window.addEventListener(UNAUTHORIZED_EVENT, handler);
+
+    await expect(fetchCurrentUser("token-vencido")).rejects.toThrow("No autorizado");
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(AUTH_REFRESH_KEY)).toBeNull();
+    window.removeEventListener(UNAUTHORIZED_EVENT, handler);
+  });
+
+  it("does not try to renew when there is no refresh token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response(401, { error: "No autorizado" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchCurrentUser("token-vencido")).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

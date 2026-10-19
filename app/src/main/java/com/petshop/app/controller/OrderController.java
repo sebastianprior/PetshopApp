@@ -1,5 +1,6 @@
 package com.petshop.app.controller;
 
+import com.petshop.app.dto.OrderDTO;
 import com.petshop.app.dto.OrderStatsDTO;
 import com.petshop.app.dto.TopProductStatDTO;
 import com.petshop.app.model.Order;
@@ -44,7 +45,7 @@ public class OrderController {
         }
 
         String userId = jwtUtil.extractUserId(token);
-        return ResponseEntity.ok(orderRepository.findByUserIdOrderByFechaDesc(userId));
+        return ResponseEntity.ok(orderRepository.findByUserIdOrderByFechaDesc(userId).stream().map(OrderDTO::forCustomer).toList());
     }
 
     @GetMapping
@@ -53,7 +54,7 @@ public class OrderController {
             return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
         }
 
-        return ResponseEntity.ok(orderRepository.findAllByOrderByFechaDesc());
+        return ResponseEntity.ok(orderRepository.findAllByOrderByFechaDesc().stream().map(OrderDTO::forAdmin).toList());
     }
 
     @GetMapping("/stats")
@@ -112,6 +113,6 @@ public class OrderController {
 
         order.estado = nuevoEstado;
         orderRepository.save(order);
-        return ResponseEntity.ok(order);
+        return ResponseEntity.ok(OrderDTO.forAdmin(order));
     }
 }

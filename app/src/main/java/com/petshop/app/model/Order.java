@@ -1,5 +1,6 @@
 package com.petshop.app.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import org.hibernate.annotations.ColumnDefault;
@@ -41,8 +42,10 @@ public class Order {
 
     public String idTransaccion;
     public String estadoPago;
+    @JsonIgnore
     public String medioPagoToken;
 
+    @JsonIgnore
     @Column(nullable = false)
     @ColumnDefault("0")
     public int intentosPago = 0;

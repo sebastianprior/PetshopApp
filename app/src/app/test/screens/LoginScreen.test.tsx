@@ -79,7 +79,7 @@ describe("LoginScreen", () => {
 
   it("walks through the forgot-password flow end to end", async () => {
     const user = userEvent.setup();
-    mockedRecoverPassword.mockResolvedValue({ resetToken: "ABC123", expiresInMinutes: 15 });
+    mockedRecoverPassword.mockResolvedValue({ ok: true, message: "Si el email está registrado, te enviamos un código.", expiresInMinutes: 15 });
     mockedResetPassword.mockResolvedValue({ ok: true });
 
     render(<LoginScreen mode="login" error={null} loading={false} onSubmit={vi.fn()} onToggleMode={vi.fn()} />);
@@ -89,9 +89,12 @@ describe("LoginScreen", () => {
 
     await user.click(screen.getByText("Enviar código"));
 
-    await waitFor(() => expect(screen.getByText(/ABC123/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Si el email está registrado/)).toBeInTheDocument());
     expect(mockedRecoverPassword).toHaveBeenCalled();
+    // el código nunca se muestra en pantalla: hay que pegarlo desde el email
+    expect(screen.getByLabelText("Código de recuperación")).toHaveValue("");
 
+    await user.type(screen.getByLabelText("Código de recuperación"), "ABC123");
     await user.type(screen.getByLabelText("Nueva contraseña"), "newpass123");
     await user.click(screen.getByText("Cambiar contraseña"));
 
