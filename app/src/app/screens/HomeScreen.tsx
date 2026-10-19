@@ -1,3 +1,4 @@
+import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 import type { Category, Product, User } from "../types";
 
 type Props = {
@@ -95,7 +96,7 @@ export function HomeScreen({
           {featured.map((product) => (
             <article key={product.id} className="product-card">
               <div className="product-image-wrap product-clickable" onClick={() => onOpenProduct(product.id)}>
-                <img src={product.imageUrl || "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=700&q=80"} alt={product.name} />
+                <img src={product.imageUrl || PLACEHOLDER_IMAGE} onError={handleImageError} alt={product.name} />
                 {product.badge && <span className="product-badge">{product.badge}</span>}
                 {currentUser?.role !== "ADMIN" ? (
                   <button

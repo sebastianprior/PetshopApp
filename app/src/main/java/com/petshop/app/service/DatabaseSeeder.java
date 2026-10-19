@@ -37,56 +37,56 @@ public class DatabaseSeeder implements ApplicationRunner {
         saveCategoryIfMissing(new Category("higiene", "Higiene", "#D1FAE5"));
         saveCategoryIfMissing(new Category("salud", "Salud", "#DBEAFE"));
 
-        saveProductIfMissing(new Product("p1", "Croquetas SuperDog 10kg", "SuperDog", 12999.0, 15999.0, 4.6, productImage("dog-food"), "Oferta", "alimentos", 50));
-        saveProductIfMissing(new Product("p2", "Pelota Squeaky", "PetPlay", 499.0, null, 4.3, productImage("dog-toy-ball"), null, "juguetes", 200));
-        saveProductIfMissing(new Product("p3", "Collar Comfort L", "WalkEasy", 899.0, 1099.0, 4.5, productImage("dog-collar"), "Más vendido", "accesorios", 120));
-        saveProductIfMissing(new Product("p4", "Arena para gato Premium 8L", "GatoClean", 649.0, 799.0, 4.4, productImage("cat-litter"), "Oferta", "alimentos", 80));
-        saveProductIfMissing(new Product("p5", "Snack Dental Mini", "BiteCare", 699.0, 899.0, 4.7, productImage("dog-snack"), "Nuevo", "salud", 140));
-        saveProductIfMissing(new Product("p6", "Cepillo para perros", "PetClean", 850.0, 1100.0, 4.4, productImage("dog-brush"), "Oferta", "higiene", 90));
-        saveProductIfMissing(new Product("p7", "Rascador para gatos", "CatJoy", 2499.0, null, 4.8, productImage("cat-scratcher"), "Top", "juguetes", 60));
-        saveProductIfMissing(new Product("p8", "Juguete masticable", "ChewFun", 1199.0, 1499.0, 4.6, productImage("dog-chew"), "Más vendido", "juguetes", 180));
-        saveProductIfMissing(new Product("p9", "Pasta dental para perros", "DogSmile", 999.0, null, 4.5, productImage("pet-toothpaste"), null, "salud", 110));
-        saveProductIfMissing(new Product("p10", "Cama para perro mediana", "CozyNest", 4599.0, 5200.0, 4.7, productImage("dog-bed"), "Oferta", "accesorios", 35));
-        saveProductIfMissing(new Product("p11", "Comida húmeda gatitos 3kg", "CatBites", 3299.0, 3899.0, 4.6, productImage("cat-food"), "Nuevo", "alimentos", 75));
-        saveProductIfMissing(new Product("p12", "Peluche de lana para perro", "PawJoy", 799.0, 1099.0, 4.3, productImage("dog-plush"), null, "juguetes", 170));
-        saveProductIfMissing(new Product("p13", "Arnés de paseo pequeño", "TrailFit", 1599.0, 1899.0, 4.5, productImage("dog-harness"), "Popular", "accesorios", 130));
-        saveProductIfMissing(new Product("p14", "Shampoo antipulgas", "FreshPaw", 1299.0, 1499.0, 4.7, productImage("pet-shampoo"), "Top", "higiene", 88));
-        saveProductIfMissing(new Product("p15", "Vitaminas para perros", "VitalPet", 1799.0, null, 4.8, productImage("dog-vitamins"), "Recomendado", "salud", 95));
-        saveProductIfMissing(new Product("p16", "Bowl doble antiresbalón", "FeederMax", 1099.0, 1399.0, 4.4, productImage("pet-bowl"), "Oferta", "accesorios", 160));
-        saveProductIfMissing(new Product("p17", "Cucha para gatos pequeña", "CatNest", 3599.0, 4199.0, 4.7, productImage("cat-bed"), "Oferta", "accesorios", 50));
-        saveProductIfMissing(new Product("p18", "Hueso masticable XXL", "ChewPro", 1499.0, 1899.0, 4.6, productImage("dog-bone"), "Nuevo", "juguetes", 110));
-        saveProductIfMissing(new Product("p19", "Toallitas húmedas para mascotas", "CleanPaw", 899.0, null, 4.2, productImage("pet-wipes"), null, "higiene", 190));
-        saveProductIfMissing(new Product("p20", "Suplemento articular", "JointCare", 2099.0, 2499.0, 4.9, productImage("pet-supplement"), "Top", "salud", 78));
-        saveProductIfMissing(new Product("p21", "Comedero automático", "PetAuto", 4999.0, 5899.0, 4.8, productImage("pet-feeder"), "Nuevo", "accesorios", 42));
-        saveProductIfMissing(new Product("p22", "Tirador para gatos", "KittieFun", 699.0, 899.0, 4.5, productImage("cat-toy"), "Eco", "juguetes", 150));
-        saveProductIfMissing(new Product("p23", "Snacks naturales pollo", "BarkBites", 1099.0, null, 4.6, productImage("dog-snack"), "Nuevo", "alimentos", 140));
-        saveProductIfMissing(new Product("p24", "Limpieza de oído perros", "EarSafe", 1499.0, 1899.0, 4.7, productImage("pet-ear-cleaner"), "Recomendado", "salud", 86));
-        saveProductIfMissing(new Product("p25", "Guante para cepillar", "SoftBrush", 559.0, 799.0, 4.3, productImage("pet-brush"), "Oferta", "higiene", 175));
-        saveProductIfMissing(new Product("p26", "Lazo de seguridad", "SafeWalk", 899.0, 1199.0, 4.4, productImage("pet-leash"), null, "accesorios", 120));
-        saveProductIfMissing(new Product("p27", "Pañales para cachorros", "PuppyCare", 1199.0, 1499.0, 4.5, productImage("puppy-diapers"), "Oferta", "higiene", 100));
-        saveProductIfMissing(new Product("p28", "Mouse para gatos", "CatMouse", 499.0, null, 4.6, productImage("cat-mouse"), "Popular", "juguetes", 210));
-        saveProductIfMissing(new Product("p29", "Pasta dental gatos", "FelineSmile", 1099.0, null, 4.5, productImage("cat-toothpaste"), null, "salud", 96));
-        saveProductIfMissing(new Product("p30", "Pañuelo absorbente", "PetWipe", 799.0, 999.0, 4.2, productImage("pet-wipes"), null, "higiene", 180));
-        saveProductIfMissing(new Product("p31", "Corderito de felpa para perros", "CozyPaws", 1399.0, 1799.0, 4.4, productImage("dog-plush"), "Oferta", "juguetes", 146));
-        saveProductIfMissing(new Product("p32", "Bolsa de comida premium para gatos", "KittyBest", 5499.0, 6599.0, 4.8, productImage("cat-food"), "Top", "alimentos", 58));
-        saveProductIfMissing(new Product("p33", "Correa reflectante 1.5m", "NightWalk", 1299.0, 1699.0, 4.5, productImage("dog-leash"), "Nuevo", "accesorios", 118));
-        saveProductIfMissing(new Product("p34", "Aditivo calmante para perros", "CalmPet", 1899.0, 2299.0, 4.7, productImage("dog-supplement"), "Recomendado", "salud", 81));
-        saveProductIfMissing(new Product("p35", "Champú hipoalergénico", "GentlePets", 1099.0, 1399.0, 4.6, productImage("pet-shampoo"), "Oferta", "higiene", 130));
-        saveProductIfMissing(new Product("p36", "Pipeta antipulgas mediana", "FleaStop", 2499.0, 2999.0, 4.9, productImage("pet-flea"), "Más vendido", "salud", 92));
-        saveProductIfMissing(new Product("p37", "Comedero de acero inoxidable", "SteelFeeder", 1799.0, 2399.0, 4.4, productImage("pet-bowl"), "Eco", "accesorios", 150));
-        saveProductIfMissing(new Product("p38", "Lanzador de pelotas", "FetchPro", 2299.0, 2899.0, 4.6, productImage("dog-toy"), "Nuevo", "juguetes", 112));
-        saveProductIfMissing(new Product("p39", "Snacks de pescado para gatos", "SeaBites", 1199.0, 1499.0, 4.5, productImage("cat-snack"), "Oferta", "alimentos", 132));
-        saveProductIfMissing(new Product("p40", "Toalla de microfibra para mascotas", "DryPaw", 999.0, 1299.0, 4.3, productImage("pet-towel"), null, "higiene", 160));
-        saveProductIfMissing(new Product("p41", "Casa de madera para gatos", "CatCastle", 6499.0, 7599.0, 4.8, productImage("cat-house"), "Top", "accesorios", 34));
-        saveProductIfMissing(new Product("p42", "Paseadores de goma para perros", "GripWalk", 899.0, 1199.0, 4.2, productImage("dog-collar"), null, "accesorios", 140));
-        saveProductIfMissing(new Product("p43", "Bocaditos de pollo para cachorros", "PuppyCrunch", 1299.0, 1699.0, 4.6, productImage("puppy-food"), "Oferta", "alimentos", 170));
-        saveProductIfMissing(new Product("p44", "Rascador vertical plegable", "ClawTower", 2899.0, 3499.0, 4.7, productImage("cat-scratcher"), "Más vendido", "juguetes", 76));
-        saveProductIfMissing(new Product("p45", "Tobillera anti-ladrido", "SilentPaw", 1999.0, 2499.0, 4.4, productImage("dog-collar"), "Nuevo", "salud", 90));
-        saveProductIfMissing(new Product("p46", "Pañales especiales para gatos", "CleanCat", 1399.0, 1799.0, 4.3, productImage("cat-litter"), "Oferta", "higiene", 125));
-        saveProductIfMissing(new Product("p47", "Mordedor de silicona", "BiteSoft", 899.0, 1199.0, 4.5, productImage("dog-chew"), "Popular", "juguetes", 180));
-        saveProductIfMissing(new Product("p48", "Suplemento omega para mascotas", "OmegaPet", 2199.0, 2599.0, 4.8, productImage("pet-supplement"), "Top", "salud", 70));
-        saveProductIfMissing(new Product("p49", "Canasta portable para viajes", "TravelPet", 3999.0, 4599.0, 4.6, productImage("pet-travel"), "Nuevo", "accesorios", 61));
-        saveProductIfMissing(new Product("p50", "Comida húmeda para perros senior", "SeniorBites", 3699.0, 4399.0, 4.7, productImage("dog-food"), "Recomendado", "alimentos", 67));
+        saveProductIfMissing(new Product("p1", "Croquetas SuperDog 10kg", "SuperDog", 12999.0, 15999.0, 4.6, productImage("p1"), "Oferta", "alimentos", 50));
+        saveProductIfMissing(new Product("p2", "Pelota Squeaky", "PetPlay", 499.0, null, 4.3, productImage("p2"), null, "juguetes", 200));
+        saveProductIfMissing(new Product("p3", "Collar Comfort L", "WalkEasy", 899.0, 1099.0, 4.5, productImage("p3"), "Más vendido", "accesorios", 120));
+        saveProductIfMissing(new Product("p4", "Arena para gato Premium 8L", "GatoClean", 649.0, 799.0, 4.4, productImage("p4"), "Oferta", "alimentos", 80));
+        saveProductIfMissing(new Product("p5", "Snack Dental Mini", "BiteCare", 699.0, 899.0, 4.7, productImage("p5"), "Nuevo", "salud", 140));
+        saveProductIfMissing(new Product("p6", "Cepillo para perros", "PetClean", 850.0, 1100.0, 4.4, productImage("p6"), "Oferta", "higiene", 90));
+        saveProductIfMissing(new Product("p7", "Rascador para gatos", "CatJoy", 2499.0, null, 4.8, productImage("p7"), "Top", "juguetes", 60));
+        saveProductIfMissing(new Product("p8", "Juguete masticable", "ChewFun", 1199.0, 1499.0, 4.6, productImage("p8"), "Más vendido", "juguetes", 180));
+        saveProductIfMissing(new Product("p9", "Pasta dental para perros", "DogSmile", 999.0, null, 4.5, productImage("p9"), null, "salud", 110));
+        saveProductIfMissing(new Product("p10", "Cama para perro mediana", "CozyNest", 4599.0, 5200.0, 4.7, productImage("p10"), "Oferta", "accesorios", 35));
+        saveProductIfMissing(new Product("p11", "Comida húmeda gatitos 3kg", "CatBites", 3299.0, 3899.0, 4.6, productImage("p11"), "Nuevo", "alimentos", 75));
+        saveProductIfMissing(new Product("p12", "Peluche de lana para perro", "PawJoy", 799.0, 1099.0, 4.3, productImage("p12"), null, "juguetes", 170));
+        saveProductIfMissing(new Product("p13", "Arnés de paseo pequeño", "TrailFit", 1599.0, 1899.0, 4.5, productImage("p13"), "Popular", "accesorios", 130));
+        saveProductIfMissing(new Product("p14", "Shampoo antipulgas", "FreshPaw", 1299.0, 1499.0, 4.7, productImage("p14"), "Top", "higiene", 88));
+        saveProductIfMissing(new Product("p15", "Vitaminas para perros", "VitalPet", 1799.0, null, 4.8, productImage("p15"), "Recomendado", "salud", 95));
+        saveProductIfMissing(new Product("p16", "Bowl doble antiresbalón", "FeederMax", 1099.0, 1399.0, 4.4, productImage("p16"), "Oferta", "accesorios", 160));
+        saveProductIfMissing(new Product("p17", "Cucha para gatos pequeña", "CatNest", 3599.0, 4199.0, 4.7, productImage("p17"), "Oferta", "accesorios", 50));
+        saveProductIfMissing(new Product("p18", "Hueso masticable XXL", "ChewPro", 1499.0, 1899.0, 4.6, productImage("p18"), "Nuevo", "juguetes", 110));
+        saveProductIfMissing(new Product("p19", "Toallitas húmedas para mascotas", "CleanPaw", 899.0, null, 4.2, productImage("p19"), null, "higiene", 190));
+        saveProductIfMissing(new Product("p20", "Suplemento articular", "JointCare", 2099.0, 2499.0, 4.9, productImage("p20"), "Top", "salud", 78));
+        saveProductIfMissing(new Product("p21", "Comedero automático", "PetAuto", 4999.0, 5899.0, 4.8, productImage("p21"), "Nuevo", "accesorios", 42));
+        saveProductIfMissing(new Product("p22", "Tirador para gatos", "KittieFun", 699.0, 899.0, 4.5, productImage("p22"), "Eco", "juguetes", 150));
+        saveProductIfMissing(new Product("p23", "Snacks naturales pollo", "BarkBites", 1099.0, null, 4.6, productImage("p23"), "Nuevo", "alimentos", 140));
+        saveProductIfMissing(new Product("p24", "Limpieza de oído perros", "EarSafe", 1499.0, 1899.0, 4.7, productImage("p24"), "Recomendado", "salud", 86));
+        saveProductIfMissing(new Product("p25", "Guante para cepillar", "SoftBrush", 559.0, 799.0, 4.3, productImage("p25"), "Oferta", "higiene", 175));
+        saveProductIfMissing(new Product("p26", "Lazo de seguridad", "SafeWalk", 899.0, 1199.0, 4.4, productImage("p26"), null, "accesorios", 120));
+        saveProductIfMissing(new Product("p27", "Pañales para cachorros", "PuppyCare", 1199.0, 1499.0, 4.5, productImage("p27"), "Oferta", "higiene", 100));
+        saveProductIfMissing(new Product("p28", "Mouse para gatos", "CatMouse", 499.0, null, 4.6, productImage("p28"), "Popular", "juguetes", 210));
+        saveProductIfMissing(new Product("p29", "Pasta dental gatos", "FelineSmile", 1099.0, null, 4.5, productImage("p29"), null, "salud", 96));
+        saveProductIfMissing(new Product("p30", "Pañuelo absorbente", "PetWipe", 799.0, 999.0, 4.2, productImage("p30"), null, "higiene", 180));
+        saveProductIfMissing(new Product("p31", "Corderito de felpa para perros", "CozyPaws", 1399.0, 1799.0, 4.4, productImage("p31"), "Oferta", "juguetes", 146));
+        saveProductIfMissing(new Product("p32", "Bolsa de comida premium para gatos", "KittyBest", 5499.0, 6599.0, 4.8, productImage("p32"), "Top", "alimentos", 58));
+        saveProductIfMissing(new Product("p33", "Correa reflectante 1.5m", "NightWalk", 1299.0, 1699.0, 4.5, productImage("p33"), "Nuevo", "accesorios", 118));
+        saveProductIfMissing(new Product("p34", "Aditivo calmante para perros", "CalmPet", 1899.0, 2299.0, 4.7, productImage("p34"), "Recomendado", "salud", 81));
+        saveProductIfMissing(new Product("p35", "Champú hipoalergénico", "GentlePets", 1099.0, 1399.0, 4.6, productImage("p35"), "Oferta", "higiene", 130));
+        saveProductIfMissing(new Product("p36", "Pipeta antipulgas mediana", "FleaStop", 2499.0, 2999.0, 4.9, productImage("p36"), "Más vendido", "salud", 92));
+        saveProductIfMissing(new Product("p37", "Comedero de acero inoxidable", "SteelFeeder", 1799.0, 2399.0, 4.4, productImage("p37"), "Eco", "accesorios", 150));
+        saveProductIfMissing(new Product("p38", "Lanzador de pelotas", "FetchPro", 2299.0, 2899.0, 4.6, productImage("p38"), "Nuevo", "juguetes", 112));
+        saveProductIfMissing(new Product("p39", "Snacks de pescado para gatos", "SeaBites", 1199.0, 1499.0, 4.5, productImage("p39"), "Oferta", "alimentos", 132));
+        saveProductIfMissing(new Product("p40", "Toalla de microfibra para mascotas", "DryPaw", 999.0, 1299.0, 4.3, productImage("p40"), null, "higiene", 160));
+        saveProductIfMissing(new Product("p41", "Casa de madera para gatos", "CatCastle", 6499.0, 7599.0, 4.8, productImage("p41"), "Top", "accesorios", 34));
+        saveProductIfMissing(new Product("p42", "Paseadores de goma para perros", "GripWalk", 899.0, 1199.0, 4.2, productImage("p42"), null, "accesorios", 140));
+        saveProductIfMissing(new Product("p43", "Bocaditos de pollo para cachorros", "PuppyCrunch", 1299.0, 1699.0, 4.6, productImage("p43"), "Oferta", "alimentos", 170));
+        saveProductIfMissing(new Product("p44", "Rascador vertical plegable", "ClawTower", 2899.0, 3499.0, 4.7, productImage("p44"), "Más vendido", "juguetes", 76));
+        saveProductIfMissing(new Product("p45", "Tobillera anti-ladrido", "SilentPaw", 1999.0, 2499.0, 4.4, productImage("p45"), "Nuevo", "salud", 90));
+        saveProductIfMissing(new Product("p46", "Pañales especiales para gatos", "CleanCat", 1399.0, 1799.0, 4.3, productImage("p46"), "Oferta", "higiene", 125));
+        saveProductIfMissing(new Product("p47", "Mordedor de silicona", "BiteSoft", 899.0, 1199.0, 4.5, productImage("p47"), "Popular", "juguetes", 180));
+        saveProductIfMissing(new Product("p48", "Suplemento omega para mascotas", "OmegaPet", 2199.0, 2599.0, 4.8, productImage("p48"), "Top", "salud", 70));
+        saveProductIfMissing(new Product("p49", "Canasta portable para viajes", "TravelPet", 3999.0, 4599.0, 4.6, productImage("p49"), "Nuevo", "accesorios", 61));
+        saveProductIfMissing(new Product("p50", "Comida húmeda para perros senior", "SeniorBites", 3699.0, 4399.0, 4.7, productImage("p50"), "Recomendado", "alimentos", 67));
 
         saveUserIfMissing(new User("u1", "cliente@ejemplo.com", "password", "Cliente Demo"));
 
@@ -97,45 +97,9 @@ public class DatabaseSeeder implements ApplicationRunner {
         saveUserIfMissing(new User("u3", "juan@petshop.com", "123456", "Juan Petshop"));
     }
 
-    private String productImage(String key) {
-        java.util.Map<String, String> imagesByKey = new java.util.HashMap<>();
-
-        imagesByKey.put("dog-food", "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("cat-food", "https://images.unsplash.com/photo-1511044568932-338cba0ad803?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-toy-ball", "https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-toy", "https://images.unsplash.com/photo-1570018143030-1f5f0f6cbeb7?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-bed", "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("cat-bed", "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-collar", "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-harness", "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-leash", "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-shampoo", "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-brush", "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-bowl", "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-bone", "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-chew", "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-wipes", "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-supplement", "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-snack", "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("cat-litter", "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("cat-scratcher", "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("cat-toy", "https://images.unsplash.com/photo-1570018143030-1f5f0f6cbeb7?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-towel", "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-feeder", "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-ear-cleaner", "https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("puppy-food", "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("cat-mouse", "https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-plush", "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-vitamins", "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-toothpaste", "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("cat-toothpaste", "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-flea", "https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-leash", "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("dog-house", "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("cat-house", "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=900&q=80");
-        imagesByKey.put("pet-travel", "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=900&q=80");
-
-        return imagesByKey.getOrDefault(key, "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80");
+    /** Cada producto tiene su propia ilustración (src/app/public/products/<id>.svg), que representa lo que dice el título. */
+    private String productImage(String productId) {
+        return "/products/" + productId + ".svg";
     }
 
     private void saveCategoryIfMissing(Category category) {

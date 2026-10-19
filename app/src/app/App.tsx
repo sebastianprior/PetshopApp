@@ -50,6 +50,8 @@ function App() {
   const [view, setView] = useState<View>("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  // imagen de cada producto visto alguna vez: el carrito la necesita aunque el catálogo esté filtrado
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -99,6 +101,10 @@ function App() {
     try {
       const data = await fetchProducts(category, order, query);
       setProducts(data);
+      setProductImages((known) => ({
+        ...known,
+        ...Object.fromEntries(data.filter((product) => product.imageUrl).map((product) => [product.id, product.imageUrl as string])),
+      }));
     } catch (error) {
       console.error("No se pudieron cargar los productos", error);
     } finally {
@@ -390,6 +396,7 @@ function App() {
       return (
         <CartScreen
           items={cartItems}
+          productImages={productImages}
           onRemove={handleRemoveFromCart}
           onCheckout={handleCheckout}
           onIncrement={handleIncrementCartItem}

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import type { CartItem, ShippingInfo } from "../types";
 import { validateCoupon } from "../api";
+import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 
 type Props = {
   items: CartItem[];
+  productImages: Record<string, string>;
   onRemove: (item: CartItem) => void;
   onCheckout: (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => void;
   onIncrement: (item: CartItem) => void;
@@ -21,7 +23,7 @@ const EMPTY_SHIPPING: ShippingInfo = {
   telefono: "",
 };
 
-export function CartScreen({ items, onRemove, onCheckout, onIncrement, onDecrement }: Props) {
+export function CartScreen({ items, productImages, onRemove, onCheckout, onIncrement, onDecrement }: Props) {
   const [shipping, setShipping] = useState<ShippingInfo>(EMPTY_SHIPPING);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
@@ -85,7 +87,8 @@ export function CartScreen({ items, onRemove, onCheckout, onIncrement, onDecreme
               <div key={`${item.productId}-${item.variantId ?? item.variant}`} className="cart-item-card">
                 <div className="cart-thumb">
                   <img
-                    src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=300&q=80"
+                    src={productImages[item.productId] || PLACEHOLDER_IMAGE}
+                    onError={handleImageError}
                     alt={item.name}
                   />
                 </div>

@@ -1,3 +1,4 @@
+import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 import type { Product } from "../types";
 
 type Props = {
@@ -40,7 +41,8 @@ export function OffersScreen({ products, onAddToCart, onOpenProduct, isAdmin, wi
             <article key={product.id} className="product-card">
               <div className="product-image-wrap product-clickable" onClick={() => onOpenProduct(product.id)}>
                 <img
-                  src={product.imageUrl || "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=700&q=80"}
+                  src={product.imageUrl || PLACEHOLDER_IMAGE}
+                  onError={handleImageError}
                   alt={product.name}
                 />
                 {product.badge ? <span className="product-badge">{product.badge}</span> : null}

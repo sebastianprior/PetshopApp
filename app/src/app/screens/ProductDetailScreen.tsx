@@ -1,3 +1,4 @@
+import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 import { useEffect, useState } from "react";
 import type { Product, ProductVariant, Review } from "../types";
 import { deleteReview, fetchProductReviews, fetchProductVariants, submitReview } from "../api";
@@ -112,7 +113,8 @@ export function ProductDetailScreen({
       <div className="product-detail">
         <div className="product-detail-image">
           <img
-            src={displayImageUrl || "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80"}
+            src={displayImageUrl || PLACEHOLDER_IMAGE}
+            onError={handleImageError}
             alt={product.name}
           />
           {product.badge ? <span className="product-badge">{product.badge}</span> : null}

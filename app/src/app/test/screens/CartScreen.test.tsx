@@ -29,6 +29,7 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[]}
+        productImages={{}}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -43,6 +44,7 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
+        productImages={{}}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -65,6 +67,7 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
+        productImages={{}}
         onRemove={onRemove}
         onCheckout={vi.fn()}
         onIncrement={onIncrement}
@@ -88,6 +91,7 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
+        productImages={{}}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -112,6 +116,7 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
+        productImages={{}}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -133,6 +138,7 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
+        productImages={{}}
         onRemove={vi.fn()}
         onCheckout={onCheckout}
         onIncrement={vi.fn()}
@@ -163,6 +169,7 @@ describe("CartScreen", () => {
     render(
       <CartScreen
         items={[ITEM]}
+        productImages={{}}
         onRemove={vi.fn()}
         onCheckout={onCheckout}
         onIncrement={vi.fn()}
