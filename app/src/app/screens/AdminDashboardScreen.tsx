@@ -1417,9 +1417,11 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
               />
             </label>
             <label>
-              <span>Usos máximos (vacío = ilimitado)</span>
+              <span>Usos máximos</span>
               <input
                 type="number"
+                min="1"
+                placeholder="Ilimitado"
                 value={couponForm.maxUses}
                 onChange={(e) => setCouponForm({ ...couponForm, maxUses: e.target.value })}
               />
