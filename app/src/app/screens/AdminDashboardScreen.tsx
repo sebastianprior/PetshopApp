@@ -66,6 +66,21 @@ const EMPTY_COUPON_FORM = {
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(value);
 
+const PROMO_TYPES = [
+  "2x1",
+  "3x2",
+  "3x1",
+  "2do al 50%",
+  "10% OFF",
+  "15% OFF",
+  "20% OFF",
+  "25% OFF",
+  "30% OFF",
+  "40% OFF",
+  "50% OFF",
+  "Envío gratis",
+];
+
 const EMPTY_VARIANT_FORM = { talle: "", color: "", stock: "", imageUrl: "" };
 
 const EMPTY_PRODUCT_FORM = {
@@ -246,6 +261,18 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
     setEditingCouponId(null);
     setCouponForm(EMPTY_COUPON_FORM);
     setCouponError(null);
+  };
+
+  // Al elegir "N% OFF" y no haber precio promocional, lo calcula a partir del precio (se puede editar después).
+  const handlePromoTypeChange = (tipoPromocion: string) => {
+    const percent = /^(\d+)% OFF$/.exec(tipoPromocion);
+    const price = Number(productForm.price);
+    if (percent && !productForm.precioPromocional && price > 0) {
+      const discounted = Math.round(price * (1 - Number(percent[1]) / 100) * 100) / 100;
+      setProductForm({ ...productForm, tipoPromocion, precioPromocional: String(discounted) });
+      return;
+    }
+    setProductForm({ ...productForm, tipoPromocion });
   };
 
   const handleCouponSubmit = async (e: React.FormEvent) => {
@@ -974,11 +1001,20 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
             </label>
             <label>
               <span>Tipo de promoción</span>
-              <input
-                placeholder="2x1, 20% OFF..."
+              <select
                 value={productForm.tipoPromocion}
-                onChange={(e) => setProductForm({ ...productForm, tipoPromocion: e.target.value })}
-              />
+                onChange={(e) => handlePromoTypeChange(e.target.value)}
+              >
+                <option value="">Sin tipo</option>
+                {PROMO_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+                {productForm.tipoPromocion && !PROMO_TYPES.includes(productForm.tipoPromocion) ? (
+                  <option value={productForm.tipoPromocion}>{productForm.tipoPromocion}</option>
+                ) : null}
+              </select>
             </label>
             <label className="admin-form-wide">
               <span>URL de imagen</span>
