@@ -1,4 +1,4 @@
-import type { CartItem, Category, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, ShippingInfo, User } from "./types";
+import type { CartItem, Category, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, ShippingInfo, SiteSettings, User } from "./types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -480,5 +480,17 @@ export async function processRefund(token: string, returnId: number): Promise<{ 
   return request(`/refunds/process/${returnId}`, {
     method: "POST",
     headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchSiteSettings(): Promise<SiteSettings> {
+  return request<SiteSettings>("/settings");
+}
+
+export async function updateSiteSettings(token: string, settings: SiteSettings): Promise<SiteSettings> {
+  return request<SiteSettings>("/settings", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(settings),
   });
 }

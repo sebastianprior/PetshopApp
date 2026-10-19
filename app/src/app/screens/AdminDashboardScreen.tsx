@@ -10,7 +10,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { Category, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, User } from "../types";
+import type { Category, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, SiteSettings, User } from "../types";
+import { AnnouncementSettings } from "./AnnouncementSettings";
 import {
   createCategory,
   createCoupon,
@@ -44,9 +45,11 @@ type Props = {
   authToken: string;
   categories: Category[];
   currentUserId: string;
+  siteSettings: SiteSettings;
+  onSiteSettingsChange: (settings: SiteSettings) => void;
 };
 
-type Tab = "stats" | "orders" | "products" | "categories" | "returns" | "users" | "coupons";
+type Tab = "stats" | "orders" | "products" | "categories" | "returns" | "users" | "coupons" | "announcements";
 
 const EMPTY_CATEGORY_FORM = { id: "", name: "", color: "#f97316" };
 
@@ -80,7 +83,7 @@ const EMPTY_PRODUCT_FORM = {
   tipoPromocion: "",
 };
 
-export function AdminDashboardScreen({ authToken, categories, currentUserId }: Props) {
+export function AdminDashboardScreen({ authToken, categories, currentUserId, siteSettings, onSiteSettingsChange }: Props) {
   const [tab, setTab] = useState<Tab>("stats");
 
   const [users, setUsers] = useState<User[]>([]);
@@ -711,6 +714,9 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId }: P
         </button>
         <button className={tab === "coupons" ? "admin-tab active" : "admin-tab"} onClick={() => setTab("coupons")}>
           Cupones
+        </button>
+        <button className={tab === "announcements" ? "admin-tab active" : "admin-tab"} onClick={() => setTab("announcements")}>
+          Anuncios
         </button>
       </div>
 
@@ -1367,6 +1373,10 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId }: P
             </div>
           )}
         </section>
+      ) : null}
+
+      {tab === "announcements" ? (
+        <AnnouncementSettings authToken={authToken} settings={siteSettings} onSaved={onSiteSettingsChange} />
       ) : null}
 
       {tab === "coupons" ? (

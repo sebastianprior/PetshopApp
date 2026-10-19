@@ -22,6 +22,7 @@ import {
   fetchCategories,
   fetchCurrentUser,
   fetchProducts,
+  fetchSiteSettings,
   fetchWishlist,
   getAuthToken,
   getCurrentUser,
@@ -32,7 +33,14 @@ import {
   removeFromWishlist,
   UNAUTHORIZED_EVENT,
 } from "./api";
-import type { CartItem, CheckoutResult, Category, Product, ProductVariant, ShippingInfo, User, View } from "./types";
+import type { CartItem, CheckoutResult, Category, Product, ProductVariant, ShippingInfo, SiteSettings, User, View } from "./types";
+
+// Valores que se muestran hasta que llega la configuración del servidor (los mismos que trae por defecto).
+const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  topbarItems: ["🚚 Envíos a todo el país", "💳 6 cuotas sin interés", "🏷️ Ofertas semanales"],
+  announcementMode: "AUTO",
+  announcementText: "",
+};
 
 function App() {
   const [view, setView] = useState<View>("home");
@@ -52,6 +60,7 @@ function App() {
   const [theme, setTheme] = useState<"light" | "soft" | "dark">("soft");
   const [lastCheckout, setLastCheckout] = useState<CheckoutResult | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
 
   const cartCount = useMemo(
     () => cartItems.reduce((total, item) => total + item.quantity, 0),
@@ -62,6 +71,13 @@ function App() {
     () => products.filter((product) => product.precioPromocional != null),
     [products],
   );
+
+  const announcementText =
+    siteSettings.announcementMode === "CUSTOM"
+      ? siteSettings.announcementText
+      : siteSettings.announcementMode === "AUTO" && activePromos.length > 0
+        ? `🔥 ¡Ofertas! ${activePromos.map((p) => `${p.name} ${p.tipoPromocion || ""}`.trim()).join(" · ")}`
+        : "";
 
   const loadCategories = async () => {
     try {
@@ -118,6 +134,9 @@ function App() {
     }
     void loadCategories();
     void loadProducts();
+    fetchSiteSettings()
+      .then(setSiteSettings)
+      .catch((error) => console.error("No se pudo cargar la configuración del sitio", error));
   }, []);
 
   useEffect(() => {
@@ -382,7 +401,15 @@ function App() {
     }
 
     if (view === "admin" && currentUser?.role === "ADMIN" && authToken) {
-      return <AdminDashboardScreen authToken={authToken} categories={categories} currentUserId={currentUser.id} />;
+      return (
+        <AdminDashboardScreen
+          authToken={authToken}
+          categories={categories}
+          currentUserId={currentUser.id}
+          siteSettings={siteSettings}
+          onSiteSettingsChange={setSiteSettings}
+        />
+      );
     }
 
     if (view === "orders" && currentUser && authToken) {
@@ -431,18 +458,18 @@ function App() {
   return (
     <div className={`app-shell theme-${theme}`}>
       <header className="topbar">
-        <div className="topbar-inner">
-          <span>🚚 Envíos a todo el país</span>
-          <span>💳 6 cuotas sin interés</span>
-          <span>🏷️ Ofertas semanales</span>
-        </div>
+        {siteSettings.topbarItems.length > 0 ? (
+          <div className="topbar-inner">
+            {siteSettings.topbarItems.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        ) : null}
       </header>
 
-      {activePromos.length > 0 ? (
+      {announcementText ? (
         <div className="promo-banner">
-          <div className="promo-banner-inner">
-            🔥 ¡Ofertas! {activePromos.map((p) => `${p.name} ${p.tipoPromocion || ""}`.trim()).join(" · ")}
-          </div>
+          <div className="promo-banner-inner">{announcementText}</div>
         </div>
       ) : null}
 

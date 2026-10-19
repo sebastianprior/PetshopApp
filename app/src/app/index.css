@@ -776,6 +776,15 @@ img {
   font-weight: 700;
 }
 
+.success-box {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
 .info-box {
   background: #eff6ff;
   color: #1d4ed8;
@@ -1268,6 +1277,22 @@ img {
 .admin-form-grid label.checkbox-label input {
   min-height: auto;
   width: auto;
+}
+
+.admin-form-grid textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #111827;
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+.admin-help {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
 }
 
 .admin-form-grid input,

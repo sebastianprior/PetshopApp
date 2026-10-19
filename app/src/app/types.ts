@@ -135,6 +135,12 @@ export type Coupon = {
   expiresAt: string | null;
 };
 
+export type SiteSettings = {
+  topbarItems: string[];
+  announcementMode: "AUTO" | "CUSTOM" | "OFF";
+  announcementText: string;
+};
+
 export type View =
   | "home"
   | "products"
