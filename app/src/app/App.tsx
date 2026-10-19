@@ -11,6 +11,7 @@ import { MyAccountScreen } from "./screens/MyAccountScreen";
 import { OrderConfirmationScreen } from "./screens/OrderConfirmationScreen";
 import { LegalScreen } from "./screens/LegalScreen";
 import { SplashScreen } from "./screens/SplashScreen";
+import { SalchiBot } from "./screens/SalchiBot";
 import { WishlistScreen } from "./screens/WishlistScreen";
 import {
   addToCart,
@@ -586,6 +587,8 @@ function App() {
       </nav>
 
       <main className="page-container">{renderScreen()}</main>
+
+      {currentUser?.role !== "ADMIN" ? <SalchiBot onOpenProduct={openProduct} onAddToCart={handleAddToCart} /> : null}
 
       <footer className="app-footer">
         <div className="app-footer-inner">

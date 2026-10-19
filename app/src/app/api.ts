@@ -562,3 +562,13 @@ export async function updateSiteSettings(token: string, settings: SiteSettings):
     body: JSON.stringify(settings),
   });
 }
+
+export type SalchiBotAnswer = { reply: string; products: Product[]; suggestions: string[] };
+
+/** Le escribe a Salchi Bot (público): devuelve su respuesta y los productos que recomienda. */
+export async function askSalchiBot(message: string, history: string[]): Promise<SalchiBotAnswer> {
+  return request<SalchiBotAnswer>("/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, history }),
+  });
+}
