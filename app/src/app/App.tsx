@@ -10,6 +10,7 @@ import { MyOrdersScreen } from "./screens/MyOrdersScreen";
 import { MyAccountScreen } from "./screens/MyAccountScreen";
 import { OrderConfirmationScreen } from "./screens/OrderConfirmationScreen";
 import { LegalScreen } from "./screens/LegalScreen";
+import { SplashScreen } from "./screens/SplashScreen";
 import { WishlistScreen } from "./screens/WishlistScreen";
 import {
   addToCart,
@@ -48,6 +49,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
 function App() {
   const [view, setView] = useState<View>("home");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -474,6 +476,8 @@ function App() {
 
   return (
     <div className={`app-shell theme-${theme}`}>
+      {showSplash ? <SplashScreen onDone={() => setShowSplash(false)} /> : null}
+
       <header className="topbar">
         {siteSettings.topbarItems.length > 0 ? (
           <div className="topbar-inner">

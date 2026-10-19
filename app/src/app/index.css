@@ -2074,3 +2074,193 @@ img {
     padding: 8px 10px;
   }
 }
+
+/* ==========================================================================
+   Pantalla de bienvenida: perro salchicha caminando
+   ========================================================================== */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: linear-gradient(180deg, #fffaf6 0%, #f4f0ec 100%);
+  color: #1f2937;
+  opacity: 1;
+  transition: opacity 0.45s ease;
+  cursor: pointer;
+}
+
+.splash.leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.splash-brand-mark {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  border-radius: 12px;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.splash-stage {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  overflow: hidden;
+}
+
+.splash-dog {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  width: min(250px, 60vw);
+  animation: splash-walk 2.6s linear forwards;
+}
+
+.splash-dog svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.splash-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, #d6c7b8 0 18px, transparent 18px 30px);
+  opacity: 0.8;
+}
+
+.splash-hint {
+  margin: 0;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  animation: splash-pulse 1.2s ease-in-out infinite;
+}
+
+.dog-shadow {
+  fill: rgba(31, 41, 55, 0.14);
+}
+
+.dog-leg {
+  transform-box: fill-box;
+  transform-origin: 50% 8%;
+  animation: dog-step 0.45s ease-in-out infinite alternate;
+}
+
+.dog-leg-b {
+  animation-direction: alternate-reverse;
+}
+
+.dog-body {
+  animation: dog-bob 0.45s ease-in-out infinite;
+}
+
+.dog-tail {
+  transform-box: fill-box;
+  transform-origin: 100% 100%;
+  animation: dog-wag 0.3s ease-in-out infinite alternate;
+}
+
+.dog-ear {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: dog-flap 0.45s ease-in-out infinite;
+}
+
+@keyframes splash-walk {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(calc(100vw + 10%));
+  }
+}
+
+@keyframes dog-step {
+  from {
+    transform: rotate(-28deg);
+  }
+  to {
+    transform: rotate(28deg);
+  }
+}
+
+@keyframes dog-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes dog-wag {
+  from {
+    transform: rotate(-14deg);
+  }
+  to {
+    transform: rotate(14deg);
+  }
+}
+
+@keyframes dog-flap {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes splash-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Sin animaciones para quien las desactivó en su sistema: el perro queda quieto en el centro */
+@media (prefers-reduced-motion: reduce) {
+  .splash-dog {
+    left: 50%;
+    margin-left: min(-125px, -30vw);
+    animation: none;
+  }
+
+  .dog-leg,
+  .dog-body,
+  .dog-tail,
+  .dog-ear,
+  .splash-hint {
+    animation: none;
+  }
+}
