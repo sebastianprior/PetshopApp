@@ -26,6 +26,8 @@ public class VentaDTO {
     public double subtotal;
     public double shippingCost;
     public double discountAmount;
+    /** Cuánto de discountAmount viene de la ruleta del día (el resto es del cupón). */
+    public double ruletaDescuento;
     public String couponCode;
     public double total;
 
@@ -39,6 +41,7 @@ public class VentaDTO {
         dto.subtotal = order.subtotal;
         dto.shippingCost = order.shippingCost;
         dto.discountAmount = order.discountAmount;
+        dto.ruletaDescuento = order.ruletaDescuento;
         dto.couponCode = order.couponCode;
         dto.total = order.total;
         dto.items = order.items.stream().map(item -> {

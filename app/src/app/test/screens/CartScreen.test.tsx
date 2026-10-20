@@ -3,13 +3,15 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CartScreen } from "../../screens/CartScreen";
 import type { CartItem } from "../../types";
-import { validateCoupon } from "../../api";
+import { fetchRouletteCartDiscount, validateCoupon } from "../../api";
 
 vi.mock("../../api", () => ({
   validateCoupon: vi.fn(),
+  fetchRouletteCartDiscount: vi.fn().mockResolvedValue({ percent: 10, amount: 0, categoryId: null, categoryName: null }),
 }));
 
 const mockedValidateCoupon = vi.mocked(validateCoupon);
+const mockedRoulette = vi.mocked(fetchRouletteCartDiscount);
 
 const ITEM: CartItem = {
   productId: "p1",
@@ -30,6 +32,7 @@ describe("CartScreen", () => {
       <CartScreen
         items={[]}
         productImages={{}}
+        authToken={null}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -45,6 +48,7 @@ describe("CartScreen", () => {
       <CartScreen
         items={[ITEM]}
         productImages={{}}
+        authToken={null}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -68,6 +72,7 @@ describe("CartScreen", () => {
       <CartScreen
         items={[ITEM]}
         productImages={{}}
+        authToken={null}
         onRemove={onRemove}
         onCheckout={vi.fn()}
         onIncrement={onIncrement}
@@ -92,6 +97,7 @@ describe("CartScreen", () => {
       <CartScreen
         items={[ITEM]}
         productImages={{}}
+        authToken={null}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -117,6 +123,7 @@ describe("CartScreen", () => {
       <CartScreen
         items={[ITEM]}
         productImages={{}}
+        authToken={null}
         onRemove={vi.fn()}
         onCheckout={vi.fn()}
         onIncrement={vi.fn()}
@@ -139,6 +146,7 @@ describe("CartScreen", () => {
       <CartScreen
         items={[ITEM]}
         productImages={{}}
+        authToken={null}
         onRemove={vi.fn()}
         onCheckout={onCheckout}
         onIncrement={vi.fn()}
@@ -170,6 +178,7 @@ describe("CartScreen", () => {
       <CartScreen
         items={[ITEM]}
         productImages={{}}
+        authToken={null}
         onRemove={vi.fn()}
         onCheckout={onCheckout}
         onIncrement={vi.fn()}
@@ -184,5 +193,29 @@ describe("CartScreen", () => {
     await user.click(screen.getByText("Finalizar compra"));
 
     expect(onCheckout).toHaveBeenCalledWith(expect.objectContaining({ nombre: "Cliente Demo" }), undefined, "tok_rechazado");
+  });
+
+  it("shows the daily roulette discount calculated by the server and subtracts it from the total", async () => {
+    mockedRoulette.mockResolvedValue({ percent: 10, amount: 130, categoryId: "alimentos", categoryName: "Alimentos" });
+
+    render(
+      <CartScreen
+        items={[ITEM]}
+        productImages={{}}
+        authToken="tok"
+        onRemove={vi.fn()}
+        onCheckout={vi.fn()}
+        onIncrement={vi.fn()}
+        onDecrement={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Ruleta del día (Alimentos)")).toBeInTheDocument();
+    expect(mockedRoulette).toHaveBeenCalledWith("tok");
+    expect(screen.getByText(/-\s*\$\s*130,00/)).toBeInTheDocument();
+    const subtotal = ITEM.price * ITEM.quantity;
+    const expectedTotal = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(subtotal + 1500 - 130);
+    const plain = (text: string) => text.replace(/ /g, " ");
+    expect(screen.getByText((content) => plain(content) === plain(expectedTotal))).toBeInTheDocument();
   });
 });

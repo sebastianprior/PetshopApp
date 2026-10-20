@@ -49,6 +49,7 @@ class VentaServiceTest {
     private ApplicationEventPublisher publisher;
     private ExecutorService executor;
     private InMemoryStore store;
+    private RouletteService rouletteService;
     private VentaService service;
 
     private Product product;
@@ -60,6 +61,7 @@ class VentaServiceTest {
     @BeforeEach
     void setUp() {
         store = new InMemoryStore();
+        rouletteService = mock(RouletteService.class);
         orderRepository = mock(OrderRepository.class);
         cartItemRepository = mock(CartItemRepository.class);
         productRepository = mock(ProductRepository.class);
@@ -98,7 +100,7 @@ class VentaServiceTest {
         });
 
         service = new VentaService(orderRepository, cartItemRepository, store, productRepository, variantRepository,
-                couponRepository, idempotencyRepository, gateway, executor, publisher, 200, 3, 0);
+                couponRepository, idempotencyRepository, gateway, executor, publisher, rouletteService, 200, 3, 0);
     }
 
     @AfterEach
@@ -147,6 +149,31 @@ class VentaServiceTest {
 
         assertThat(outcome.status()).isEqualTo(422);
         assertThat(outcome.problemSlug()).isEqualTo("carrito-vacio");
+    }
+
+    @Test
+    void theDailyRouletteDiscountIsChargedAndRecordedOnTheSale() {
+        gatewayApproves();
+        when(rouletteService.discountFor("user-1", cart)).thenReturn(new RouletteService.Applied("accesorios", "Accesorios", 200.0));
+
+        VentaOutcome outcome = service.crear("user-1", "key-ruleta", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().total).isEqualTo(3300.0); // 2 x 1000 + 1500 de envío - 200 de la ruleta
+        assertThat(outcome.order().ruletaDescuento).isEqualTo(200.0);
+        assertThat(outcome.order().ruletaCategoria).isEqualTo("accesorios");
+        assertThat(outcome.order().discountAmount).isEqualTo(200.0);
+    }
+
+    @Test
+    void theRouletteDiscountNeverExceedsTheSubtotal() {
+        gatewayApproves();
+        when(rouletteService.discountFor("user-1", cart)).thenReturn(new RouletteService.Applied("accesorios", "Accesorios", 9999.0));
+
+        VentaOutcome outcome = service.crear("user-1", "key-ruleta-tope", request());
+
+        assertThat(outcome.order().ruletaDescuento).isEqualTo(2000.0);
+        assertThat(outcome.order().total).isEqualTo(1500.0); // solo queda el envío
     }
 
     @Test

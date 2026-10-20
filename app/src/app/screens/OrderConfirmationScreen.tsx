@@ -65,10 +65,16 @@ export function OrderConfirmationScreen({ result, isLoggedIn, onNavigate }: Prop
             <span>Subtotal</span>
             <strong>{formatMoney(result.subtotal)}</strong>
           </div>
-          {result.discountAmount > 0 ? (
+          {result.discountAmount - (result.ruletaDescuento ?? 0) > 0 ? (
             <div className="summary-row discount-row">
               <span>Descuento {result.couponCode ? `(${result.couponCode})` : ""}</span>
-              <strong>-{formatMoney(result.discountAmount)}</strong>
+              <strong>-{formatMoney(result.discountAmount - (result.ruletaDescuento ?? 0))}</strong>
+            </div>
+          ) : null}
+          {(result.ruletaDescuento ?? 0) > 0 ? (
+            <div className="summary-row discount-row">
+              <span>Ruleta del día</span>
+              <strong>-{formatMoney(result.ruletaDescuento ?? 0)}</strong>
             </div>
           ) : null}
           <div className="summary-row">

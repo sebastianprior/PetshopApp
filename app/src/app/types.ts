@@ -121,6 +121,7 @@ export type CheckoutResult = {
   orderId: number | null;
   estado?: string;
   estadoPago?: string;
+  ruletaDescuento?: number;
 };
 
 export type Coupon = {
@@ -140,6 +141,20 @@ export type SiteSettings = {
   announcementMode: "AUTO" | "CUSTOM" | "OFF";
   announcementText: string;
 };
+
+export type RouletteCategory = { id: string; name: string; color: string };
+
+export type RouletteState = {
+  percent: number;
+  categories: RouletteCategory[];
+  spun: boolean;
+  categoryId: string | null;
+  categoryName: string | null;
+  validUntil: string | null;
+  alreadySpun?: boolean;
+};
+
+export type RouletteCartDiscount = { percent: number; amount: number; categoryId: string | null; categoryName: string | null };
 
 export type View =
   | "home"

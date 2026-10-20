@@ -12,6 +12,7 @@ import { OrderConfirmationScreen } from "./screens/OrderConfirmationScreen";
 import { LegalScreen } from "./screens/LegalScreen";
 import { SplashScreen } from "./screens/SplashScreen";
 import { SalchiBot } from "./screens/SalchiBot";
+import { DailyRoulette } from "./screens/DailyRoulette";
 import { WishlistScreen } from "./screens/WishlistScreen";
 import {
   addToCart,
@@ -25,6 +26,7 @@ import {
   fetchCategories,
   fetchCurrentUser,
   fetchProducts,
+  fetchRoulette,
   fetchSiteSettings,
   fetchWishlist,
   getAuthToken,
@@ -38,7 +40,7 @@ import {
   TOKEN_REFRESHED_EVENT,
   UNAUTHORIZED_EVENT,
 } from "./api";
-import type { CartItem, CheckoutResult, Category, Product, ProductVariant, ShippingInfo, SiteSettings, User, View } from "./types";
+import type { CartItem, CheckoutResult, Category, Product, ProductVariant, RouletteState, ShippingInfo, SiteSettings, User, View } from "./types";
 
 // Valores que se muestran hasta que llega la configuración del servidor (los mismos que trae por defecto).
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -51,6 +53,8 @@ function App() {
   const [view, setView] = useState<View>("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [roulette, setRoulette] = useState<RouletteState | null>(null);
+  const [rouletteOpen, setRouletteOpen] = useState(false);
   // imagen de cada producto visto alguna vez: el carrito la necesita aunque el catálogo esté filtrado
   const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
@@ -121,6 +125,20 @@ function App() {
       console.error("No se pudo cargar el carrito", error);
     }
   };
+
+  useEffect(() => {
+    if (currentUser?.role === "ADMIN") {
+      setRoulette(null);
+      return;
+    }
+    fetchRoulette(authToken)
+      .then(setRoulette)
+      .catch((error) => {
+        console.error("No se pudo cargar la ruleta del día", error);
+        setRoulette(null);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, currentUser?.role]);
 
   const loadWishlist = async (token: string | null) => {
     if (!token) {
@@ -389,6 +407,8 @@ function App() {
           isAdmin={currentUser?.role === "ADMIN"}
           wishlist={wishlist}
           onToggleWishlist={handleToggleWishlist}
+          rouletteCategoryId={roulette?.categoryId ?? null}
+          roulettePercent={roulette?.percent}
         />
       );
     }
@@ -397,6 +417,7 @@ function App() {
       return (
         <CartScreen
           items={cartItems}
+          authToken={authToken}
           productImages={productImages}
           onRemove={handleRemoveFromCart}
           onCheckout={handleCheckout}
@@ -478,6 +499,8 @@ function App() {
         onOpenProduct={openProduct}
         wishlist={wishlist}
         onToggleWishlist={handleToggleWishlist}
+        roulette={roulette}
+        onOpenRoulette={() => setRouletteOpen(true)}
       />
     );
   };
@@ -510,6 +533,12 @@ function App() {
           </button>
 
           <div className="nav-quick">
+            {roulette ? (
+              <button className="nav-roulette-icon" onClick={() => setRouletteOpen(true)} aria-label="Descuento del día">
+                🎡
+                {!roulette.spun ? <span className="nav-roulette-dot" /> : null}
+              </button>
+            ) : null}
             {currentUser?.role !== "ADMIN" ? (
               <button className="nav-cart" onClick={() => navigateTo("cart")} aria-label={`Carrito (${cartCount})`}>
                 🛒
@@ -546,6 +575,13 @@ function App() {
             </div>
 
             <div className="nav-actions">
+              {roulette ? (
+                <button className={roulette.spun ? "roulette-pill won" : "roulette-pill"} onClick={() => setRouletteOpen(true)}>
+                  <span aria-hidden="true">🎡</span>
+                  {roulette.spun ? `${roulette.percent}% OFF · ${roulette.categoryName}` : "Descuento del día"}
+                  {!roulette.spun ? <span className="nav-roulette-dot" /> : null}
+                </button>
+              ) : null}
               <div className="theme-switcher" aria-label="selector de tema">
                 <button
                   className={theme === "light" ? "theme-option active" : "theme-option"}
@@ -587,6 +623,20 @@ function App() {
       </nav>
 
       <main className="page-container">{renderScreen()}</main>
+
+      {rouletteOpen && roulette ? (
+        <DailyRoulette
+          state={roulette}
+          token={authToken}
+          onSpun={setRoulette}
+          onClose={() => setRouletteOpen(false)}
+          onGoToCategory={(categoryId) => {
+            setRouletteOpen(false);
+            setSelectedCategory(categoryId);
+            navigateTo("products");
+          }}
+        />
+      ) : null}
 
       {currentUser?.role !== "ADMIN" ? <SalchiBot onOpenProduct={openProduct} onAddToCart={handleAddToCart} /> : null}
 

@@ -71,6 +71,7 @@ public class VentaService {
     private final PaymentGateway gateway;
     private final ExecutorService paymentExecutor;
     private final ApplicationEventPublisher publisher;
+    private final RouletteService rouletteService;
     private final long timeoutMs;
     private final int maxAttempts;
     private final long minPendingAgeMs;
@@ -79,7 +80,7 @@ public class VentaService {
                         ProductRepository productRepository, ProductVariantRepository variantRepository,
                         CouponRepository couponRepository, IdempotencyRecordRepository idempotencyRepository,
                         PaymentGateway gateway, @Qualifier("paymentExecutor") ExecutorService paymentExecutor,
-                        ApplicationEventPublisher publisher,
+                        ApplicationEventPublisher publisher, RouletteService rouletteService,
                         @Value("${petshop.payments.timeout-ms:5000}") long timeoutMs,
                         @Value("${petshop.payments.max-attempts:3}") int maxAttempts,
                         @Value("${petshop.payments.min-pending-age-ms:10000}") long minPendingAgeMs) {
@@ -93,6 +94,7 @@ public class VentaService {
         this.gateway = gateway;
         this.paymentExecutor = paymentExecutor;
         this.publisher = publisher;
+        this.rouletteService = rouletteService;
         this.timeoutMs = timeoutMs;
         this.maxAttempts = maxAttempts;
         this.minPendingAgeMs = minPendingAgeMs;
@@ -142,14 +144,20 @@ public class VentaService {
             discount = coupon.computeDiscount(subtotal);
         }
 
+        // Ruleta del día: 10 % en la categoría sorteada. Nunca puede dejar el subtotal por debajo de cero junto con el cupón.
+        RouletteService.Applied roulette = rouletteService.discountFor(userId, cart);
+        double rouletteDiscount = roulette != null ? Math.min(roulette.amount(), Math.max(0, subtotal - discount)) : 0;
+
         reservarStock(cart);
 
         Order order = new Order(userId, Instant.now(),
                 cart.stream().map(i -> new Order.OrderItem(i.productId, i.quantity, i.price, i.variant, i.variantId)).toList(),
-                subtotal + SHIPPING_COST - discount, PAGO_PENDIENTE);
+                subtotal + SHIPPING_COST - discount - rouletteDiscount, PAGO_PENDIENTE);
         order.subtotal = subtotal;
         order.shippingCost = SHIPPING_COST;
-        order.discountAmount = discount;
+        order.discountAmount = discount + rouletteDiscount;
+        order.ruletaDescuento = rouletteDiscount;
+        order.ruletaCategoria = rouletteDiscount > 0 ? roulette.categoryId() : null;
         order.couponCode = coupon != null ? coupon.code : null;
         order.shippingName = req.nombre.trim();
         order.shippingAddress = req.direccion.trim();
@@ -354,7 +362,7 @@ public class VentaService {
     }
 
     /** Los invitados ("guest:<id>") tienen el carrito en memoria; los usuarios logueados, en la base. */
-    private List<CartItem> cartOf(String userId) {
+    public List<CartItem> cartOf(String userId) {
         if (isGuest(userId)) {
             return new ArrayList<>(store.carts.getOrDefault(userId, List.of()));
         }

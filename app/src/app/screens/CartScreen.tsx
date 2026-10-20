@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import type { CartItem, ShippingInfo } from "../types";
-import { validateCoupon } from "../api";
+import { fetchRouletteCartDiscount, validateCoupon } from "../api";
 import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 
 type Props = {
   items: CartItem[];
+  authToken: string | null;
   productImages: Record<string, string>;
   onRemove: (item: CartItem) => void;
   onCheckout: (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => void;
@@ -23,18 +24,35 @@ const EMPTY_SHIPPING: ShippingInfo = {
   telefono: "",
 };
 
-export function CartScreen({ items, productImages, onRemove, onCheckout, onIncrement, onDecrement }: Props) {
+export function CartScreen({ items, authToken, productImages, onRemove, onCheckout, onIncrement, onDecrement }: Props) {
   const [shipping, setShipping] = useState<ShippingInfo>(EMPTY_SHIPPING);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [medioPago, setMedioPago] = useState("tok_aprobado");
+  const [roulette, setRoulette] = useState<{ amount: number; categoryName: string | null }>({ amount: 0, categoryName: null });
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingCost = items.length > 0 ? 1500 : 0;
   const discountAmount = appliedCoupon?.discountAmount ?? 0;
-  const total = Math.max(0, subtotal + shippingCost - discountAmount);
+  const rouletteAmount = roulette.amount;
+  const total = Math.max(0, subtotal + shippingCost - discountAmount - rouletteAmount);
+
+  // El descuento de la ruleta lo calcula el servidor sobre el carrito real (solo los productos de la categoría sorteada).
+  useEffect(() => {
+    let active = true;
+    if (items.length === 0) {
+      setRoulette({ amount: 0, categoryName: null });
+      return;
+    }
+    fetchRouletteCartDiscount(authToken)
+      .then((result) => active && setRoulette({ amount: result.amount, categoryName: result.categoryName }))
+      .catch(() => active && setRoulette({ amount: 0, categoryName: null }));
+    return () => {
+      active = false;
+    };
+  }, [items, authToken]);
 
   useEffect(() => {
     if (!appliedCoupon) return;
@@ -149,6 +167,12 @@ export function CartScreen({ items, productImages, onRemove, onCheckout, onIncre
               <div className="summary-row discount-row">
                 <span>Descuento</span>
                 <strong>-{formatMoney(discountAmount)}</strong>
+              </div>
+            ) : null}
+            {rouletteAmount > 0 ? (
+              <div className="summary-row discount-row">
+                <span>Ruleta del día{roulette.categoryName ? ` (${roulette.categoryName})` : ""}</span>
+                <strong>-{formatMoney(rouletteAmount)}</strong>
               </div>
             ) : null}
             <div className="summary-row">

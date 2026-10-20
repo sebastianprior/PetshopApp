@@ -2612,3 +2612,260 @@ img {
     animation: none;
   }
 }
+
+/* ==========================================================================
+   Ruleta del día (descuento diario con el salchicha)
+   ========================================================================== */
+.roulette-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #f6c18f;
+  border-radius: 9999px;
+  background: #fff7ed;
+  color: #9a4a10;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
+.roulette-pill.won {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.nav-roulette-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: roulette-ping 1.6s ease-in-out infinite;
+}
+
+.nav-roulette-icon {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.nav-roulette-icon .nav-roulette-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.roulette-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 0;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff7ed, #ffe9cf);
+  border: 1px solid #f6c18f;
+}
+
+.roulette-banner-dog {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 50%;
+  background: #fff3e0;
+}
+
+.roulette-banner-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  color: #7a3b0c;
+}
+
+.roulette-banner-text span {
+  font-size: 0.9rem;
+}
+
+.roulette-tag {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
+}
+
+.roulette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.55);
+  animation: roulette-fade 0.2s ease both;
+}
+
+.roulette-modal {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 24px 20px 22px;
+  border-radius: 26px;
+  background: var(--surface-strong, #ffffff);
+  color: var(--text, #1f2937);
+  text-align: center;
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.4);
+}
+
+.roulette-modal h2 {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+}
+
+.roulette-sub {
+  margin: 0 0 14px;
+  color: var(--muted, #475569);
+  font-size: 0.92rem;
+}
+
+.roulette-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.2);
+  color: inherit;
+}
+
+.roulette-stage {
+  position: relative;
+  width: min(320px, 78vw);
+  aspect-ratio: 1;
+  margin: 8px auto 16px;
+}
+
+.roulette-wheel {
+  width: 100%;
+  height: 100%;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.12, 0.7, 0.1, 1);
+  filter: drop-shadow(0 10px 18px rgba(60, 40, 20, 0.3));
+}
+
+.roulette-pointer {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-top: 30px solid #ef4444;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3));
+}
+
+.roulette-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 24%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #fff3e0;
+  border: 5px solid #7a4620;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.roulette-hub-dog {
+  width: 100%;
+  height: 100%;
+}
+
+.roulette-spin {
+  min-width: 180px;
+  font-size: 1.1rem;
+}
+
+.roulette-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.roulette-note {
+  margin: 12px 0 0;
+  color: var(--muted, #475569);
+  font-size: 0.85rem;
+}
+
+@keyframes roulette-ping {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.6;
+  }
+}
+
+@keyframes roulette-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .roulette-pill {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .roulette-banner {
+    flex-wrap: wrap;
+  }
+
+  .roulette-banner .primary-btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roulette-wheel {
+    transition-duration: 0.01ms !important;
+  }
+
+  .nav-roulette-dot {
+    animation: none;
+  }
+}

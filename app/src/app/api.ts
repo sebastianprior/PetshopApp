@@ -1,4 +1,4 @@
-import type { CartItem, Category, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, ShippingInfo, SiteSettings, User } from "./types";
+import type { CartItem, Category, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -349,6 +349,7 @@ type VentaResponse = {
   subtotal: number;
   shippingCost: number;
   discountAmount: number;
+  ruletaDescuento?: number;
   couponCode: string | null;
   total: number;
 };
@@ -379,6 +380,7 @@ export async function createVenta(
     subtotal: venta.subtotal,
     shippingCost: venta.shippingCost,
     discountAmount: venta.discountAmount,
+    ruletaDescuento: venta.ruletaDescuento ?? 0,
     couponCode: venta.couponCode,
     total: venta.total,
     orderId: venta.id,
@@ -571,4 +573,19 @@ export async function askSalchiBot(message: string, history: string[]): Promise<
     method: "POST",
     body: JSON.stringify({ message, history }),
   });
+}
+
+/** Estado de la ruleta del día: los gajos y, si ya giró hoy, la categoría que le tocó. */
+export async function fetchRoulette(token?: string | null): Promise<RouletteState> {
+  return request<RouletteState>("/roulette", { headers: cartHeaders(token) });
+}
+
+/** Gira la ruleta (el sorteo lo hace el servidor; solo se puede una vez por día). */
+export async function spinRoulette(token?: string | null): Promise<RouletteState> {
+  return request<RouletteState>("/roulette/spin", { method: "POST", headers: cartHeaders(token) });
+}
+
+/** Cuánto descuenta la ruleta sobre el carrito actual. */
+export async function fetchRouletteCartDiscount(token?: string | null): Promise<RouletteCartDiscount> {
+  return request<RouletteCartDiscount>("/roulette/cart-discount", { headers: cartHeaders(token) });
 }

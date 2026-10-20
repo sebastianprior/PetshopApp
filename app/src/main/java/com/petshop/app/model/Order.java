@@ -50,6 +50,12 @@ public class Order {
     @ColumnDefault("0")
     public int intentosPago = 0;
 
+    /** Parte de discountAmount que corresponde a la ruleta del día (y la categoría sorteada). */
+    @Column(nullable = false)
+    @ColumnDefault("0")
+    public double ruletaDescuento;
+    public String ruletaCategoria;
+
     public String shippingName;
     public String shippingAddress;
     public String shippingCity;

@@ -18,6 +18,8 @@ type Props = {
   isAdmin: boolean;
   wishlist: string[];
   onToggleWishlist: (productId: string) => void;
+  rouletteCategoryId?: string | null;
+  roulettePercent?: number;
 };
 
 const formatMoney = (value: number) =>
@@ -37,6 +39,8 @@ export function ProductsScreen({
   isAdmin,
   wishlist,
   onToggleWishlist,
+  rouletteCategoryId = null,
+  roulettePercent = 10,
 }: Props) {
   const [page, setPage] = useState(1);
 
@@ -99,6 +103,9 @@ export function ProductsScreen({
                   alt={product.name}
                 />
                 {product.badge ? <span className="product-badge">{product.badge}</span> : null}
+                {rouletteCategoryId && product.categoryId === rouletteCategoryId ? (
+                  <span className="roulette-tag">🎡 -{roulettePercent}% hoy</span>
+                ) : null}
                 {!isAdmin ? (
                   <button
                     className={wishlist.includes(product.id) ? "wishlist-heart active" : "wishlist-heart"}
