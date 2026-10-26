@@ -1,6 +1,7 @@
 import type { SyntheticEvent } from "react";
 import { Icon, categoryIcon } from "../components/Icon";
 import { ProductCard } from "../components/ProductCard";
+import { discountOf, isOffer } from "../components/offers";
 import type { Category, Product, RouletteState, User } from "../types";
 import { SalchiAvatar } from "./SalchiAvatar";
 
@@ -67,8 +68,10 @@ export function HomeScreen({
 }: Props) {
   const isAdmin = currentUser?.role === "ADMIN";
   const featured = products.slice(0, 4);
+  // Las 4 ofertas con mayor descuento (mismo criterio que la página Ofertas)
   const promoted = products
-    .filter((product) => product.precioPromocional != null)
+    .filter(isOffer)
+    .sort((a, b) => discountOf(b) - discountOf(a))
     .slice(0, 4);
   const hasDogs = categories.some((category) => category.id === "perros");
   const hasCats = categories.some((category) => category.id === "gatos");

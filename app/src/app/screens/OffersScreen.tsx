@@ -1,5 +1,6 @@
 import { Icon } from "../components/Icon";
 import { ProductCard } from "../components/ProductCard";
+import { discountOf, isOffer } from "../components/offers";
 import type { Product } from "../types";
 
 type Props = {
@@ -11,19 +12,8 @@ type Props = {
   onToggleWishlist: (productId: string) => void;
 };
 
-/** Porcentaje de descuento real de un producto (promoción vigente o precio anterior tachado). */
-function discountOf(product: Product): number {
-  const current = product.precioPromocional ?? product.price;
-  const previous = product.precioPromocional != null ? product.price : product.oldPrice;
-  return previous && previous > current ? Math.round((1 - current / previous) * 100) : 0;
-}
-
 export function OffersScreen({ products, onAddToCart, onOpenProduct, isAdmin, wishlist, onToggleWishlist }: Props) {
-  const offers = products.filter((product) => {
-    const isDiscounted = discountOf(product) > 0;
-    const hasPromoBadge = Boolean(product.badge && /(oferta|promo|descuento|sale)/i.test(product.badge));
-    return isDiscounted || hasPromoBadge;
-  });
+  const offers = products.filter(isOffer);
   const bestDiscount = offers.reduce((best, product) => Math.max(best, discountOf(product)), 0);
 
   return (
