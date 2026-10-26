@@ -25,6 +25,7 @@ import {
   createVenta,
   decrementCartItem,
   fetchCart,
+  fetchCartPromos,
   fetchCategories,
   fetchCurrentUser,
   fetchProducts,
@@ -42,6 +43,7 @@ import {
   TOKEN_REFRESHED_EVENT,
   UNAUTHORIZED_EVENT,
 } from "./api";
+import { NO_CART_PROMOS, type CartPromos } from "./types";
 import type { CartItem, CheckoutResult, Category, Product, ProductVariant, RouletteState, ShippingInfo, SiteSettings, User, View } from "./types";
 
 // Valores que se muestran hasta que llega la configuración del servidor (los mismos que trae por defecto).
@@ -79,6 +81,7 @@ function App() {
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [navSearch, setNavSearch] = useState("");
+  const [cartPromos, setCartPromos] = useState<CartPromos>(NO_CART_PROMOS);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   // La tienda solo muestra categorías con productos; el panel de admin sigue viendo todas
@@ -183,6 +186,9 @@ function App() {
     fetchSiteSettings()
       .then(setSiteSettings)
       .catch((error) => console.error("No se pudo cargar la configuración del sitio", error));
+    fetchCartPromos()
+      .then(setCartPromos)
+      .catch((error) => console.error("No se pudo cargar el envío gratis y el regalo", error));
   }, []);
 
   useEffect(() => {
@@ -474,6 +480,7 @@ function App() {
           items={cartItems}
           authToken={authToken}
           productImages={productImages}
+          promos={cartPromos}
           onRemove={handleRemoveFromCart}
           onCheckout={handleCheckout}
           onIncrement={handleIncrementCartItem}
@@ -518,6 +525,8 @@ function App() {
           currentUserId={currentUser.id}
           siteSettings={siteSettings}
           onSiteSettingsChange={setSiteSettings}
+          cartPromos={cartPromos}
+          onCartPromosChange={setCartPromos}
         />
       );
     }

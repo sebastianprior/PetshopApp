@@ -10,8 +10,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { Category, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, SiteSettings, User } from "../types";
+import type { CartPromos, Category, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, SiteSettings, User } from "../types";
 import { AnnouncementSettings } from "./AnnouncementSettings";
+import { CartPromosSettings } from "./CartPromosSettings";
 import {
   createCategory,
   createCoupon,
@@ -48,9 +49,11 @@ type Props = {
   currentUserId: string;
   siteSettings: SiteSettings;
   onSiteSettingsChange: (settings: SiteSettings) => void;
+  cartPromos: CartPromos;
+  onCartPromosChange: (promos: CartPromos) => void;
 };
 
-type Tab = "stats" | "orders" | "products" | "categories" | "returns" | "users" | "coupons" | "announcements";
+type Tab = "stats" | "orders" | "products" | "categories" | "returns" | "users" | "coupons" | "announcements" | "cartpromos";
 
 const EMPTY_CATEGORY_FORM = { id: "", name: "", color: "#65b9e9" };
 
@@ -99,7 +102,7 @@ const EMPTY_PRODUCT_FORM = {
   tipoPromocion: "",
 };
 
-export function AdminDashboardScreen({ authToken, categories, currentUserId, siteSettings, onSiteSettingsChange }: Props) {
+export function AdminDashboardScreen({ authToken, categories, currentUserId, siteSettings, onSiteSettingsChange, cartPromos, onCartPromosChange }: Props) {
   const [tab, setTab] = useState<Tab>("stats");
 
   const [users, setUsers] = useState<User[]>([]);
@@ -745,6 +748,9 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
         </button>
         <button className={tab === "announcements" ? "admin-tab active" : "admin-tab"} onClick={() => setTab("announcements")}>
           Anuncios
+        </button>
+        <button className={tab === "cartpromos" ? "admin-tab active" : "admin-tab"} onClick={() => setTab("cartpromos")}>
+          Envío y regalo
         </button>
       </div>
 
@@ -1410,6 +1416,10 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
             </div>
           )}
         </section>
+      ) : null}
+
+      {tab === "cartpromos" ? (
+        <CartPromosSettings authToken={authToken} promos={cartPromos} onSaved={onCartPromosChange} />
       ) : null}
 
       {tab === "announcements" ? (

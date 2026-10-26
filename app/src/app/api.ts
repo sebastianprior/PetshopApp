@@ -1,4 +1,4 @@
-import type { CartItem, Category, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
+import type { CartItem, CartPromos, Category, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -562,6 +562,21 @@ export async function updateSiteSettings(token: string, settings: SiteSettings):
     method: "PUT",
     headers: { "X-Auth-Token": token },
     body: JSON.stringify(settings),
+  });
+}
+
+export async function fetchCartPromos(): Promise<CartPromos> {
+  return request<CartPromos>("/settings/cart-promos");
+}
+
+export async function updateCartPromos(
+  token: string,
+  promos: Pick<CartPromos, "freeShippingEnabled" | "freeShippingThreshold" | "giftEnabled" | "giftMinAmount" | "giftProductId">,
+): Promise<CartPromos> {
+  return request<CartPromos>("/settings/cart-promos", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(promos),
   });
 }
 

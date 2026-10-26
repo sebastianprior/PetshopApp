@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
-import type { CartItem, ShippingInfo } from "../types";
+import { NO_CART_PROMOS, type CartItem, type CartPromos, type ShippingInfo } from "../types";
 import { fetchRouletteCartDiscount, validateCoupon } from "../api";
 import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 import { Icon } from "../components/Icon";
+import { CartPromoBars, qualifiesForFreeShipping, qualifiesForGift } from "../components/CartPromoBars";
 
 type Props = {
   items: CartItem[];
   authToken: string | null;
   productImages: Record<string, string>;
+  /** Envío gratis y regalo configurados por el administrador (sin datos = todo apagado). */
+  promos?: CartPromos;
   onRemove: (item: CartItem) => void;
   onCheckout: (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => void;
   onIncrement: (item: CartItem) => void;
@@ -27,7 +30,7 @@ const EMPTY_SHIPPING: ShippingInfo = {
   telefono: "",
 };
 
-export function CartScreen({ items, authToken, productImages, onRemove, onCheckout, onIncrement, onDecrement, onContinueShopping }: Props) {
+export function CartScreen({ items, authToken, productImages, promos = NO_CART_PROMOS, onRemove, onCheckout, onIncrement, onDecrement, onContinueShopping }: Props) {
   const [shipping, setShipping] = useState<ShippingInfo>(EMPTY_SHIPPING);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
@@ -37,7 +40,9 @@ export function CartScreen({ items, authToken, productImages, onRemove, onChecko
   const [roulette, setRoulette] = useState<{ amount: number; categoryName: string | null }>({ amount: 0, categoryName: null });
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingCost = items.length > 0 ? 1500 : 0;
+  const freeShipping = items.length > 0 && qualifiesForFreeShipping(promos, subtotal);
+  const shippingCost = items.length > 0 && !freeShipping ? 1500 : 0;
+  const giftIncluded = items.length > 0 && qualifiesForGift(promos, subtotal);
   const discountAmount = appliedCoupon?.discountAmount ?? 0;
   const rouletteAmount = roulette.amount;
   const total = Math.max(0, subtotal + shippingCost - discountAmount - rouletteAmount);
@@ -113,6 +118,7 @@ export function CartScreen({ items, authToken, productImages, onRemove, onChecko
       ) : (
         <div className="cart-layout">
           <div className="cart-list">
+            <CartPromoBars promos={promos} subtotal={subtotal} />
             {items.map((item) => (
               <div key={`${item.productId}-${item.variantId ?? item.variant}`} className="cart-item-card">
                 <div className="cart-thumb">
@@ -143,6 +149,25 @@ export function CartScreen({ items, authToken, productImages, onRemove, onChecko
                 </div>
               </div>
             ))}
+            {giftIncluded ? (
+              <div className="cart-item-card gift-card">
+                <div className="cart-thumb">
+                  <img src={promos.giftProductImageUrl || PLACEHOLDER_IMAGE} onError={handleImageError} alt={promos.giftProductName ?? "Regalo"} />
+                </div>
+                <div className="cart-details">
+                  <h3>{promos.giftProductName}</h3>
+                  <p>
+                    <span className="gift-tag">
+                      <Icon name="gift" size={14} /> Regalo
+                    </span>
+                  </p>
+                  <div className="cart-meta-row">
+                    <strong>Gratis</strong>
+                    <span className="gift-qty">1 unidad</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <aside className="cart-summary">
@@ -191,7 +216,7 @@ export function CartScreen({ items, authToken, productImages, onRemove, onChecko
             ) : null}
             <div className="summary-row">
               <span>Envío</span>
-              <strong>{formatMoney(shippingCost)}</strong>
+              <strong>{freeShipping ? "Gratis" : formatMoney(shippingCost)}</strong>
             </div>
             <div className="summary-row total-row">
               <span>Total</span>
