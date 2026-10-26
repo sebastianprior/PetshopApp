@@ -1,4 +1,4 @@
-import type { CartItem, CartPromos, Category, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
+import type { CartItem, CartPromos, Category, Faq, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -562,6 +562,19 @@ export async function updateSiteSettings(token: string, settings: SiteSettings):
     method: "PUT",
     headers: { "X-Auth-Token": token },
     body: JSON.stringify(settings),
+  });
+}
+
+export async function fetchFaq(): Promise<Faq[]> {
+  return request<Faq[]>("/faq");
+}
+
+/** Reemplaza todas las preguntas frecuentes (solo administradores), en el orden indicado. */
+export async function updateFaq(token: string, items: Pick<Faq, "question" | "answer">[]): Promise<Faq[]> {
+  return request<Faq[]>("/faq", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(items),
   });
 }
 

@@ -819,3 +819,8 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Las respuestas largas del bot (preguntas frecuentes) respetan los saltos de línea */
+.salchi-bubble {
+  white-space: pre-line;
+}

@@ -299,3 +299,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Editor de preguntas frecuentes ---------- */
+.faq-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+}
+
+.faq-edit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.faq-edit-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.faq-edit-actions .secondary-btn {
+  min-height: 38px;
+  min-width: 42px;
+  padding: 0 var(--space-3);
+}
+
+.icon-up {
+  transform: rotate(-90deg);
+}
+
+.icon-down {
+  transform: rotate(90deg);
+}

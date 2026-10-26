@@ -54,7 +54,7 @@ class ChatAdvisorTest {
                 product("p45", "Tobillera anti-ladrido", "SilentPaw", 1999, 2499.0, 4.4, "Nuevo", "salud", 90),
                 product("p49", "Canasta portable para viajes", "TravelPet", 3999, 4599.0, 4.6, "Nuevo", "accesorios", 61),
                 product("p50", "Comida húmeda para perros senior", "SeniorBites", 3699, 4399.0, 4.7, "Recomendado", "alimentos", 67)));
-        advisor = new ChatAdvisor(catalog);
+        advisor = new ChatAdvisor(catalog, FaqDefaults.items().stream().map(i -> new FaqMatcher.Entry(i.question, i.answer)).toList());
     }
 
     private List<String> ids(String message) {
@@ -188,7 +188,7 @@ class ChatAdvisorTest {
         assertThat(advisor.advise("hola", List.of()).productIds()).isEmpty();
         assertThat(advisor.advise("hola", List.of()).reply()).contains("Salchi Bot");
         assertThat(advisor.advise("muchas gracias", List.of()).reply()).contains("De nada");
-        assertThat(advisor.advise("cuánto cuesta el envío?", List.of()).reply()).contains("envíos").contains("1.500");
+        assertThat(advisor.advise("cuánto cuesta el envío?", List.of()).reply()).contains("costo").contains("carrito");
         assertThat(advisor.advise("hacen devoluciones?", List.of()).reply()).contains("Mis pedidos");
         assertThat(advisor.advise("¿en cuántas cuotas puedo pagar?", List.of()).reply()).contains("6 cuotas");
     }
@@ -223,5 +223,47 @@ class ChatAdvisorTest {
         assertThat(ChatAdvisor.stem("pañales".replace("ñ", "n"))).isEqualTo("panal");
         assertThat(ChatAdvisor.stem("gatos")).isEqualTo("gato");
         assertThat(ChatAdvisor.stem("collares")).isEqualTo("collar");
+    }
+
+    @Test
+    void frequentQuestionsAreAnsweredWithTheAdminsTextAndSuggestOtherQuestions() {
+        ChatAdvisor.Advice advice = advisor.advise("¿cuánto tarda en llegar mi pedido?", List.of());
+
+        assertThat(advice.productIds()).isEmpty();
+        assertThat(advice.reply()).contains("24 hs");
+        assertThat(advice.suggestions()).hasSize(3).doesNotContain("¿Cuánto tarda en llegar mi pedido?");
+    }
+
+    @Test
+    void aProductRequestBeatsAWeakFaqMatch() {
+        ChatAdvisor.Advice advice = advisor.advise("mi perro necesita comida, hacen envíos?", List.of());
+
+        assertThat(advice.productIds()).isNotEmpty();
+    }
+
+    @Test
+    void askingForOffersStillRecommendsProductsInsteadOfTheCouponQuestion() {
+        ChatAdvisor.Advice advice = advisor.advise("¿Qué ofertas hay?", List.of());
+
+        assertThat(advice.productIds()).isNotEmpty();
+    }
+
+    @Test
+    void askingForTheFaqListShowsTheQuestionsAsSuggestions() {
+        ChatAdvisor.Advice advice = advisor.advise("preguntas frecuentes", List.of());
+
+        assertThat(advice.reply()).contains("preguntas");
+        assertThat(advice.suggestions()).hasSize(6);
+        // tocar una sugerencia (se envía la pregunta tal cual) devuelve su respuesta
+        assertThat(advisor.advise(advice.suggestions().get(4), List.of()).reply()).isNotBlank().doesNotContain("Contame");
+    }
+
+    @Test
+    void withoutFrequentQuestionsTheBotDoesNotInventStoreAnswers() {
+        ChatAdvisor bare = new ChatAdvisor(catalog);
+
+        ChatAdvisor.Advice advice = bare.advise("¿cuánto tarda el envío?", List.of());
+
+        assertThat(advice.reply()).doesNotContain("24 hs").doesNotContain("cuotas");
     }
 }

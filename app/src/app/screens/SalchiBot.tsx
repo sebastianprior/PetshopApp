@@ -21,7 +21,7 @@ const GREETING: ChatMessage = {
   id: 0,
   from: "bot",
   text: "¡Guau! Soy Salchi Bot 🌭🎧 Contame qué buscás o cómo es tu mascota y te recomiendo productos de la tienda.",
-  suggestions: ["Mi perro se aburre", "Algo para el paseo", "Mi gato necesita arena", "¿Qué ofertas hay?"],
+  suggestions: ["Mi perro se aburre", "Algo para el paseo", "¿Qué ofertas hay?", "Preguntas frecuentes"],
 };
 
 const MAX_LENGTH = 300;

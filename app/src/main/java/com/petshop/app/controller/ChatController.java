@@ -3,9 +3,11 @@ package com.petshop.app.controller;
 import com.petshop.app.dto.ChatRequest;
 import com.petshop.app.dto.ChatResponse;
 import com.petshop.app.model.Product;
+import com.petshop.app.repository.FaqItemRepository;
 import com.petshop.app.repository.ProductRepository;
 import com.petshop.app.repository.ProductVariantRepository;
 import com.petshop.app.service.ChatAdvisor;
+import com.petshop.app.service.FaqMatcher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,10 +29,12 @@ public class ChatController {
 
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
+    private final FaqItemRepository faqRepository;
 
-    public ChatController(ProductRepository productRepository, ProductVariantRepository variantRepository) {
+    public ChatController(ProductRepository productRepository, ProductVariantRepository variantRepository, FaqItemRepository faqRepository) {
         this.productRepository = productRepository;
         this.variantRepository = variantRepository;
+        this.faqRepository = faqRepository;
     }
 
     @PostMapping
@@ -46,7 +50,9 @@ public class ChatController {
         }
 
         List<Product> catalog = productRepository.findAll();
-        ChatAdvisor.Advice advice = new ChatAdvisor(catalog).advise(request.message, history);
+        List<FaqMatcher.Entry> faq = faqRepository.findAllByOrderByPositionAscIdAsc().stream()
+                .map(item -> new FaqMatcher.Entry(item.question, item.answer)).toList();
+        ChatAdvisor.Advice advice = new ChatAdvisor(catalog, faq).advise(request.message, history);
 
         Map<String, Product> byId = catalog.stream().collect(Collectors.toMap(p -> p.id, p -> p, (a, b) -> a));
         List<Product> products = advice.productIds().stream().map(byId::get).filter(p -> p != null).toList();

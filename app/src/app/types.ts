@@ -145,6 +145,13 @@ export type SiteSettings = {
   announcementMarquee?: boolean;
 };
 
+/** Pregunta frecuente de la tienda (editable desde el panel de administración). */
+export type Faq = {
+  id?: number;
+  question: string;
+  answer: string;
+};
+
 /** Envío gratis y regalo del carrito, configurables desde el panel de administración. */
 export type CartPromos = {
   freeShippingEnabled: boolean;
@@ -195,4 +202,5 @@ export type View =
   | "confirmation"
   | "terms"
   | "privacy"
-  | "contact";
+  | "contact"
+  | "faq";
