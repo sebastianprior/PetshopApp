@@ -363,10 +363,14 @@ public class VentaService {
 
     /** Los invitados ("guest:<id>") tienen el carrito en memoria; los usuarios logueados, en la base. */
     public List<CartItem> cartOf(String userId) {
-        if (isGuest(userId)) {
-            return new ArrayList<>(store.carts.getOrDefault(userId, List.of()));
+        List<CartItem> items = isGuest(userId)
+                ? new ArrayList<>(store.carts.getOrDefault(userId, List.of()))
+                : cartItemRepository.findByUserId(userId);
+        // El checkout cobra el precio vigente (promoción incluida), no el que quedó guardado cuando se agregó al carrito.
+        for (CartItem item : items) {
+            productRepository.findById(item.productId).ifPresent(product -> item.price = Pricing.effectivePrice(product));
         }
-        return cartItemRepository.findByUserId(userId);
+        return items;
     }
 
     public static boolean isGuest(String userId) {

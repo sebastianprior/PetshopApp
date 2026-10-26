@@ -12,6 +12,7 @@ import com.petshop.app.repository.ProductRepository;
 import com.petshop.app.repository.ProductVariantRepository;
 import com.petshop.app.service.InMemoryStore;
 import com.petshop.app.service.JwtUtil;
+import com.petshop.app.service.Pricing;
 import com.petshop.app.service.NotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -96,7 +97,7 @@ public class CartController {
         List<CartItem> items = isGuest(userToken)
                 ? store.carts.getOrDefault(userToken, List.of())
                 : cartItemRepository.findByUserId(userToken);
-        return ResponseEntity.ok(items);
+        return ResponseEntity.ok(withCurrentPrices(items, !isGuest(userToken)));
     }
 
     @PostMapping("/add")
@@ -131,7 +132,7 @@ public class CartController {
 
         item.name = item.name == null || item.name.isBlank() ? product.name : item.name;
         item.variant = item.variant == null || item.variant.isBlank() ? product.categoryId : item.variant;
-        item.price = product.price;
+        item.price = Pricing.effectivePrice(product);
         item.quantity = Math.max(1, item.quantity);
 
         final int finalStockAvailable = stockAvailable;
@@ -144,6 +145,7 @@ public class CartController {
                         return ResponseEntity.badRequest().body(Map.of("error", "Stock insuficiente. Disponible: " + finalStockAvailable));
                     }
                     existing.quantity += item.quantity;
+                    existing.price = item.price;
                     return ResponseEntity.ok(cart);
                 }
             }
@@ -161,6 +163,7 @@ public class CartController {
                     return ResponseEntity.badRequest().body(Map.of("error", "Stock insuficiente. Disponible: " + finalStockAvailable));
                 }
                 existing.quantity += item.quantity;
+                existing.price = item.price;
                 cartItemRepository.save(existing);
                 return ResponseEntity.ok(cartItemRepository.findByUserId(userToken));
             }
@@ -216,7 +219,7 @@ public class CartController {
                 cart.remove(item);
             }
             store.carts.put(userToken, cart);
-            return ResponseEntity.ok(cart);
+            return ResponseEntity.ok(withCurrentPrices(cart, false));
         }
 
         List<CartItem> cart = cartItemRepository.findByUserId(userToken);
@@ -240,7 +243,26 @@ public class CartController {
         } else {
             cartItemRepository.save(item);
         }
-        return ResponseEntity.ok(cartItemRepository.findByUserId(userToken));
+        return ResponseEntity.ok(withCurrentPrices(cartItemRepository.findByUserId(userToken), true));
+    }
+
+    /**
+     * Pone al día el precio de cada línea con el precio vigente del producto (promoción incluida): si el admin
+     * cambió o quitó una promoción después de agregar el producto, el carrito muestra lo que realmente se va a cobrar.
+     */
+    private List<CartItem> withCurrentPrices(List<CartItem> items, boolean persist) {
+        for (CartItem item : items) {
+            productRepository.findById(item.productId).ifPresent(product -> {
+                double current = Pricing.effectivePrice(product);
+                if (item.price != current) {
+                    item.price = current;
+                    if (persist) {
+                        cartItemRepository.save(item);
+                    }
+                }
+            });
+        }
+        return items;
     }
 
     @PostMapping("/remove")
@@ -289,6 +311,7 @@ public class CartController {
                 String name = product != null ? product.name : item.productId;
                 return ResponseEntity.badRequest().body(Map.of("error", "Stock insuficiente para " + name));
             }
+            item.price = Pricing.effectivePrice(product);
         }
 
         Map<String, String> shipping = body != null ? body : Map.of();

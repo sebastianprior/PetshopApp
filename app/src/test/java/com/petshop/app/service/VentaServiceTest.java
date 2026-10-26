@@ -177,6 +177,43 @@ class VentaServiceTest {
     }
 
     @Test
+    void theCheckoutChargesThePromotionalPrice() {
+        gatewayApproves();
+        product.precioPromocional = 800.0; // el producto de los tests cuesta 1000
+
+        VentaOutcome outcome = service.crear("user-1", "key-promo", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().subtotal).isEqualTo(1600.0); // 2 x 800
+        assertThat(outcome.order().total).isEqualTo(3100.0);    // + 1500 de envío
+        assertThat(outcome.order().items.get(0).price).isEqualTo(800.0);
+    }
+
+    @Test
+    void aStalePriceStoredInTheCartIsReplacedByTheCurrentOne() {
+        gatewayApproves();
+        cart.get(0).price = 1.0;      // lo que quedó guardado al agregarlo
+        product.price = 1200.0;       // el precio subió después
+
+        VentaOutcome outcome = service.crear("user-1", "key-precio-viejo", request());
+
+        assertThat(outcome.order().subtotal).isEqualTo(2400.0);
+    }
+
+    @Test
+    void thePromotionalPriceAddsUpWithTheDailyRouletteDiscount() {
+        gatewayApproves();
+        product.precioPromocional = 800.0;
+        when(rouletteService.discountFor("user-1", cart)).thenReturn(new RouletteService.Applied("accesorios", "Accesorios", 160.0));
+
+        VentaOutcome outcome = service.crear("user-1", "key-promo-ruleta", request());
+
+        assertThat(outcome.order().subtotal).isEqualTo(1600.0);
+        assertThat(outcome.order().ruletaDescuento).isEqualTo(160.0);
+        assertThat(outcome.order().total).isEqualTo(2940.0); // 1600 + 1500 - 160
+    }
+
+    @Test
     void approvedPaymentConfirmsTheSale() {
         gatewayApproves();
 
