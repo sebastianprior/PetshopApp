@@ -8,7 +8,9 @@ type Props = {
   categories: Category[];
   products: Product[];
   currentUser: User | null;
-  onNavigate: (view: "home" | "products" | "offers" | "categories" | "cart" | "login") => void;
+  onNavigate: (
+    view: "home" | "products" | "offers" | "categories" | "cart" | "login",
+  ) => void;
   onAddToCart: (product: Product) => void;
   onOpenProduct: (id: string) => void;
   wishlist: string[];
@@ -19,7 +21,8 @@ type Props = {
   onSelectCategory?: (categoryId: string) => void;
 };
 
-const photo = (id: string, width: number) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${width}&q=80`;
+const photo = (id: string, width: number) =>
+  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${width}&q=80`;
 
 // Si una foto no carga (sin conexión, bloqueada) se oculta y queda el fondo de color de la tarjeta.
 const hideBrokenPhoto = (event: SyntheticEvent<HTMLImageElement>) => {
@@ -27,10 +30,26 @@ const hideBrokenPhoto = (event: SyntheticEvent<HTMLImageElement>) => {
 };
 
 const BENEFITS = [
-  { icon: "truck", title: "Envíos a todo el país", text: "Recibí tu pedido en la puerta de casa." },
-  { icon: "card", title: "Cuotas sin interés", text: "Pagá como te quede más cómodo." },
-  { icon: "shield", title: "Compra segura", text: "Tus datos y pagos siempre protegidos." },
-  { icon: "headset", title: "Atención cercana", text: "Salchi Bot te ayuda a elegir, todos los días." },
+  {
+    icon: "truck",
+    title: "Envíos a todo el país",
+    text: "Recibí tu pedido en la puerta de casa.",
+  },
+  {
+    icon: "card",
+    title: "Cuotas sin interés",
+    text: "Pagá como te quede más cómodo.",
+  },
+  {
+    icon: "shield",
+    title: "Compra segura",
+    text: "Tus datos y pagos siempre protegidos.",
+  },
+  {
+    icon: "headset",
+    title: "Atención cercana",
+    text: "Salchi Bot te ayuda a elegir, todos los días.",
+  },
 ] as const;
 
 export function HomeScreen({
@@ -48,8 +67,13 @@ export function HomeScreen({
 }: Props) {
   const isAdmin = currentUser?.role === "ADMIN";
   const featured = products.slice(0, 4);
-  const promoted = products.filter((product) => product.precioPromocional != null).slice(0, 4);
-  const selectCategory = (categoryId: string) => (onSelectCategory ? onSelectCategory(categoryId) : onNavigate("products"));
+  const promoted = products
+    .filter((product) => product.precioPromocional != null)
+    .slice(0, 4);
+  const hasDogs = categories.some((category) => category.id === "perros");
+  const hasCats = categories.some((category) => category.id === "gatos");
+  const selectCategory = (categoryId: string) =>
+    onSelectCategory ? onSelectCategory(categoryId) : onNavigate("products");
 
   const productCard = (product: Product) => (
     <ProductCard
@@ -71,30 +95,49 @@ export function HomeScreen({
             <Icon name="paw" size={14} /> Petshop • cuidado total
           </span>
           <h1>
-            Todo para tu mascota, <span className="hero-highlight">con confianza y estilo.</span>
+            Todo para tu mascota,{" "}
+            <span className="hero-highlight">con confianza y estilo.</span>
           </h1>
-          <p>Alimentación, juguetes, accesorios y productos para cada etapa de tu compañero.</p>
+          <p>
+            Alimentación, juguetes, accesorios y productos para cada etapa de tu
+            compañero.
+          </p>
           <div className="hero-actions">
-            <button className="primary-btn" onClick={() => onNavigate("products")}>
+            <button
+              className="primary-btn"
+              onClick={() => onNavigate("products")}
+            >
               Ver productos <Icon name="arrow-right" size={18} />
             </button>
-            <button className="secondary-btn" onClick={() => onNavigate("offers")}>
+            <button
+              className="secondary-btn"
+              onClick={() => onNavigate("offers")}
+            >
               Ver ofertas
             </button>
           </div>
         </div>
         <div className="hero-visual" aria-hidden="true">
           <div className="hero-photo hero-photo-main">
-            <img src={photo("1598875706250-21faaf804361", 900)} alt="" onError={hideBrokenPhoto} />
+            <img
+              src={photo("1598875706250-21faaf804361", 900)}
+              alt=""
+              onError={hideBrokenPhoto}
+            />
           </div>
           <div className="hero-photo hero-photo-side">
-            <img src={photo("1536589961747-e239b2abbec2", 600)} alt="" onError={hideBrokenPhoto} />
+            <img
+              src={photo("1536589961747-e239b2abbec2", 600)}
+              alt=""
+              onError={hideBrokenPhoto}
+            />
           </div>
           <span className="pet-bubble">
             <Icon name="paw" size={26} />
           </span>
           <span className="hero-sticker">
-            <Icon name="heart" size={16} filled /> Hecho con amor por las mascotas
+            <Icon name="heart" size={16} filled /> Hecho con amor por las
+            mascotas
           </span>
         </div>
       </section>
@@ -154,28 +197,50 @@ export function HomeScreen({
         </div>
       </section>
 
-      <section className="pet-banners" aria-label="Comprar por mascota">
-        <button className="pet-banner pet-banner-dog" onClick={() => selectCategory("perros")}>
-          <img src={photo("1537204696486-967f1b7198c8", 800)} alt="" loading="lazy" onError={hideBrokenPhoto} />
-          <span className="pet-banner-copy">
-            <small>Para ellos</small>
-            <strong>Perros</strong>
-            <span className="pet-banner-cta">
-              Ver productos <Icon name="arrow-right" size={16} />
-            </span>
-          </span>
-        </button>
-        <button className="pet-banner pet-banner-cat" onClick={() => selectCategory("gatos")}>
-          <img src={photo("1583795128727-6ec3642408f8", 800)} alt="" loading="lazy" onError={hideBrokenPhoto} />
-          <span className="pet-banner-copy">
-            <small>Para ellos</small>
-            <strong>Gatos</strong>
-            <span className="pet-banner-cta">
-              Ver productos <Icon name="arrow-right" size={16} />
-            </span>
-          </span>
-        </button>
-      </section>
+      {hasDogs || hasCats ? (
+        <section className="pet-banners" aria-label="Comprar por mascota">
+          {hasDogs ? (
+            <button
+              className="pet-banner pet-banner-dog"
+              onClick={() => selectCategory("perros")}
+            >
+              <img
+                src={photo("1537204696486-967f1b7198c8", 800)}
+                alt=""
+                loading="lazy"
+                onError={hideBrokenPhoto}
+              />
+              <span className="pet-banner-copy">
+                <small>Para ellos</small>
+                <strong>Perros</strong>
+                <span className="pet-banner-cta">
+                  Ver productos <Icon name="arrow-right" size={16} />
+                </span>
+              </span>
+            </button>
+          ) : null}
+          {hasCats ? (
+            <button
+              className="pet-banner pet-banner-cat"
+              onClick={() => selectCategory("gatos")}
+            >
+              <img
+                src={photo("1583795128727-6ec3642408f8", 800)}
+                alt=""
+                loading="lazy"
+                onError={hideBrokenPhoto}
+              />
+              <span className="pet-banner-copy">
+                <small>Para ellos</small>
+                <strong>Gatos</strong>
+                <span className="pet-banner-cta">
+                  Ver productos <Icon name="arrow-right" size={16} />
+                </span>
+              </span>
+            </button>
+          ) : null}
+        </section>
+      ) : null}
 
       {promoted.length > 0 ? (
         <section className="section-block">
@@ -201,10 +266,19 @@ export function HomeScreen({
 
       <section className="welcome-banner">
         <div>
-          <span>{currentUser ? "¡Qué bueno verte de nuevo!" : "¿Ya sos cliente?"}</span>
-          <h3>{currentUser ? `Hola, ${currentUser.name}` : "Iniciá sesión para ver tu historial y carrito"}</h3>
+          <span>
+            {currentUser ? "¡Qué bueno verte de nuevo!" : "¿Ya sos cliente?"}
+          </span>
+          <h3>
+            {currentUser
+              ? `Hola, ${currentUser.name}`
+              : "Iniciá sesión para ver tu historial y carrito"}
+          </h3>
         </div>
-        <button className="secondary-btn" onClick={() => onNavigate(currentUser ? "cart" : "login")}>
+        <button
+          className="secondary-btn"
+          onClick={() => onNavigate(currentUser ? "cart" : "login")}
+        >
           {currentUser ? "Ir al carrito" : "Ingresar"}
         </button>
       </section>

@@ -60,6 +60,8 @@ function App() {
   // imagen de cada producto visto alguna vez: el carrito la necesita aunque el catálogo esté filtrado
   const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
+  // categorías que tienen al menos un producto (se calcula con el catálogo completo, sin filtros)
+  const [categoriesWithProducts, setCategoriesWithProducts] = useState<Set<string> | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -78,6 +80,12 @@ function App() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [navSearch, setNavSearch] = useState("");
   const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  // La tienda solo muestra categorías con productos; el panel de admin sigue viendo todas
+  const shopCategories = useMemo(
+    () => (categoriesWithProducts ? categories.filter((category) => categoriesWithProducts.has(category.id)) : categories),
+    [categories, categoriesWithProducts],
+  );
 
   const cartCount = useMemo(
     () => cartItems.reduce((total, item) => total + item.quantity, 0),
@@ -110,6 +118,9 @@ function App() {
     try {
       const data = await fetchProducts(category, order, query);
       setProducts(data);
+      if (category === "all" && !query) {
+        setCategoriesWithProducts(new Set(data.map((product) => product.categoryId)));
+      }
       setProductImages((known) => ({
         ...known,
         ...Object.fromEntries(data.filter((product) => product.imageUrl).map((product) => [product.id, product.imageUrl as string])),
@@ -439,7 +450,7 @@ function App() {
         <ProductsScreen
           products={products}
           loading={productLoading}
-          categories={categories}
+          categories={shopCategories}
           categoryFilter={selectedCategory}
           sort={sort}
           search={search}
@@ -542,7 +553,7 @@ function App() {
 
     return (
       <HomeScreen
-        categories={categories}
+        categories={shopCategories}
         products={products}
         currentUser={currentUser}
         onNavigate={(next) => (next === "products" ? showCatalog() : navigateTo(next))}
@@ -730,8 +741,8 @@ function App() {
             <h4>Tienda</h4>
             <button onClick={() => showCatalog()}>Productos</button>
             <button onClick={() => navigateTo("offers")}>Ofertas</button>
-            <button onClick={() => showCatalog("perros")}>Perros</button>
-            <button onClick={() => showCatalog("gatos")}>Gatos</button>
+            {shopCategories.some((category) => category.id === "perros") ? <button onClick={() => showCatalog("perros")}>Perros</button> : null}
+            {shopCategories.some((category) => category.id === "gatos") ? <button onClick={() => showCatalog("gatos")}>Gatos</button> : null}
           </div>
           <div className="footer-col">
             <h4>Ayuda</h4>
