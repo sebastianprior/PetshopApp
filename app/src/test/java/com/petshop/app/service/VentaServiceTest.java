@@ -5,6 +5,7 @@ import com.petshop.app.model.CartItem;
 import com.petshop.app.model.IdempotencyRecord;
 import com.petshop.app.model.Order;
 import com.petshop.app.model.Product;
+import com.petshop.app.model.SiteSettings;
 import com.petshop.app.payment.AuthResult;
 import com.petshop.app.payment.GatewayFaultException;
 import com.petshop.app.payment.PaymentGateway;
@@ -15,6 +16,7 @@ import com.petshop.app.repository.IdempotencyRecordRepository;
 import com.petshop.app.repository.OrderRepository;
 import com.petshop.app.repository.ProductRepository;
 import com.petshop.app.repository.ProductVariantRepository;
+import com.petshop.app.repository.SiteSettingsRepository;
 import com.petshop.app.service.VentaService.VentaOutcome;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +53,8 @@ class VentaServiceTest {
     private InMemoryStore store;
     private RouletteService rouletteService;
     private VentaService service;
+    private SiteSettingsRepository settingsRepository;
+    private ShopRules shopRules;
 
     private Product product;
     private final Map<String, IdempotencyRecord> idempotencyStore = new HashMap<>();
@@ -99,8 +103,12 @@ class VentaServiceTest {
             return record;
         });
 
+        settingsRepository = mock(SiteSettingsRepository.class);
+        when(settingsRepository.findById(SiteSettings.SINGLETON_ID)).thenReturn(Optional.empty());
+        when(variantRepository.findByProductId(anyString())).thenReturn(List.of());
+        shopRules = new ShopRules(settingsRepository, productRepository, variantRepository);
         service = new VentaService(orderRepository, cartItemRepository, store, productRepository, variantRepository,
-                couponRepository, idempotencyRepository, gateway, executor, publisher, rouletteService, 200, 3, 0);
+                couponRepository, idempotencyRepository, gateway, executor, publisher, rouletteService, shopRules, 200, 3, 0);
     }
 
     @AfterEach
@@ -360,6 +368,117 @@ class VentaServiceTest {
 
         assertThat(service.crear("user-1", "key-11", noToken).problemSlug()).isEqualTo("medio-pago-requerido");
         assertThat(service.crear("user-1", "key-12", noAddress).problemSlug()).isEqualTo("datos-envio-incompletos");
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    private SiteSettings promos(boolean freeShipping, double threshold, boolean gift, String giftId, double giftMin) {
+        SiteSettings settings = new SiteSettings();
+        settings.freeShippingEnabled = freeShipping;
+        settings.freeShippingThreshold = threshold;
+        settings.giftEnabled = gift;
+        settings.giftProductId = giftId;
+        settings.giftMinAmount = giftMin;
+        when(settingsRepository.findById(SiteSettings.SINGLETON_ID)).thenReturn(Optional.of(settings));
+        return settings;
+    }
+
+    private Product giftProduct(int stock) {
+        Product gift = new Product("g1", "Llavero", "Marca", 300.0, null, 4.0, "/g.jpg", null, "accesorios", stock);
+        when(productRepository.findById("g1")).thenReturn(Optional.of(gift));
+        return gift;
+    }
+
+    @Test
+    void shippingIsFreeOnceTheCartReachesTheConfiguredAmount() {
+        gatewayApproves();
+        promos(true, 2000.0, false, null, 0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-envio-gratis", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().shippingCost).isEqualTo(0.0);
+        assertThat(outcome.order().total).isEqualTo(2000.0);
+    }
+
+    @Test
+    void shippingIsChargedWhenTheCartDoesNotReachTheConfiguredAmount() {
+        gatewayApproves();
+        promos(true, 2001.0, false, null, 0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-envio-pago", request());
+
+        assertThat(outcome.order().shippingCost).isEqualTo(1500.0);
+        assertThat(outcome.order().total).isEqualTo(3500.0);
+    }
+
+    @Test
+    void theGiftIsAddedToTheOrderAtNoCostAndItsStockIsReserved() {
+        gatewayApproves();
+        Product gift = giftProduct(5);
+        promos(false, 0, true, "g1", 2000.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-regalo", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().items).hasSize(2);
+        Order.OrderItem giftLine = outcome.order().items.get(1);
+        assertThat(giftLine.productId).isEqualTo("g1");
+        assertThat(giftLine.quantity).isEqualTo(1);
+        assertThat(giftLine.price).isEqualTo(0.0);
+        assertThat(giftLine.variant).isEqualTo("Regalo");
+        assertThat(outcome.order().total).isEqualTo(3500.0); // el regalo no suma al total
+        assertThat(gift.stock).isEqualTo(4);
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void noGiftBelowTheMinimumAmount() {
+        gatewayApproves();
+        Product gift = giftProduct(5);
+        promos(false, 0, true, "g1", 2500.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-sin-regalo", request());
+
+        assertThat(outcome.order().items).hasSize(1);
+        assertThat(gift.stock).isEqualTo(5);
+    }
+
+    @Test
+    void noGiftWhenItIsOutOfStock() {
+        gatewayApproves();
+        giftProduct(0);
+        promos(false, 0, true, "g1", 1000.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-regalo-agotado", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().items).hasSize(1);
+    }
+
+    @Test
+    void noGiftWhenTheGiftProductIsAlreadyInTheCartAndWouldRunOutOfStock() {
+        gatewayApproves();
+        Product gift = giftProduct(2);
+        cart.add(new CartItem("g1", "Llavero", "accesorios", 2, 300.0));
+        promos(false, 0, true, "g1", 1000.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-regalo-mismo", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().items).hasSize(2);
+        assertThat(gift.stock).isEqualTo(0); // solo las 2 unidades que compró, sin regalo extra
+    }
+
+    @Test
+    void theGiftStockIsReleasedWhenThePaymentIsRejected() {
+        when(gateway.autorizar(anyString(), anyDouble(), any())).thenReturn(new AuthResult(PaymentStatus.RECHAZADO, "sin fondos"));
+        Product gift = giftProduct(5);
+        promos(false, 0, true, "g1", 1000.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-regalo-rechazo", request());
+
+        assertThat(outcome.status()).isEqualTo(402);
+        assertThat(gift.stock).isEqualTo(5);
         assertThat(product.stock).isEqualTo(10);
     }
 }

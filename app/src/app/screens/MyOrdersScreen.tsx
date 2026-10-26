@@ -164,7 +164,7 @@ export function MyOrdersScreen({ authToken }: Props) {
                             <td>{item.productId}</td>
                             <td>{item.variant || "—"}</td>
                             <td>{item.quantity}</td>
-                            <td>{formatMoney(item.price)}</td>
+                            <td>{item.price === 0 ? "Gratis (regalo)" : formatMoney(item.price)}</td>
                             <td>
                               <button
                                 className="secondary-btn"

@@ -142,6 +142,28 @@ export type SiteSettings = {
   announcementText: string;
 };
 
+/** Envío gratis y regalo del carrito, configurables desde el panel de administración. */
+export type CartPromos = {
+  freeShippingEnabled: boolean;
+  freeShippingThreshold: number;
+  giftEnabled: boolean;
+  giftMinAmount: number;
+  giftProductId: string | null;
+  giftProductName?: string | null;
+  giftProductImageUrl?: string | null;
+  /** El producto de regalo existe, no tiene variantes y tiene stock: si no, no se ofrece. */
+  giftAvailable: boolean;
+};
+
+export const NO_CART_PROMOS: CartPromos = {
+  freeShippingEnabled: false,
+  freeShippingThreshold: 0,
+  giftEnabled: false,
+  giftMinAmount: 0,
+  giftProductId: null,
+  giftAvailable: false,
+};
+
 export type RouletteCategory = { id: string; name: string; color: string };
 
 export type RouletteState = {

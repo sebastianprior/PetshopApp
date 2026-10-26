@@ -26,5 +26,14 @@ public class SiteSettings {
     @Column(length = 300)
     public String announcementText;
 
+    /** Envío gratis a partir de un monto de compra. Nulo = sin configurar (desactivado). */
+    public Boolean freeShippingEnabled;
+    public Double freeShippingThreshold;
+
+    /** Producto de regalo a partir de un monto de compra. Nulo = sin configurar (desactivado). */
+    public Boolean giftEnabled;
+    public String giftProductId;
+    public Double giftMinAmount;
+
     public SiteSettings() {}
 }

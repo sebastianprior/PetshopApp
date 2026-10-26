@@ -58,7 +58,7 @@ export function OrderConfirmationScreen({ result, isLoggedIn, onNavigate }: Prop
                   <td>{item.name}</td>
                   <td>{item.variant || "—"}</td>
                   <td>{item.quantity}</td>
-                  <td>{formatMoney(item.price)}</td>
+                  <td>{item.price === 0 ? "Gratis (regalo)" : formatMoney(item.price)}</td>
                 </tr>
               ))}
             </tbody>
@@ -84,7 +84,7 @@ export function OrderConfirmationScreen({ result, isLoggedIn, onNavigate }: Prop
           ) : null}
           <div className="summary-row">
             <span>Envío</span>
-            <strong>{formatMoney(result.shippingCost)}</strong>
+            <strong>{result.shippingCost === 0 ? "Gratis" : formatMoney(result.shippingCost)}</strong>
           </div>
           <div className="summary-row total-row">
             <span>Total</span>

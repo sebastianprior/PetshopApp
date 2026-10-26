@@ -49,7 +49,6 @@ public class VentaService {
     public static final String CANCELADA = "CANCELADA";
 
     private static final Logger LOG = LoggerFactory.getLogger(VentaService.class);
-    private static final double SHIPPING_COST = 1500.0;
 
     public record VentaOutcome(int status, Order order, String problemSlug, String problemTitle, String problemDetail) {
         public boolean isProblem() {
@@ -72,6 +71,7 @@ public class VentaService {
     private final ExecutorService paymentExecutor;
     private final ApplicationEventPublisher publisher;
     private final RouletteService rouletteService;
+    private final ShopRules shopRules;
     private final long timeoutMs;
     private final int maxAttempts;
     private final long minPendingAgeMs;
@@ -80,7 +80,7 @@ public class VentaService {
                         ProductRepository productRepository, ProductVariantRepository variantRepository,
                         CouponRepository couponRepository, IdempotencyRecordRepository idempotencyRepository,
                         PaymentGateway gateway, @Qualifier("paymentExecutor") ExecutorService paymentExecutor,
-                        ApplicationEventPublisher publisher, RouletteService rouletteService,
+                        ApplicationEventPublisher publisher, RouletteService rouletteService, ShopRules shopRules,
                         @Value("${petshop.payments.timeout-ms:5000}") long timeoutMs,
                         @Value("${petshop.payments.max-attempts:3}") int maxAttempts,
                         @Value("${petshop.payments.min-pending-age-ms:10000}") long minPendingAgeMs) {
@@ -95,6 +95,7 @@ public class VentaService {
         this.paymentExecutor = paymentExecutor;
         this.publisher = publisher;
         this.rouletteService = rouletteService;
+        this.shopRules = shopRules;
         this.timeoutMs = timeoutMs;
         this.maxAttempts = maxAttempts;
         this.minPendingAgeMs = minPendingAgeMs;
@@ -148,13 +149,25 @@ public class VentaService {
         RouletteService.Applied roulette = rouletteService.discountFor(userId, cart);
         double rouletteDiscount = roulette != null ? Math.min(roulette.amount(), Math.max(0, subtotal - discount)) : 0;
 
-        reservarStock(cart);
+        // Reglas del administrador: envío gratis a partir de un monto y producto de regalo (se suma al pedido sin costo)
+        double shippingCost = shopRules.shippingCost(subtotal);
+        Product gift = shopRules.giftFor(subtotal, cart).orElse(null);
 
-        Order order = new Order(userId, Instant.now(),
-                cart.stream().map(i -> new Order.OrderItem(i.productId, i.quantity, i.price, i.variant, i.variantId)).toList(),
-                subtotal + SHIPPING_COST - discount - rouletteDiscount, PAGO_PENDIENTE);
+        reservarStock(cart);
+        if (gift != null) {
+            adjustStock(gift.id, null, -1);
+        }
+
+        List<Order.OrderItem> orderItems = new ArrayList<>(
+                cart.stream().map(i -> new Order.OrderItem(i.productId, i.quantity, i.price, i.variant, i.variantId)).toList());
+        if (gift != null) {
+            orderItems.add(new Order.OrderItem(gift.id, 1, 0.0, ShopRules.GIFT_LABEL, null));
+        }
+
+        Order order = new Order(userId, Instant.now(), orderItems,
+                subtotal + shippingCost - discount - rouletteDiscount, PAGO_PENDIENTE);
         order.subtotal = subtotal;
-        order.shippingCost = SHIPPING_COST;
+        order.shippingCost = shippingCost;
         order.discountAmount = discount + rouletteDiscount;
         order.ruletaDescuento = rouletteDiscount;
         order.ruletaCategoria = rouletteDiscount > 0 ? roulette.categoryId() : null;
