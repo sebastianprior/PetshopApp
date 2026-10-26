@@ -75,6 +75,12 @@ public class SiteSettingsController {
         settings.topbarItems = String.join("\n", items);
         settings.announcementMode = mode;
         settings.announcementText = text;
+        if (body.topbarMarquee != null) {
+            settings.topbarMarquee = body.topbarMarquee;
+        }
+        if (body.announcementMarquee != null) {
+            settings.announcementMarquee = body.announcementMarquee;
+        }
         repository.save(settings);
         return ResponseEntity.ok(toDto(settings));
     }
@@ -84,13 +90,19 @@ public class SiteSettingsController {
     }
 
     private static SiteSettingsDTO defaults() {
-        return new SiteSettingsDTO(DEFAULT_TOPBAR, "AUTO", "");
+        SiteSettingsDTO dto = new SiteSettingsDTO(DEFAULT_TOPBAR, "AUTO", "");
+        dto.topbarMarquee = false;
+        dto.announcementMarquee = false;
+        return dto;
     }
 
     private static SiteSettingsDTO toDto(SiteSettings settings) {
         List<String> items = settings.topbarItems == null || settings.topbarItems.isBlank()
                 ? List.of() : List.of(settings.topbarItems.split("\n"));
-        return new SiteSettingsDTO(items, settings.announcementMode == null ? "AUTO" : settings.announcementMode,
+        SiteSettingsDTO dto = new SiteSettingsDTO(items, settings.announcementMode == null ? "AUTO" : settings.announcementMode,
                 settings.announcementText == null ? "" : settings.announcementText);
+        dto.topbarMarquee = Boolean.TRUE.equals(settings.topbarMarquee);
+        dto.announcementMarquee = Boolean.TRUE.equals(settings.announcementMarquee);
+        return dto;
     }
 }

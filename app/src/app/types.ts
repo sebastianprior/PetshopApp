@@ -140,6 +140,9 @@ export type SiteSettings = {
   topbarItems: string[];
   announcementMode: "AUTO" | "CUSTOM" | "OFF";
   announcementText: string;
+  /** Desplazar el texto de la barra de derecha a izquierda (marquesina). */
+  topbarMarquee?: boolean;
+  announcementMarquee?: boolean;
 };
 
 /** Envío gratis y regalo del carrito, configurables desde el panel de administración. */

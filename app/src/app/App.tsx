@@ -16,6 +16,7 @@ import { DailyRoulette } from "./screens/DailyRoulette";
 import { WishlistScreen } from "./screens/WishlistScreen";
 import { Icon } from "./components/Icon";
 import { ToastRegion, type ToastMessage } from "./components/Toast";
+import { Marquee } from "./components/Marquee";
 import {
   addToCart,
   addToWishlist,
@@ -600,17 +601,31 @@ function App() {
 
       <header className="topbar">
         {siteSettings.topbarItems.length > 0 ? (
-          <div className="topbar-inner">
-            {siteSettings.topbarItems.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
+          siteSettings.topbarMarquee ? (
+            <Marquee textLength={siteSettings.topbarItems.join("").length}>
+              {siteSettings.topbarItems.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </Marquee>
+          ) : (
+            <div className="topbar-inner">
+              {siteSettings.topbarItems.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          )
         ) : null}
       </header>
 
       {announcementText ? (
         <div className="promo-banner">
-          <div className="promo-banner-inner">{announcementText}</div>
+          {siteSettings.announcementMarquee ? (
+            <Marquee textLength={announcementText.length}>
+              <span>{announcementText}</span>
+            </Marquee>
+          ) : (
+            <div className="promo-banner-inner">{announcementText}</div>
+          )}
         </div>
       ) : null}
 

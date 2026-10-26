@@ -18,6 +18,8 @@ export function AnnouncementSettings({ authToken, settings, onSaved }: Props) {
   const [topbar, setTopbar] = useState(settings.topbarItems.join("\n"));
   const [mode, setMode] = useState<SiteSettings["announcementMode"]>(settings.announcementMode);
   const [text, setText] = useState(settings.announcementText);
+  const [topbarMarquee, setTopbarMarquee] = useState(settings.topbarMarquee ?? false);
+  const [announcementMarquee, setAnnouncementMarquee] = useState(settings.announcementMarquee ?? false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -32,6 +34,8 @@ export function AnnouncementSettings({ authToken, settings, onSaved }: Props) {
         topbarItems: topbar.split("\n").map((line) => line.trim()).filter(Boolean),
         announcementMode: mode,
         announcementText: text.trim(),
+        topbarMarquee,
+        announcementMarquee,
       });
       onSaved(result);
       setSaved(true);
@@ -54,6 +58,10 @@ export function AnnouncementSettings({ authToken, settings, onSaved }: Props) {
             placeholder={"🚚 Envíos a todo el país\n💳 6 cuotas sin interés"}
           />
         </label>
+        <label className="admin-form-wide checkbox-label">
+          <input type="checkbox" checked={topbarMarquee} onChange={(e) => setTopbarMarquee(e.target.checked)} />
+          <span>Mover los textos de la barra superior de derecha a izquierda</span>
+        </label>
 
         <label>
           <span>Barra de anuncio (verde)</span>
@@ -74,6 +82,13 @@ export function AnnouncementSettings({ authToken, settings, onSaved }: Props) {
               onChange={(e) => setText(e.target.value)}
               placeholder="🔥 Black Friday: 30% OFF en toda la tienda"
             />
+          </label>
+        ) : null}
+
+        {mode !== "OFF" ? (
+          <label className="admin-form-wide checkbox-label">
+            <input type="checkbox" checked={announcementMarquee} onChange={(e) => setAnnouncementMarquee(e.target.checked)} />
+            <span>Mover el texto del anuncio de derecha a izquierda</span>
           </label>
         ) : null}
 

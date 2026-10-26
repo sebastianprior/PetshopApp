@@ -45,6 +45,8 @@ describe("AnnouncementSettings", () => {
       topbarItems: ["Envíos"],
       announcementMode: "CUSTOM",
       announcementText: "Black Friday",
+      topbarMarquee: false,
+      announcementMarquee: false,
     });
     expect(screen.getByText(/Cambios guardados/)).toBeInTheDocument();
   });
@@ -59,5 +61,30 @@ describe("AnnouncementSettings", () => {
 
     await waitFor(() => expect(screen.getByText("Escribí el texto del anuncio o elegí otro modo.")).toBeInTheDocument());
     expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it("lets the admin make the announcement and the top bar scroll, and sends it", async () => {
+    const user = userEvent.setup();
+    mockedUpdate.mockResolvedValue({ ...SETTINGS, topbarMarquee: true, announcementMarquee: true });
+    render(<AnnouncementSettings authToken="tok" settings={SETTINGS} onSaved={vi.fn()} />);
+
+    await user.click(screen.getByLabelText(/Mover los textos de la barra superior/));
+    await user.click(screen.getByLabelText(/Mover el texto del anuncio/));
+    await user.click(screen.getByText("Guardar cambios"));
+
+    await waitFor(() =>
+      expect(mockedUpdate).toHaveBeenCalledWith("tok", expect.objectContaining({ topbarMarquee: true, announcementMarquee: true })),
+    );
+  });
+
+  it("starts with the current marquee setting and hides the announcement option when the bar is off", async () => {
+    const user = userEvent.setup();
+    render(<AnnouncementSettings authToken="tok" settings={{ ...SETTINGS, announcementMarquee: true }} onSaved={vi.fn()} />);
+
+    expect(screen.getByLabelText(/Mover el texto del anuncio/)).toBeChecked();
+    expect(screen.getByLabelText(/Mover los textos de la barra superior/)).not.toBeChecked();
+
+    await user.selectOptions(screen.getByLabelText("Barra de anuncio (verde)"), "OFF");
+    expect(screen.queryByLabelText(/Mover el texto del anuncio/)).not.toBeInTheDocument();
   });
 });
