@@ -95,7 +95,32 @@ describe("ProductDetailScreen", () => {
 
     await user.click(addButton);
 
-    expect(onAddToCart).toHaveBeenCalledWith(PRODUCT, undefined);
+    expect(onAddToCart).toHaveBeenCalledWith(PRODUCT, undefined, 1);
+  });
+
+  it("adds the chosen quantity and never lets it exceed the stock", async () => {
+    const user = userEvent.setup();
+    const onAddToCart = vi.fn();
+    render(
+      <ProductDetailScreen
+        product={{ ...PRODUCT, stock: 3 }}
+        authToken={null}
+        isAdmin={false}
+        wishlist={[]}
+        onToggleWishlist={noop}
+        onBack={noop}
+        onAddToCart={onAddToCart}
+      />,
+    );
+
+    expect(screen.getByLabelText("Menos unidades")).toBeDisabled();
+    await user.click(screen.getByLabelText("Más unidades"));
+    await user.click(screen.getByLabelText("Más unidades"));
+    expect(screen.getByLabelText("Más unidades")).toBeDisabled();
+
+    await user.click(screen.getByText("Agregar al carrito"));
+
+    expect(onAddToCart).toHaveBeenCalledWith(expect.objectContaining({ id: "p1" }), undefined, 3);
   });
 
   it("requires picking a variant before enabling add-to-cart, and swaps the image", async () => {
@@ -130,7 +155,7 @@ describe("ProductDetailScreen", () => {
     expect(addButton).toBeEnabled();
 
     await user.click(addButton);
-    expect(onAddToCart).toHaveBeenCalledWith(productWithVariants, VARIANT_WITH_IMAGE);
+    expect(onAddToCart).toHaveBeenCalledWith(productWithVariants, VARIANT_WITH_IMAGE, 1);
 
     // the out-of-stock variant cannot be selected
     expect(screen.getByText("Talle S / Blanco").closest("button")).toBeDisabled();

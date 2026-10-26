@@ -1,4 +1,5 @@
 import type { CheckoutResult, View } from "../types";
+import { Icon } from "../components/Icon";
 
 type Props = {
   result: CheckoutResult;
@@ -17,7 +18,9 @@ export function OrderConfirmationScreen({ result, isLoggedIn, onNavigate }: Prop
       <div className="confirmation-card">
         {pagoPendiente ? (
           <>
-            <span className="confirmation-check">…</span>
+            <span className="confirmation-check pending">
+              <Icon name="package" size={38} />
+            </span>
             <h2>Estamos procesando tu pago</h2>
             <p>
               La pasarela de pago tardó en responder. Tu pedido #{result.orderId} quedó reservado y lo confirmamos
@@ -27,7 +30,9 @@ export function OrderConfirmationScreen({ result, isLoggedIn, onNavigate }: Prop
           </>
         ) : (
           <>
-            <span className="confirmation-check">✓</span>
+            <span className="confirmation-check">
+              <Icon name="check" size={40} />
+            </span>
             <h2>¡Compra confirmada!</h2>
             <p>
               {result.orderId != null

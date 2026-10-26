@@ -40,6 +40,7 @@ import {
   updateUserStatus,
   uploadImage,
 } from "../api";
+import { statusTone } from "../components/statusTone";
 
 type Props = {
   authToken: string;
@@ -51,7 +52,7 @@ type Props = {
 
 type Tab = "stats" | "orders" | "products" | "categories" | "returns" | "users" | "coupons" | "announcements";
 
-const EMPTY_CATEGORY_FORM = { id: "", name: "", color: "#f97316" };
+const EMPTY_CATEGORY_FORM = { id: "", name: "", color: "#65b9e9" };
 
 const EMPTY_COUPON_FORM = {
   code: "",
@@ -640,7 +641,7 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
 
   const startEditCategory = (category: Category) => {
     setEditingCategoryId(category.id);
-    setCategoryForm({ id: category.id, name: category.name, color: category.color || "#f97316" });
+    setCategoryForm({ id: category.id, name: category.name, color: category.color || "#65b9e9" });
     setCategoryError(null);
   };
 
@@ -803,11 +804,11 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
                   <h3>Ingresos {statsFrom || statsTo ? "— rango seleccionado" : "— últimos 7 días"}</h3>
                   <ResponsiveContainer width="100%" height={240}>
                     <AreaChart data={revenueByDay}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
-                      <XAxis dataKey="label" stroke="#7c2d12" fontSize={12} />
-                      <YAxis stroke="#7c2d12" fontSize={12} width={70} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="label" stroke="var(--text-muted)" fontSize={12} />
+                      <YAxis stroke="var(--text-muted)" fontSize={12} width={70} />
                       <Tooltip formatter={(value: number) => formatMoney(value)} />
-                      <Area type="monotone" dataKey="total" name="Ingresos" stroke="#f97316" fill="#fed7aa" />
+                      <Area type="monotone" dataKey="total" name="Ingresos" stroke="#3a9fdb" fill="#9fd3f2" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -819,11 +820,11 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
                   ) : (
                     <ResponsiveContainer width="100%" height={240}>
                       <BarChart data={filteredTopProducts} layout="vertical" margin={{ left: 24 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
-                        <XAxis type="number" stroke="#7c2d12" fontSize={12} allowDecimals={false} />
-                        <YAxis type="category" dataKey="name" width={130} stroke="#7c2d12" fontSize={11} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis type="number" stroke="var(--text-muted)" fontSize={12} allowDecimals={false} />
+                        <YAxis type="category" dataKey="name" width={130} stroke="var(--text-muted)" fontSize={11} />
                         <Tooltip />
-                        <Bar dataKey="totalQuantity" name="Unidades" fill="#f97316" radius={[0, 6, 6, 0]} />
+                        <Bar dataKey="totalQuantity" name="Unidades" fill="#65b9e9" radius={[0, 6, 6, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -906,7 +907,7 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
                       <td>{order.items.reduce((sum, i) => sum + i.quantity, 0)}</td>
                       <td>{formatMoney(order.total)}</td>
                       <td>
-                        <span className="status-badge">{order.estado}</span>
+                        <span className={`status-badge tone-${statusTone(order.estado)}`}>{order.estado}</span>
                       </td>
                       <td>
                         <select
@@ -1377,7 +1378,7 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
                         <td>{user.email}</td>
                         <td>{user.role}</td>
                         <td>
-                          <span className="status-badge">{user.active === false ? "Deshabilitado" : "Activo"}</span>
+                          <span className={`status-badge tone-${user.active === false ? "bad" : "ok"}`}>{user.active === false ? "Deshabilitado" : "Activo"}</span>
                         </td>
                         <td>
                           <div className="admin-row-actions">
@@ -1527,7 +1528,7 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
                       </td>
                       <td>{coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString("es-AR") : "—"}</td>
                       <td>
-                        <span className="status-badge">{coupon.active ? "Activo" : "Inactivo"}</span>
+                        <span className={`status-badge tone-${coupon.active ? "ok" : "bad"}`}>{coupon.active ? "Activo" : "Inactivo"}</span>
                       </td>
                       <td>
                         <div className="admin-row-actions">

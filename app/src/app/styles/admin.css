@@ -1,0 +1,268 @@
+/* ==========================================================================
+   Panel de administración (y pestañas de "Mis pedidos")
+   ========================================================================== */
+
+.admin-shell {
+  gap: var(--space-6);
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.admin-tab {
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 800;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+
+.admin-tab:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.admin-tab.active {
+  background: var(--sky-500);
+  color: var(--navy-900);
+}
+
+.admin-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.admin-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--surface-tint);
+  box-shadow: none;
+}
+
+.admin-subsection h3 {
+  font-size: 1.25rem;
+}
+
+.admin-hint,
+.admin-help {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.admin-table .mono {
+  color: var(--text-muted);
+}
+
+.admin-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.admin-row-actions .secondary-btn,
+.admin-table .secondary-btn {
+  min-height: 38px;
+  padding: 0 var(--space-4);
+  font-size: 0.88rem;
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.admin-form-grid label.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+
+.admin-form-grid label.checkbox-label input {
+  width: auto;
+  min-height: auto;
+}
+
+.admin-form-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* ---------- Métricas ---------- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.stat-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-5);
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--sky-500);
+}
+
+.stat-card:nth-child(2)::before {
+  background: var(--coral-500);
+}
+
+.stat-card:nth-child(3)::before {
+  background: var(--mint-500);
+}
+
+.stat-card:nth-child(4)::before {
+  background: var(--sun-500);
+}
+
+.stat-card span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stat-card strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+
+.chart-card {
+  padding: var(--space-5);
+}
+
+.chart-card h3 {
+  margin-bottom: var(--space-3);
+  font-size: 1.1rem;
+}
+
+.recharts-text,
+.recharts-cartesian-axis-tick-value {
+  fill: var(--text-muted);
+}
+
+.recharts-cartesian-grid line {
+  stroke: var(--border);
+}
+
+/* ---------- Categorías y archivos ---------- */
+.category-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 2px var(--border);
+  vertical-align: middle;
+}
+
+.image-preview {
+  width: 140px;
+  height: 140px;
+  margin-top: var(--space-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.upload-status {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.admin-table .variant-thumb {
+  border: 2px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .admin-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-radius: var(--radius-md);
+  }
+
+  .admin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-tab {
+    flex: none;
+  }
+
+  .admin-subsection,
+  .admin-form-grid {
+    padding: var(--space-4);
+  }
+
+  .admin-form-actions .primary-btn,
+  .admin-form-actions .secondary-btn {
+    flex: 1 1 100%;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Barras de filtros del panel (fechas, exportar): en una fila que se acomoda sola */
+.admin-shell .toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.admin-shell .toolbar-row > label {
+  flex: 1 1 180px;
+}
+
+.admin-shell .toolbar-row > .secondary-btn,
+.admin-shell .toolbar-row > .primary-btn {
+  flex: 0 0 auto;
+}

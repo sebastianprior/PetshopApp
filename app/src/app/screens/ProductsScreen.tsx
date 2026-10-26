@@ -1,8 +1,18 @@
-import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 import { useEffect, useState } from "react";
-import type { Product } from "../types";
+import { Icon, categoryIcon } from "../components/Icon";
+import { ProductCard, ProductGridSkeleton } from "../components/ProductCard";
+import type { Category, Product } from "../types";
 
 const PAGE_SIZE = 12;
+
+// Categorías que se muestran si todavía no llegaron las del servidor
+const FALLBACK_CATEGORIES: Category[] = [
+  { id: "alimentos", name: "Alimentos" },
+  { id: "juguetes", name: "Juguetes" },
+  { id: "accesorios", name: "Accesorios" },
+  { id: "perros", name: "Perros" },
+  { id: "gatos", name: "Gatos" },
+];
 
 type Props = {
   products: Product[];
@@ -10,6 +20,7 @@ type Props = {
   categoryFilter: string;
   sort: string;
   search: string;
+  categories?: Category[];
   onCategoryChange: (value: string) => void;
   onSortChange: (value: string) => void;
   onSearchChange: (value: string) => void;
@@ -22,15 +33,13 @@ type Props = {
   roulettePercent?: number;
 };
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(value);
-
 export function ProductsScreen({
   products,
   loading,
   categoryFilter,
   sort,
   search,
+  categories,
   onCategoryChange,
   onSortChange,
   onSearchChange,
@@ -48,33 +57,36 @@ export function ProductsScreen({
     setPage(1);
   }, [products, categoryFilter, sort, search]);
 
+  const chips = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES;
+  const activeCategory = chips.find((category) => category.id === categoryFilter);
   const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paginatedProducts = products.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="page-shell">
+      <header className="catalog-header">
+        <span className="eyebrow">Catálogo</span>
+        <h1>{activeCategory ? activeCategory.name : "Todos los productos"}</h1>
+        <p>
+          {loading
+            ? "Buscando lo mejor para tu mascota..."
+            : `${products.length} ${products.length === 1 ? "producto" : "productos"} para elegir`}
+        </p>
+      </header>
+
       <section className="toolbar-card">
         <div className="toolbar-row">
           <label className="toolbar-search">
             <span>Buscar</span>
-            <input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Nombre o marca..."
-            />
-          </label>
-
-          <label>
-            <span>Categoría</span>
-            <select value={categoryFilter} onChange={(e) => onCategoryChange(e.target.value)}>
-              <option value="all">Todas</option>
-              <option value="alimentos">Alimentos</option>
-              <option value="juguetes">Juguetes</option>
-              <option value="accesorios">Accesorios</option>
-              <option value="perros">Perros</option>
-              <option value="gatos">Gatos</option>
-            </select>
+            <span className="input-with-icon">
+              <Icon name="search" size={18} />
+              <input
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Nombre o marca..."
+              />
+            </span>
           </label>
 
           <label>
@@ -86,69 +98,59 @@ export function ProductsScreen({
             </select>
           </label>
         </div>
+
+        <div className="chip-row" role="group" aria-label="Filtrar por categoría">
+          <button
+            type="button"
+            className={categoryFilter === "all" ? "chip active" : "chip"}
+            aria-pressed={categoryFilter === "all"}
+            onClick={() => onCategoryChange("all")}
+          >
+            <Icon name="paw" size={16} /> Todas
+          </button>
+          {chips.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              className={categoryFilter === category.id ? "chip active" : "chip"}
+              aria-pressed={categoryFilter === category.id}
+              onClick={() => onCategoryChange(category.id)}
+            >
+              <Icon name={categoryIcon(category.id)} size={16} /> {category.name}
+            </button>
+          ))}
+        </div>
       </section>
 
       {loading ? (
-        <div className="empty-state">Cargando productos...</div>
+        <ProductGridSkeleton />
       ) : products.length === 0 ? (
-        <div className="empty-state">No encontramos productos con esos filtros.</div>
+        <div className="empty-state">
+          <Icon name="search" size={36} />
+          <strong>No encontramos productos con esos filtros.</strong>
+          <button
+            className="secondary-btn"
+            onClick={() => {
+              onSearchChange("");
+              onCategoryChange("all");
+            }}
+          >
+            Limpiar filtros
+          </button>
+        </div>
       ) : (
         <div className="product-grid">
           {paginatedProducts.map((product) => (
-            <article key={product.id} className="product-card">
-              <div className="product-image-wrap product-clickable" onClick={() => onOpenProduct(product.id)}>
-                <img
-                  src={product.imageUrl || PLACEHOLDER_IMAGE}
-                  onError={handleImageError}
-                  alt={product.name}
-                />
-                {product.badge ? <span className="product-badge">{product.badge}</span> : null}
-                {rouletteCategoryId && product.categoryId === rouletteCategoryId ? (
-                  <span className="roulette-tag">🎡 -{roulettePercent}% hoy</span>
-                ) : null}
-                {!isAdmin ? (
-                  <button
-                    className={wishlist.includes(product.id) ? "wishlist-heart active" : "wishlist-heart"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleWishlist(product.id);
-                    }}
-                    aria-label={wishlist.includes(product.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
-                  >
-                    ♥
-                  </button>
-                ) : null}
-              </div>
-              <div className="product-body">
-                <span className="brand">{product.brand}</span>
-                <h3 onClick={() => onOpenProduct(product.id)} className="product-name-link">{product.name}</h3>
-                <div className="rating-row">
-                  <span>⭐ {product.rating.toFixed(1)}</span>
-                  <span>{product.stock} unidades</span>
-                </div>
-                <div className="price-row">
-                  {product.precioPromocional != null ? (
-                    <>
-                      <strong>{formatMoney(product.precioPromocional)}</strong>
-                      <span>{formatMoney(product.price)}</span>
-                    </>
-                  ) : (
-                    <>
-                      <strong>{formatMoney(product.price)}</strong>
-                      {product.oldPrice ? <span>{formatMoney(product.oldPrice)}</span> : null}
-                    </>
-                  )}
-                </div>
-                {product.precioPromocional != null && product.tipoPromocion ? (
-                  <span className="promo-tag">{product.tipoPromocion}</span>
-                ) : null}
-                {!isAdmin ? (
-                  <button className="primary-btn block" onClick={() => onAddToCart(product)} disabled={product.stock <= 0}>
-                    {product.stock <= 0 ? "Sin stock" : product.hasVariants ? "Ver opciones" : "Agregar al carrito"}
-                  </button>
-                ) : null}
-              </div>
-            </article>
+            <ProductCard
+              key={product.id}
+              product={product}
+              isAdmin={isAdmin}
+              wishlist={wishlist}
+              onToggleWishlist={onToggleWishlist}
+              onAddToCart={onAddToCart}
+              onOpenProduct={onOpenProduct}
+              extraTag={rouletteCategoryId && product.categoryId === rouletteCategoryId ? `-${roulettePercent}% hoy` : null}
+            />
           ))}
         </div>
       )}
