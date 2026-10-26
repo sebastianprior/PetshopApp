@@ -1,0 +1,201 @@
+/* ==========================================================================
+   Sistema de diseño Petshop: tokens
+   Paleta pet-friendly: azul cielo, verde menta, naranja coral, amarillo pastel, blanco cálido y azul oscuro.
+   Los componentes solo usan los tokens "semánticos" (--bg, --surface, --text, --primary…): el tema cambia
+   los valores de esos tokens y todo el sitio se adapta.
+   ========================================================================== */
+
+:root {
+  /* Paleta base */
+  --sky-50: #f1f9fe;
+  --sky-100: #e0f1fc;
+  --sky-300: #9fd3f2;
+  --sky-500: #65b9e9;
+  --sky-600: #3a9fdb;
+  --sky-700: #1f7db5;
+
+  --mint-100: #e4f8f0;
+  --mint-300: #a8e6cf;
+  --mint-500: #5cc9a1;
+  --mint-700: #2a8f6c;
+
+  --coral-100: #ffe9e0;
+  --coral-300: #ffc2ab;
+  --coral-500: #ff916b;
+  --coral-600: #f4743f;
+  --coral-700: #c4521f;
+
+  --sun-100: #fff6d9;
+  --sun-300: #ffe69a;
+  --sun-500: #f6c945;
+  --sun-700: #8a6a05;
+
+  --cream: #fffdf8;
+  --navy-900: #243547;
+  --navy-700: #3b4f66;
+  --navy-500: #62758a;
+  --navy-200: #d5dde6;
+  --navy-100: #e8edf3;
+
+  --danger-100: #ffe5e5;
+  --danger-500: #d64545;
+  --danger-700: #a12828;
+
+  /* Tipografía */
+  --font-display: "Fredoka", "Nunito", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* Formas */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --radius-xl: 36px;
+  --radius-pill: 999px;
+
+  /* Espaciado (escala de 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Sombras suaves con tinte azul oscuro */
+  --shadow-xs: 0 1px 2px rgba(36, 53, 71, 0.06);
+  --shadow-sm: 0 4px 14px rgba(36, 53, 71, 0.08);
+  --shadow-md: 0 10px 28px rgba(36, 53, 71, 0.12);
+  --shadow-lg: 0 22px 54px rgba(36, 53, 71, 0.18);
+  --shadow-cta: 0 8px 18px rgba(244, 116, 63, 0.35);
+
+  /* Movimiento */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 140ms;
+  --t-base: 240ms;
+
+  /* Ancho de contenido */
+  --container: 1200px;
+  --gutter: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   Temas. Cada uno define los mismos tokens semánticos.
+   -------------------------------------------------------------------------- */
+
+/* Claro: blanco cálido */
+.theme-light {
+  --bg: var(--cream);
+  --bg-gradient: var(--cream);
+  --surface: #ffffff;
+  --surface-2: #f7f4ee;
+  --surface-tint: var(--sky-50);
+  --text: var(--navy-900);
+  --text-muted: var(--navy-500);
+  --border: #e6e1d6;
+  --border-strong: #d6cfbf;
+
+  --primary: var(--coral-500);
+  --primary-hover: #ff8257;
+  --primary-contrast: var(--navy-900);
+  --accent: var(--sky-500);
+  --accent-strong: var(--sky-700);
+  --accent-soft: var(--sky-100);
+  --success: var(--mint-700);
+  --success-soft: var(--mint-100);
+  --warning-soft: var(--sun-100);
+  --warning: var(--sun-700);
+  --danger: var(--danger-500);
+  --danger-soft: var(--danger-100);
+  --link: var(--sky-700);
+
+  --nav-bg: rgba(255, 253, 248, 0.92);
+  --topbar-bg: var(--navy-900);
+  --topbar-text: #ffffff;
+  --footer-bg: var(--navy-900);
+  --footer-text: #cdd8e3;
+  --hero-from: var(--sky-100);
+  --hero-to: var(--mint-100);
+  --overlay: rgba(36, 53, 71, 0.55);
+}
+
+/* Cielo: azul muy suave de fondo (tema por defecto) */
+.theme-soft {
+  --bg: #f4fafe;
+  --bg-gradient: linear-gradient(180deg, #eaf6fd 0%, #f8fcff 380px, #fffdf8 100%);
+  --surface: #ffffff;
+  --surface-2: #eef6fb;
+  --surface-tint: var(--sky-50);
+  --text: var(--navy-900);
+  --text-muted: #566a7e;
+  --border: #dce9f2;
+  --border-strong: #c2d6e5;
+
+  --primary: var(--coral-500);
+  --primary-hover: #ff8257;
+  --primary-contrast: var(--navy-900);
+  --accent: var(--sky-500);
+  --accent-strong: var(--sky-700);
+  --accent-soft: var(--sky-100);
+  --success: var(--mint-700);
+  --success-soft: var(--mint-100);
+  --warning-soft: var(--sun-100);
+  --warning: var(--sun-700);
+  --danger: var(--danger-500);
+  --danger-soft: var(--danger-100);
+  --link: var(--sky-700);
+
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --topbar-bg: var(--sky-600);
+  --topbar-text: #ffffff;
+  --footer-bg: var(--navy-900);
+  --footer-text: #cdd8e3;
+  --hero-from: #d9effc;
+  --hero-to: #e4f8f0;
+  --overlay: rgba(36, 53, 71, 0.55);
+}
+
+/* Oscuro: azul noche */
+.theme-dark {
+  --bg: #16212d;
+  --bg-gradient: linear-gradient(180deg, #16212d 0%, #1a2735 100%);
+  --surface: #1f2e3e;
+  --surface-2: #253649;
+  --surface-tint: #223245;
+  --text: #f1f6fb;
+  --text-muted: #a9b9c9;
+  --border: #324559;
+  --border-strong: #425871;
+
+  --primary: var(--coral-500);
+  --primary-hover: #ff8257;
+  --primary-contrast: var(--navy-900);
+  --accent: #7cc6ee;
+  --accent-strong: #9fd3f2;
+  --accent-soft: rgba(101, 185, 233, 0.16);
+  --success: #7fe0bb;
+  --success-soft: rgba(92, 201, 161, 0.16);
+  --warning-soft: rgba(246, 201, 69, 0.14);
+  --warning: #f6d674;
+  --danger: #ff8d8d;
+  --danger-soft: rgba(214, 69, 69, 0.18);
+  --link: #9fd3f2;
+
+  --nav-bg: rgba(22, 33, 45, 0.9);
+  --topbar-bg: #0f1822;
+  --topbar-text: #e8f1f9;
+  --footer-bg: #0f1822;
+  --footer-text: #a9b9c9;
+  --hero-from: #1d3a52;
+  --hero-to: #1b3f3a;
+  --overlay: rgba(5, 10, 16, 0.7);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --gutter: 16px;
+  }
+}

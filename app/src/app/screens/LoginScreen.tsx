@@ -1,5 +1,28 @@
 import { useState } from "react";
 import { recoverPassword, resetPassword } from "../api";
+import { Icon } from "../components/Icon";
+
+/** Panel decorativo con una mascota: acompaña a todos los formularios de acceso. */
+function AuthAside({ title, text }: { title: string; text: string }) {
+  return (
+    <aside className="auth-aside" aria-hidden="true">
+      <img
+        src="https://images.unsplash.com/photo-1537204696486-967f1b7198c8?auto=format&fit=crop&w=900&q=80"
+        alt=""
+        onError={(e) => {
+          e.currentTarget.style.visibility = "hidden";
+        }}
+      />
+      <div className="auth-aside-copy">
+        <span className="auth-aside-icon">
+          <Icon name="paw" size={26} />
+        </span>
+        <p className="auth-aside-title">{title}</p>
+        <p>{text}</p>
+      </div>
+    </aside>
+  );
+}
 
 type Props = {
   mode: "login" | "register";
@@ -72,6 +95,7 @@ export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode }: Pr
   if (recoverMode) {
     return (
       <div className="page-shell auth-shell">
+        <AuthAside title="No pasa nada, lo resolvemos" text="Te ayudamos a recuperar tu cuenta en un momento." />
         <div className="auth-card">
           <div className="auth-header">
             <span className="eyebrow">Petshop</span>
@@ -96,7 +120,7 @@ export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode }: Pr
                   placeholder="mail@ejemplo.com"
                 />
               </label>
-              {recoverError ? <div className="error-box">{recoverError}</div> : null}
+              {recoverError ? <div className="error-box" role="alert">{recoverError}</div> : null}
               <button className="primary-btn block" type="submit" disabled={recoverLoading}>
                 {recoverLoading ? "Enviando..." : "Enviar código"}
               </button>
@@ -117,7 +141,7 @@ export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode }: Pr
                   placeholder="••••••••"
                 />
               </label>
-              {recoverError ? <div className="error-box">{recoverError}</div> : null}
+              {recoverError ? <div className="error-box" role="alert">{recoverError}</div> : null}
               <button className="primary-btn block" type="submit" disabled={recoverLoading}>
                 {recoverLoading ? "Guardando..." : "Cambiar contraseña"}
               </button>
@@ -136,9 +160,19 @@ export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode }: Pr
 
   return (
     <div className="page-shell auth-shell">
+      <AuthAside
+        title={mode === "login" ? "¡Qué alegría verte de nuevo!" : "Sumate a la familia Petshop"}
+        text={
+          mode === "login"
+            ? "Entrá para ver tus pedidos, tus favoritos y tu carrito."
+            : "Creá tu cuenta y guardá tus favoritos, pedidos y descuentos."
+        }
+      />
       <div className="auth-card">
         <div className="auth-header">
-          <span className="eyebrow">Petshop</span>
+          <span className="eyebrow">
+            <Icon name="paw" size={14} /> Petshop
+          </span>
           <h2>{mode === "login" ? "Ingresar" : "Crear cuenta"}</h2>
         </div>
 
@@ -152,15 +186,22 @@ export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode }: Pr
 
           <label>
             <span>Email</span>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="mail@ejemplo.com" />
+            <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="mail@ejemplo.com" />
           </label>
 
           <label>
             <span>Contraseña</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+            <input
+              type="password"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
           </label>
 
-          {error ? <div className="error-box">{error}</div> : null}
+          {error ? <div className="error-box" role="alert">{error}</div> : null}
 
           <button className="primary-btn block" type="submit" disabled={loading}>
             {loading ? "Procesando..." : mode === "login" ? "Iniciar sesión" : "Registrarme"}

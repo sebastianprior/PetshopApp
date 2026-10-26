@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HomeScreen } from "./screens/HomeScreen";
 import { ProductsScreen } from "./screens/ProductsScreen";
 import { CartScreen } from "./screens/CartScreen";
@@ -14,6 +14,8 @@ import { SplashScreen } from "./screens/SplashScreen";
 import { SalchiBot } from "./screens/SalchiBot";
 import { DailyRoulette } from "./screens/DailyRoulette";
 import { WishlistScreen } from "./screens/WishlistScreen";
+import { Icon } from "./components/Icon";
+import { ToastRegion, type ToastMessage } from "./components/Toast";
 import {
   addToCart,
   addToWishlist,
@@ -74,6 +76,8 @@ function App() {
   const [lastCheckout, setLastCheckout] = useState<CheckoutResult | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [navSearch, setNavSearch] = useState("");
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   const cartCount = useMemo(
     () => cartItems.reduce((total, item) => total + item.quantity, 0),
@@ -220,11 +224,42 @@ function App() {
     }
   };
 
+  const dismissToast = useCallback(() => setToast(null), []);
+  const showToast = (message: Omit<ToastMessage, "id">) => setToast({ id: Date.now(), ...message });
+
   const navigateTo = (nextView: View) => {
     setMenuOpen(false);
     setSelectedProductId(null);
+    // Inicio, Ofertas y Favoritos trabajan con el catálogo completo: al salir del catálogo se limpian los filtros.
+    if (nextView !== "products") {
+      setSelectedCategory("all");
+      setSearch("");
+      setNavSearch("");
+    }
     setView(nextView);
   };
+
+  /** Abre el catálogo, opcionalmente ya filtrado por una categoría. */
+  const showCatalog = (categoryId = "all") => {
+    setMenuOpen(false);
+    setSelectedProductId(null);
+    setSelectedCategory(categoryId);
+    setView("products");
+  };
+
+  const handleNavSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSearch(navSearch.trim());
+    showCatalog(selectedCategory);
+  };
+
+  // Con el menú móvil abierto, Escape lo cierra
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: KeyboardEvent) => event.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [menuOpen]);
 
   const handleLogout = () => {
     void logoutSession();
@@ -259,7 +294,7 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleAddToCart = async (product: Product, variant?: ProductVariant) => {
+  const handleAddToCart = async (product: Product, variant?: ProductVariant, quantity = 1) => {
     if (currentUser?.role === "ADMIN") {
       return;
     }
@@ -276,15 +311,19 @@ function App() {
         name: product.name,
         variant: variantLabel,
         variantId: variant?.id ?? null,
-        quantity: 1,
+        quantity,
         price: product.price,
       };
       const updated = await addToCart(authToken, nextItem);
       setCartItems(updated);
-      setView("cart");
+      showToast({
+        text: `${product.name} se agregó al carrito`,
+        actionLabel: "Ver carrito",
+        onAction: () => navigateTo("cart"),
+      });
     } catch (error) {
       console.error("Error agregando al carrito", error);
-      alert(error instanceof Error ? error.message : "No se pudo agregar el producto al carrito.");
+      showToast({ text: error instanceof Error ? error.message : "No se pudo agregar el producto al carrito.", tone: "error" });
     }
   };
 
@@ -293,7 +332,11 @@ function App() {
       return;
     }
     if (!authToken) {
-      alert("Iniciá sesión para guardar productos en favoritos.");
+      showToast({
+        text: "Iniciá sesión para guardar productos en favoritos.",
+        actionLabel: "Ingresar",
+        onAction: () => navigateTo("login"),
+      });
       return;
     }
     try {
@@ -331,7 +374,7 @@ function App() {
         idempotencyKeyRef.current = null;
       }
       console.error("Error al finalizar la compra", error);
-      alert(error instanceof Error ? error.message : "No se pudo completar la compra.");
+      showToast({ text: error instanceof Error ? error.message : "No se pudo completar la compra.", tone: "error" });
     }
   };
 
@@ -341,7 +384,7 @@ function App() {
       setCartItems(updated);
     } catch (error) {
       console.error("Error sumando cantidad", error);
-      alert(error instanceof Error ? error.message : "No se pudo sumar la cantidad.");
+      showToast({ text: error instanceof Error ? error.message : "No se pudo sumar la cantidad.", tone: "error" });
     }
   };
 
@@ -396,6 +439,7 @@ function App() {
         <ProductsScreen
           products={products}
           loading={productLoading}
+          categories={categories}
           categoryFilter={selectedCategory}
           sort={sort}
           search={search}
@@ -423,12 +467,19 @@ function App() {
           onCheckout={handleCheckout}
           onIncrement={handleIncrementCartItem}
           onDecrement={handleDecrementCartItem}
+          onContinueShopping={() => showCatalog()}
         />
       );
     }
 
     if (view === "confirmation" && lastCheckout) {
-      return <OrderConfirmationScreen result={lastCheckout} isLoggedIn={!!currentUser} onNavigate={navigateTo} />;
+      return (
+        <OrderConfirmationScreen
+          result={lastCheckout}
+          isLoggedIn={!!currentUser}
+          onNavigate={(next) => (next === "products" ? showCatalog() : navigateTo(next))}
+        />
+      );
     }
 
     if (view === "terms" || view === "privacy" || view === "contact") {
@@ -494,7 +545,8 @@ function App() {
         categories={categories}
         products={products}
         currentUser={currentUser}
-        onNavigate={navigateTo}
+        onNavigate={(next) => (next === "products" ? showCatalog() : navigateTo(next))}
+        onSelectCategory={showCatalog}
         onAddToCart={handleAddToCart}
         onOpenProduct={openProduct}
         wishlist={wishlist}
@@ -504,6 +556,23 @@ function App() {
       />
     );
   };
+
+  const isAdmin = currentUser?.role === "ADMIN";
+  const themeOptions = [
+    { id: "light", label: "Tema claro", icon: "sun" },
+    { id: "soft", label: "Tema medio", icon: "contrast" },
+    { id: "dark", label: "Tema oscuro", icon: "moon" },
+  ] as const;
+
+  const navLink = (target: View, label: string) => (
+    <button
+      className={view === target && !selectedProductId ? "nav-link active" : "nav-link"}
+      aria-current={view === target && !selectedProductId ? "page" : undefined}
+      onClick={() => (target === "products" ? showCatalog() : navigateTo(target))}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className={`app-shell theme-${theme}`}>
@@ -525,23 +594,42 @@ function App() {
         </div>
       ) : null}
 
-      <nav className="main-nav">
+      <nav className="main-nav" aria-label="Principal">
         <div className="nav-inner">
-          <button className="brand" onClick={() => navigateTo("home")}>
-            <span className="brand-mark">🐾</span>
-            <span>Petshop</span>
+          <button className="brand" onClick={() => navigateTo("home")} aria-label="Petshop, ir al inicio">
+            <span className="brand-mark">
+              <Icon name="paw" size={22} />
+            </span>
+            <span className="brand-name">Petshop</span>
           </button>
+
+          <form className="nav-search" role="search" onSubmit={handleNavSearch}>
+            <Icon name="search" size={18} />
+            <input
+              type="search"
+              value={navSearch}
+              onChange={(e) => setNavSearch(e.target.value)}
+              placeholder="Buscá productos o marcas..."
+              aria-label="Buscar productos"
+            />
+          </form>
 
           <div className="nav-quick">
             {roulette ? (
               <button className="nav-roulette-icon" onClick={() => setRouletteOpen(true)} aria-label="Descuento del día">
-                🎡
+                <Icon name="wheel" size={22} />
                 {!roulette.spun ? <span className="nav-roulette-dot" /> : null}
               </button>
             ) : null}
-            {currentUser?.role !== "ADMIN" ? (
+            {currentUser && !isAdmin ? (
+              <button className="nav-icon-btn" onClick={() => navigateTo("wishlist")} aria-label={`Favoritos (${wishlist.length})`}>
+                <Icon name="heart" size={22} />
+                {wishlist.length > 0 ? <span className="nav-cart-count">{wishlist.length}</span> : null}
+              </button>
+            ) : null}
+            {!isAdmin ? (
               <button className="nav-cart" onClick={() => navigateTo("cart")} aria-label={`Carrito (${cartCount})`}>
-                🛒
+                <Icon name="cart" size={22} />
                 {cartCount > 0 ? <span className="nav-cart-count">{cartCount}</span> : null}
               </button>
             ) : null}
@@ -551,68 +639,54 @@ function App() {
               aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
               aria-expanded={menuOpen}
             >
-              {menuOpen ? "✕" : "☰"}
+              <Icon name={menuOpen ? "close" : "menu"} size={24} />
             </button>
           </div>
 
           <div className={menuOpen ? "nav-menu open" : "nav-menu"}>
             <div className="nav-links">
-              <button onClick={() => navigateTo("home")}>Inicio</button>
-              <button onClick={() => navigateTo("products")}>Productos</button>
-              <button onClick={() => navigateTo("offers")}>Ofertas</button>
-              {currentUser?.role !== "ADMIN" ? (
-                <button onClick={() => navigateTo("cart")}>Carrito ({cartCount})</button>
+              {navLink("home", "Inicio")}
+              {navLink("products", "Productos")}
+              {navLink("offers", "Ofertas")}
+              {!isAdmin ? <span className="nav-only-mobile">{navLink("cart", `Carrito (${cartCount})`)}</span> : null}
+              {currentUser && !isAdmin ? (
+                <span className="nav-only-mobile">{navLink("wishlist", `Favoritos${wishlist.length > 0 ? ` (${wishlist.length})` : ""}`)}</span>
               ) : null}
-              {currentUser && currentUser.role !== "ADMIN" ? (
-                <button onClick={() => navigateTo("wishlist")}>Favoritos {wishlist.length > 0 ? `(${wishlist.length})` : ""}</button>
-              ) : null}
-              {currentUser ? (
-                <button onClick={() => navigateTo("orders")}>Mis pedidos</button>
-              ) : null}
-              {currentUser?.role === "ADMIN" ? (
-                <button onClick={() => navigateTo("admin")}>Admin</button>
-              ) : null}
+              {currentUser ? navLink("orders", "Mis pedidos") : null}
+              {isAdmin ? navLink("admin", "Admin") : null}
             </div>
 
             <div className="nav-actions">
               {roulette ? (
                 <button className={roulette.spun ? "roulette-pill won" : "roulette-pill"} onClick={() => setRouletteOpen(true)}>
-                  <span aria-hidden="true">🎡</span>
+                  <Icon name="wheel" size={18} />
                   {roulette.spun ? `${roulette.percent}% OFF · ${roulette.categoryName}` : "Descuento del día"}
                   {!roulette.spun ? <span className="nav-roulette-dot" /> : null}
                 </button>
               ) : null}
-              <div className="theme-switcher" aria-label="selector de tema">
-                <button
-                  className={theme === "light" ? "theme-option active" : "theme-option"}
-                  onClick={() => setTheme("light")}
-                  aria-label="Tema claro"
-                  title="Tema claro"
-                >
-                  ☀️
-                </button>
-                <button
-                  className={theme === "soft" ? "theme-option active" : "theme-option"}
-                  onClick={() => setTheme("soft")}
-                  aria-label="Tema medio"
-                  title="Tema medio"
-                >
-                  ◐
-                </button>
-                <button
-                  className={theme === "dark" ? "theme-option active" : "theme-option"}
-                  onClick={() => setTheme("dark")}
-                  aria-label="Tema oscuro"
-                  title="Tema oscuro"
-                >
-                  🌙
-                </button>
+              <div className="theme-switcher" role="group" aria-label="selector de tema">
+                {themeOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    className={theme === option.id ? "theme-option active" : "theme-option"}
+                    onClick={() => setTheme(option.id)}
+                    aria-label={option.label}
+                    aria-pressed={theme === option.id}
+                    title={option.label}
+                  >
+                    <Icon name={option.icon} size={16} />
+                  </button>
+                ))}
               </div>
 
               {currentUser ? (
                 <>
-                  <button className="user-pill" onClick={() => navigateTo("account")}>{currentUser.name}</button>
-                  <button className="secondary-btn" onClick={handleLogout}>Salir</button>
+                  <button className="user-pill" onClick={() => navigateTo("account")}>
+                    <Icon name="user" size={16} /> {currentUser.name}
+                  </button>
+                  <button className="secondary-btn" onClick={handleLogout}>
+                    <Icon name="logout" size={16} /> Salir
+                  </button>
                 </>
               ) : (
                 <button className="primary-btn" onClick={() => navigateTo("login")}>Iniciar sesión</button>
@@ -632,22 +706,42 @@ function App() {
           onClose={() => setRouletteOpen(false)}
           onGoToCategory={(categoryId) => {
             setRouletteOpen(false);
-            setSelectedCategory(categoryId);
-            navigateTo("products");
+            showCatalog(categoryId);
           }}
         />
       ) : null}
 
-      {currentUser?.role !== "ADMIN" ? <SalchiBot onOpenProduct={openProduct} onAddToCart={handleAddToCart} /> : null}
+      {!isAdmin ? <SalchiBot onOpenProduct={openProduct} onAddToCart={handleAddToCart} /> : null}
+
+      <ToastRegion toast={toast} onDismiss={dismissToast} />
 
       <footer className="app-footer">
         <div className="app-footer-inner">
-          <span>© {new Date().getFullYear()} PetshopApp — tienda de demostración</span>
-          <div className="app-footer-links">
+          <div className="footer-brand">
+            <span className="brand-mark">
+              <Icon name="paw" size={22} />
+            </span>
+            <div>
+              <strong>Petshop</strong>
+              <p>Todo para perros y gatos, con envíos a todo el país.</p>
+            </div>
+          </div>
+          <div className="footer-col">
+            <h4>Tienda</h4>
+            <button onClick={() => showCatalog()}>Productos</button>
+            <button onClick={() => navigateTo("offers")}>Ofertas</button>
+            <button onClick={() => showCatalog("perros")}>Perros</button>
+            <button onClick={() => showCatalog("gatos")}>Gatos</button>
+          </div>
+          <div className="footer-col">
+            <h4>Ayuda</h4>
+            <button onClick={() => navigateTo("contact")}>Contacto</button>
             <button onClick={() => navigateTo("terms")}>Términos y condiciones</button>
             <button onClick={() => navigateTo("privacy")}>Privacidad</button>
-            <button onClick={() => navigateTo("contact")}>Contacto</button>
           </div>
+        </div>
+        <div className="app-footer-bottom">
+          <span>© {new Date().getFullYear()} PetshopApp — tienda de demostración</span>
         </div>
       </footer>
     </div>

@@ -207,10 +207,76 @@ describe("ProductsScreen", () => {
     await user.type(screen.getByPlaceholderText("Nombre o marca..."), "a");
     expect(onSearchChange).toHaveBeenCalledWith("a");
 
-    await user.selectOptions(screen.getByDisplayValue("Todas"), "juguetes");
+    await user.click(screen.getByRole("button", { name: /Juguetes/ }));
     expect(onCategoryChange).toHaveBeenCalledWith("juguetes");
+
+    await user.click(screen.getByRole("button", { name: /Todas/ }));
+    expect(onCategoryChange).toHaveBeenCalledWith("all");
 
     await user.selectOptions(screen.getByDisplayValue("Relevancia"), "menorprecio");
     expect(onSortChange).toHaveBeenCalledWith("menorprecio");
+  });
+  it("builds the category chips from the server categories and marks the active one", async () => {
+    const user = userEvent.setup();
+    const onCategoryChange = vi.fn();
+
+    render(
+      <ProductsScreen
+        products={makeProducts(2)}
+        loading={false}
+        categories={[
+          { id: "higiene", name: "Higiene" },
+          { id: "salud", name: "Salud" },
+        ]}
+        categoryFilter="salud"
+        sort=""
+        search=""
+        onCategoryChange={onCategoryChange}
+        onSortChange={noop}
+        onSearchChange={noop}
+        onAddToCart={noop}
+        onOpenProduct={noop}
+        isAdmin={false}
+        wishlist={[]}
+        onToggleWishlist={noop}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /Salud/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Todas/ })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("heading", { level: 1, name: "Salud" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Juguetes/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Higiene/ }));
+    expect(onCategoryChange).toHaveBeenCalledWith("higiene");
+  });
+
+  it("offers to clear the filters when nothing matches", async () => {
+    const user = userEvent.setup();
+    const onCategoryChange = vi.fn();
+    const onSearchChange = vi.fn();
+
+    render(
+      <ProductsScreen
+        products={[]}
+        loading={false}
+        categoryFilter="gatos"
+        sort=""
+        search="zzz"
+        onCategoryChange={onCategoryChange}
+        onSortChange={noop}
+        onSearchChange={onSearchChange}
+        onAddToCart={noop}
+        onOpenProduct={noop}
+        isAdmin={false}
+        wishlist={[]}
+        onToggleWishlist={noop}
+      />,
+    );
+
+    await user.click(screen.getByText("Limpiar filtros"));
+
+    expect(onSearchChange).toHaveBeenCalledWith("");
+    expect(onCategoryChange).toHaveBeenCalledWith("all");
   });
 });

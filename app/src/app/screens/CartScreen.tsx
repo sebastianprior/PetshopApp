@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { CartItem, ShippingInfo } from "../types";
 import { fetchRouletteCartDiscount, validateCoupon } from "../api";
 import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
+import { Icon } from "../components/Icon";
 
 type Props = {
   items: CartItem[];
@@ -11,6 +12,8 @@ type Props = {
   onCheckout: (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => void;
   onIncrement: (item: CartItem) => void;
   onDecrement: (item: CartItem) => void;
+  /** Lleva al catálogo desde el carrito vacío. */
+  onContinueShopping?: () => void;
 };
 
 const formatMoney = (value: number) =>
@@ -24,7 +27,7 @@ const EMPTY_SHIPPING: ShippingInfo = {
   telefono: "",
 };
 
-export function CartScreen({ items, authToken, productImages, onRemove, onCheckout, onIncrement, onDecrement }: Props) {
+export function CartScreen({ items, authToken, productImages, onRemove, onCheckout, onIncrement, onDecrement, onContinueShopping }: Props) {
   const [shipping, setShipping] = useState<ShippingInfo>(EMPTY_SHIPPING);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
@@ -97,7 +100,16 @@ export function CartScreen({ items, authToken, productImages, onRemove, onChecko
       </div>
 
       {items.length === 0 ? (
-        <div className="empty-state">Tu carrito está vacío.</div>
+        <div className="empty-state">
+          <Icon name="cart" size={40} />
+          <strong>Tu carrito está vacío.</strong>
+          <span>Sumá algo rico o divertido para tu mascota.</span>
+          {onContinueShopping ? (
+            <button className="primary-btn" onClick={onContinueShopping}>
+              Ver productos
+            </button>
+          ) : null}
+        </div>
       ) : (
         <div className="cart-layout">
           <div className="cart-list">
@@ -117,15 +129,17 @@ export function CartScreen({ items, authToken, productImages, onRemove, onChecko
                   <div className="cart-meta-row">
                     <strong>{formatMoney(item.price)}</strong>
                     <div className="qty-stepper">
-                      <button className="secondary-btn" onClick={() => onDecrement(item)} aria-label="Restar cantidad">−</button>
+                      <button className="secondary-btn" onClick={() => onDecrement(item)} aria-label="Restar cantidad"><Icon name="minus" size={16} /></button>
                       <span>{item.quantity}</span>
-                      <button className="secondary-btn" onClick={() => onIncrement(item)} aria-label="Sumar cantidad">+</button>
+                      <button className="secondary-btn" onClick={() => onIncrement(item)} aria-label="Sumar cantidad"><Icon name="plus" size={16} /></button>
                     </div>
                   </div>
                 </div>
 
                 <div className="cart-actions">
-                  <button className="secondary-btn danger" onClick={() => onRemove(item)}>Quitar</button>
+                  <button className="secondary-btn danger" onClick={() => onRemove(item)}>
+                    <Icon name="trash" size={16} /> Quitar
+                  </button>
                 </div>
               </div>
             ))}
@@ -237,6 +251,9 @@ export function CartScreen({ items, authToken, productImages, onRemove, onChecko
                 </select>
               </label>
               <button className="primary-btn block" type="submit">Finalizar compra</button>
+              <p className="secure-note">
+                <Icon name="shield" size={16} /> Compra protegida: el pago se procesa de forma segura.
+              </p>
             </form>
           </aside>
         </div>

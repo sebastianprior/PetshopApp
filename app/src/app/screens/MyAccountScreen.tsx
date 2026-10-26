@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { User } from "../types";
 import { changePassword, updateMyProfile } from "../api";
+import { Icon } from "../components/Icon";
 
 type Props = {
   authToken: string;
@@ -71,6 +72,17 @@ export function MyAccountScreen({ authToken, currentUser, onProfileUpdated }: Pr
         <h2>Mi cuenta</h2>
       </div>
 
+      <div className="account-hero">
+        <span className="account-avatar" aria-hidden="true">
+          {(currentUser.name.trim()[0] ?? "?").toUpperCase()}
+        </span>
+        <div>
+          <strong>{currentUser.name}</strong>
+          <small>{currentUser.email}</small>
+        </div>
+        <Icon name="paw" size={28} className="account-hero-paw" />
+      </div>
+
       <div className="account-cards">
         <form className="account-card" onSubmit={handleNameSubmit}>
           <h3>Datos personales</h3>
@@ -80,9 +92,9 @@ export function MyAccountScreen({ authToken, currentUser, onProfileUpdated }: Pr
           </label>
           <label>
             <span>Nombre</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} />
+            <input value={name} autoComplete="name" onChange={(e) => setName(e.target.value)} />
           </label>
-          {nameError ? <div className="error-box">{nameError}</div> : null}
+          {nameError ? <div className="error-box" role="alert">{nameError}</div> : null}
           {nameSaved ? <div className="info-box">Datos actualizados.</div> : null}
           <button className="primary-btn" type="submit" disabled={nameSaving}>
             {nameSaving ? "Guardando..." : "Guardar cambios"}
@@ -93,13 +105,13 @@ export function MyAccountScreen({ authToken, currentUser, onProfileUpdated }: Pr
           <h3>Cambiar contraseña</h3>
           <label>
             <span>Contraseña actual</span>
-            <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            <input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
           </label>
           <label>
             <span>Contraseña nueva</span>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            <input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
           </label>
-          {passwordError ? <div className="error-box">{passwordError}</div> : null}
+          {passwordError ? <div className="error-box" role="alert">{passwordError}</div> : null}
           {passwordSaved ? <div className="info-box">Contraseña actualizada.</div> : null}
           <button className="primary-btn" type="submit" disabled={passwordSaving}>
             {passwordSaving ? "Guardando..." : "Cambiar contraseña"}
