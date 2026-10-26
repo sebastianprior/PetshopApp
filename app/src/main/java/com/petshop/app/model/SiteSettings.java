@@ -35,5 +35,9 @@ public class SiteSettings {
     public String giftProductId;
     public Double giftMinAmount;
 
+    /** Si el texto de la barra se desplaza de derecha a izquierda (marquesina). Nulo = quieto. */
+    public Boolean topbarMarquee;
+    public Boolean announcementMarquee;
+
     public SiteSettings() {}
 }

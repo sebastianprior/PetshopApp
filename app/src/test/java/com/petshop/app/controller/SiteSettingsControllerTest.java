@@ -79,6 +79,29 @@ class SiteSettingsControllerTest {
     }
 
     @Test
+    void marqueeIsOffByDefaultAndKeepsItsValueWhenTheClientDoesNotSendIt() {
+        assertThat(controller.get().announcementMarquee).isFalse();
+        assertThat(controller.get().topbarMarquee).isFalse();
+
+        SiteSettingsDTO withMarquee = dto(List.of("a"), "CUSTOM", "Oferta");
+        withMarquee.announcementMarquee = true;
+        SiteSettingsDTO saved = (SiteSettingsDTO) controller.update(adminToken, withMarquee).getBody();
+        assertThat(saved.announcementMarquee).isTrue();
+        assertThat(saved.topbarMarquee).isFalse();
+
+        SiteSettings stored = new SiteSettings();
+        stored.announcementMarquee = true;
+        when(repository.findById(SiteSettings.SINGLETON_ID)).thenReturn(Optional.of(stored));
+        SiteSettingsDTO withoutField = dto(List.of("a"), "CUSTOM", "Oferta");
+        SiteSettingsDTO kept = (SiteSettingsDTO) controller.update(adminToken, withoutField).getBody();
+        assertThat(kept.announcementMarquee).isTrue();
+
+        withoutField.announcementMarquee = false;
+        SiteSettingsDTO turnedOff = (SiteSettingsDTO) controller.update(adminToken, withoutField).getBody();
+        assertThat(turnedOff.announcementMarquee).isFalse();
+    }
+
+    @Test
     void anEmptyTopbarIsAllowedToHideIt() {
         ResponseEntity<?> response = controller.update(adminToken, dto(List.of(), "OFF", ""));
 
