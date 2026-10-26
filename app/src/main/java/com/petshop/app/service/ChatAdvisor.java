@@ -122,9 +122,16 @@ public class ChatAdvisor {
     private static final Pattern BUDGET = Pattern.compile("(?:menos de|hasta|maximo|no mas de|por debajo de|tope|presupuesto de|gasto)\\s*\\$?\\s*(\\d{3,6})|\\$\\s*(\\d{3,6})|(\\d{3,6})\\s*(?:pesos|\\$)");
 
     private final List<Product> catalog;
+    private final FaqMatcher faq;
 
     public ChatAdvisor(List<Product> catalog) {
+        this(catalog, List.of());
+    }
+
+    /** Con las preguntas frecuentes que edita el administrador: el bot las responde antes de recomendar productos. */
+    public ChatAdvisor(List<Product> catalog, List<FaqMatcher.Entry> faqEntries) {
         this.catalog = catalog.stream().filter(p -> p.stock > 0).toList();
+        this.faq = new FaqMatcher(faqEntries);
     }
 
     public Advice advise(String rawMessage, List<String> history) {
@@ -139,9 +146,12 @@ public class ChatAdvisor {
         String normalized = normalize(message);
         List<String> tokens = tokenize(normalized);
 
-        Advice faq = answerFaq(normalized, tokens);
-        if (faq != null) {
-            return faq;
+        Advice about = aboutTheBot(normalized, tokens);
+        if (about != null) {
+            return about;
+        }
+        if (faq.asksForTheList(normalized) && !faq.isEmpty()) {
+            return faqList();
         }
 
         Set<String> triggers = triggersIn(tokens);
@@ -159,6 +169,11 @@ public class ChatAdvisor {
         Integer budget = budgetOf(normalized);
         boolean cheap = tokens.stream().anyMatch(t -> Set.of("barato", "economico", "accesible", "ahorrar", "oferta", "descuento", "promo", "promocion").contains(t));
         boolean wantsOffers = tokens.stream().anyMatch(t -> Set.of("oferta", "descuento", "promo", "promocion", "rebaja").contains(t));
+        // Una pregunta frecuente se responde si encaja claramente, o si el mensaje no pide un producto ni una oferta
+        FaqMatcher.Match faqMatch = faq.best(normalized);
+        if (faqMatch != null && (faqMatch.score() >= FaqMatcher.STRONG_SCORE || (!hasNeed && !wantsOffers))) {
+            return faqAdvice(faqMatch);
+        }
         boolean puppy = tokens.contains("cachorro") || tokens.contains("cachorrito") || tokens.contains("bebe");
         boolean senior = tokens.contains("senior") || tokens.contains("viejo") || tokens.contains("mayor") || tokens.contains("anciano");
 
@@ -201,16 +216,22 @@ public class ChatAdvisor {
                 List.of(), defaultSuggestions());
     }
 
-    private Advice answerFaq(String normalized, List<String> tokens) {
-        if (containsAny(tokens, "envio", "enviar", "entrega", "despacho", "llega", "llegan", "demora")) {
-            return new Advice("Hacemos envíos a todo el país 🚚 El costo de envío es de $1.500 y lo ves antes de confirmar la compra.", List.of(), defaultSuggestions());
+    /** Responde con la respuesta de la pregunta frecuente elegida y sugiere otras preguntas para seguir. */
+    private Advice faqAdvice(FaqMatcher.Match match) {
+        List<FaqMatcher.Entry> all = faq.entries();
+        List<String> related = new ArrayList<>();
+        for (int step = 1; step < all.size() && related.size() < 3; step++) {
+            related.add(all.get((match.index() + step) % all.size()).question());
         }
-        if (containsAny(tokens, "cuota", "cuotas", "tarjeta", "pago", "pagar", "medio", "efectivo", "financiacion")) {
-            return new Advice("Podés pagar con tarjeta y las compras tienen 6 cuotas sin interés 💳 El pago se confirma al finalizar la compra.", List.of(), defaultSuggestions());
-        }
-        if (containsAny(tokens, "devolucion", "devolver", "cambio", "cambiar", "garantia", "reembolso", "arrepentimiento")) {
-            return new Advice("Tenés 30 días de garantía 🛡️ Si algo no salió bien, entrá a \"Mis pedidos\" y pedí la devolución desde ahí.", List.of(), defaultSuggestions());
-        }
+        return new Advice(match.entry().answer(), List.of(), related);
+    }
+
+    private Advice faqList() {
+        List<String> questions = faq.entries().stream().map(FaqMatcher.Entry::question).limit(6).toList();
+        return new Advice("Estas son las preguntas más frecuentes 📋 Tocá una para ver la respuesta, o escribime la tuya:", List.of(), questions);
+    }
+
+    private Advice aboutTheBot(String normalized, List<String> tokens) {
         if (normalized.contains("quien sos") || normalized.contains("que haces") || normalized.contains("que sos") || containsAny(tokens, "ayuda", "ayudame", "funcionas")) {
             return new Advice("Soy Salchi Bot 🌭🎧, el perrito salchicha de atención al cliente. Leo lo que me escribís y te recomiendo productos de la tienda: probá con \"mi gato se aburre\" o \"algo para el paseo\".",
                     List.of(), defaultSuggestions());

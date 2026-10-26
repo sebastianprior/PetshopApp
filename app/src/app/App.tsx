@@ -14,6 +14,7 @@ import { SplashScreen } from "./screens/SplashScreen";
 import { SalchiBot } from "./screens/SalchiBot";
 import { DailyRoulette } from "./screens/DailyRoulette";
 import { WishlistScreen } from "./screens/WishlistScreen";
+import { FaqScreen } from "./screens/FaqScreen";
 import { Icon } from "./components/Icon";
 import { ToastRegion, type ToastMessage } from "./components/Toast";
 import { Marquee } from "./components/Marquee";
@@ -27,6 +28,7 @@ import {
   decrementCartItem,
   fetchCart,
   fetchCartPromos,
+  fetchFaq,
   fetchCategories,
   fetchCurrentUser,
   fetchProducts,
@@ -44,7 +46,7 @@ import {
   TOKEN_REFRESHED_EVENT,
   UNAUTHORIZED_EVENT,
 } from "./api";
-import { NO_CART_PROMOS, type CartPromos } from "./types";
+import { NO_CART_PROMOS, type CartPromos, type Faq } from "./types";
 import type { CartItem, CheckoutResult, Category, Product, ProductVariant, RouletteState, ShippingInfo, SiteSettings, User, View } from "./types";
 
 // Valores que se muestran hasta que llega la configuración del servidor (los mismos que trae por defecto).
@@ -83,6 +85,8 @@ function App() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [navSearch, setNavSearch] = useState("");
   const [cartPromos, setCartPromos] = useState<CartPromos>(NO_CART_PROMOS);
+  const [faq, setFaq] = useState<Faq[]>([]);
+  const [faqLoading, setFaqLoading] = useState(true);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   // La tienda solo muestra categorías con productos; el panel de admin sigue viendo todas
@@ -187,6 +191,10 @@ function App() {
     fetchSiteSettings()
       .then(setSiteSettings)
       .catch((error) => console.error("No se pudo cargar la configuración del sitio", error));
+    fetchFaq()
+      .then(setFaq)
+      .catch((error) => console.error("No se pudieron cargar las preguntas frecuentes", error))
+      .finally(() => setFaqLoading(false));
     fetchCartPromos()
       .then(setCartPromos)
       .catch((error) => console.error("No se pudo cargar el envío gratis y el regalo", error));
@@ -505,6 +513,10 @@ function App() {
       return <LegalScreen section={view} />;
     }
 
+    if (view === "faq") {
+      return <FaqScreen items={faq} loading={faqLoading} onContact={() => navigateTo("contact")} />;
+    }
+
     if (view === "offers") {
       return (
         <OffersScreen
@@ -528,6 +540,8 @@ function App() {
           onSiteSettingsChange={setSiteSettings}
           cartPromos={cartPromos}
           onCartPromosChange={setCartPromos}
+          faq={faq}
+          onFaqChange={setFaq}
         />
       );
     }
@@ -770,6 +784,7 @@ function App() {
           </div>
           <div className="footer-col">
             <h4>Ayuda</h4>
+            <button onClick={() => navigateTo("faq")}>Preguntas frecuentes</button>
             <button onClick={() => navigateTo("contact")}>Contacto</button>
             <button onClick={() => navigateTo("terms")}>Términos y condiciones</button>
             <button onClick={() => navigateTo("privacy")}>Privacidad</button>

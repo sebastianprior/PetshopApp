@@ -39,5 +39,8 @@ public class SiteSettings {
     public Boolean topbarMarquee;
     public Boolean announcementMarquee;
 
+    /** Ya se cargaron las preguntas frecuentes de ejemplo (para no volver a cargarlas si el admin las borra). */
+    public Boolean faqSeeded;
+
     public SiteSettings() {}
 }

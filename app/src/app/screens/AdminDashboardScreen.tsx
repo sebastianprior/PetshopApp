@@ -10,9 +10,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { CartPromos, Category, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, SiteSettings, User } from "../types";
+import type { CartPromos, Category, Faq, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, SiteSettings, User } from "../types";
 import { AnnouncementSettings } from "./AnnouncementSettings";
 import { CartPromosSettings } from "./CartPromosSettings";
+import { FaqSettings } from "./FaqSettings";
 import {
   createCategory,
   createCoupon,
@@ -51,9 +52,11 @@ type Props = {
   onSiteSettingsChange: (settings: SiteSettings) => void;
   cartPromos: CartPromos;
   onCartPromosChange: (promos: CartPromos) => void;
+  faq: Faq[];
+  onFaqChange: (items: Faq[]) => void;
 };
 
-type Tab = "stats" | "orders" | "products" | "categories" | "returns" | "users" | "coupons" | "announcements" | "cartpromos";
+type Tab = "stats" | "orders" | "products" | "categories" | "returns" | "users" | "coupons" | "announcements" | "cartpromos" | "faq";
 
 const EMPTY_CATEGORY_FORM = { id: "", name: "", color: "#65b9e9" };
 
@@ -102,7 +105,7 @@ const EMPTY_PRODUCT_FORM = {
   tipoPromocion: "",
 };
 
-export function AdminDashboardScreen({ authToken, categories, currentUserId, siteSettings, onSiteSettingsChange, cartPromos, onCartPromosChange }: Props) {
+export function AdminDashboardScreen({ authToken, categories, currentUserId, siteSettings, onSiteSettingsChange, cartPromos, onCartPromosChange, faq, onFaqChange }: Props) {
   const [tab, setTab] = useState<Tab>("stats");
 
   const [users, setUsers] = useState<User[]>([]);
@@ -751,6 +754,9 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
         </button>
         <button className={tab === "cartpromos" ? "admin-tab active" : "admin-tab"} onClick={() => setTab("cartpromos")}>
           Envío y regalo
+        </button>
+        <button className={tab === "faq" ? "admin-tab active" : "admin-tab"} onClick={() => setTab("faq")}>
+          Preguntas frecuentes
         </button>
       </div>
 
@@ -1417,6 +1423,8 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
           )}
         </section>
       ) : null}
+
+      {tab === "faq" ? <FaqSettings authToken={authToken} items={faq} onSaved={onFaqChange} /> : null}
 
       {tab === "cartpromos" ? (
         <CartPromosSettings authToken={authToken} promos={cartPromos} onSaved={onCartPromosChange} />

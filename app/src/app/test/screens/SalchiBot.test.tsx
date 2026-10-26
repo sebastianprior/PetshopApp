@@ -44,6 +44,7 @@ describe("SalchiBot", () => {
     expect(screen.getByRole("dialog", { name: "Chat con Salchi Bot" })).toBeInTheDocument();
     expect(screen.getByText(/Soy Salchi Bot/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Algo para el paseo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preguntas frecuentes" })).toBeInTheDocument();
   });
 
   it("sends what the customer types and shows the recommended products", async () => {
