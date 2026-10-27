@@ -7,3 +7,6 @@ target/
 vite.config.d.ts
 vite.config.js
 app/uploads/
+
+.env
+.env.local

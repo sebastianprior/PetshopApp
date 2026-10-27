@@ -1,6 +1,7 @@
 import type { CartItem, CartPromos, Category, Faq, ShippingConfig, ShippingQuote, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
 
-const API_BASE_URL = "http://localhost:8080/api";
+/** Dirección del backend. En producción se define con VITE_API_URL al compilar (ver .env.example); en desarrollo usa el backend local. */
+export const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8080/api").replace(/\/+$/, "");
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 export const AUTH_TOKEN_KEY = "petshop_auth_token";
 export const AUTH_USER_KEY = "petshop_auth_user";

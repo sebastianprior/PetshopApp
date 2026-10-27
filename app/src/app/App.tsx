@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { HomeScreen } from "./screens/HomeScreen";
 import { ProductsScreen } from "./screens/ProductsScreen";
 import { CartScreen } from "./screens/CartScreen";
@@ -15,6 +16,7 @@ import { SalchiBot } from "./screens/SalchiBot";
 import { DailyRoulette } from "./screens/DailyRoulette";
 import { WishlistScreen } from "./screens/WishlistScreen";
 import { FaqScreen } from "./screens/FaqScreen";
+import { goBack, navigate, parsePath, pathFor, productPath, useLocation, withQuery } from "./router";
 import { Icon } from "./components/Icon";
 import { ToastRegion, type ToastMessage } from "./components/Toast";
 import { Marquee } from "./components/Marquee";
@@ -29,6 +31,7 @@ import {
   fetchCart,
   fetchCartPromos,
   fetchFaq,
+  fetchProduct,
   fetchCategories,
   fetchCurrentUser,
   fetchProducts,
@@ -56,8 +59,34 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   announcementText: "",
 };
 
+const SCREEN_TITLES: Partial<Record<View, string>> = {
+  products: "Productos",
+  offers: "Ofertas",
+  cart: "Carrito",
+  login: "Ingresar",
+  admin: "Panel de administración",
+  orders: "Mis pedidos",
+  wishlist: "Favoritos",
+  account: "Mi cuenta",
+  confirmation: "Compra confirmada",
+  terms: "Términos y condiciones",
+  privacy: "Privacidad",
+  contact: "Contacto",
+  faq: "Preguntas frecuentes",
+};
+
+/** Categoría y búsqueda del catálogo guardadas en la dirección (/productos?categoria=perros&q=collar). */
+const filtersFromUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  const onCatalog = parsePath(window.location.pathname).view === "products";
+  return { category: onCatalog ? (params.get("categoria") ?? "all") : "all", query: onCatalog ? (params.get("q") ?? "") : "" };
+};
+
 function App() {
-  const [view, setView] = useState<View>("home");
+  const location = useLocation();
+  const route = useMemo(() => parsePath(location.pathname), [location.pathname]);
+  const view = route.view;
+  const selectedProductId = route.productId;
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [roulette, setRoulette] = useState<RouletteState | null>(null);
@@ -69,16 +98,21 @@ function App() {
   const [categoriesWithProducts, setCategoriesWithProducts] = useState<Set<string> | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  // La sesión se lee al arrancar para que las pantallas protegidas (/mis-pedidos, /admin) no reboten al cliente que ya ingresó
+  const [currentUser, setCurrentUser] = useState<User | null>(() => (getAuthToken() ? getCurrentUser() : null));
+  const [authToken, setAuthToken] = useState<string | null>(() => getAuthToken());
   const [productLoading, setProductLoading] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => filtersFromUrl().category);
   const [sort, setSort] = useState("");
-  const [search, setSearch] = useState("");
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [search, setSearch] = useState(() => filtersFromUrl().query);
+  const [productsLoaded, setProductsLoaded] = useState(false);
+  // producto abierto por link directo que no está en el catálogo cargado (por ejemplo, con otro filtro)
+  const [directProduct, setDirectProduct] = useState<Product | null>(null);
+  // id del último producto que ya se intentó pedir por link directo (mientras no coincida, se muestra "Cargando")
+  const [directAttemptedId, setDirectAttemptedId] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "soft" | "dark">("soft");
   const [lastCheckout, setLastCheckout] = useState<CheckoutResult | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -137,6 +171,7 @@ function App() {
       console.error("No se pudieron cargar los productos", error);
     } finally {
       setProductLoading(false);
+      setProductsLoaded(true);
     }
   };
 
@@ -213,10 +248,26 @@ function App() {
     }
   }, [authToken]);
 
-  const selectedProduct = useMemo(
+  const listedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
     [products, selectedProductId],
   );
+  const selectedProduct = listedProduct ?? (directProduct && directProduct.id === selectedProductId ? directProduct : null);
+
+  // Si se abre /productos/:id y ese producto no vino en el catálogo, se pide solo
+  useEffect(() => {
+    if (!selectedProductId || listedProduct || !productsLoaded) {
+      return;
+    }
+    let active = true;
+    fetchProduct(selectedProductId)
+      .then((product) => active && setDirectProduct(product))
+      .catch(() => active && setDirectProduct(null))
+      .finally(() => active && setDirectAttemptedId(selectedProductId));
+    return () => {
+      active = false;
+    };
+  }, [selectedProductId, listedProduct, productsLoaded]);
 
   const handleLogin = async ({ email, password, name }: { email: string; password: string; name?: string }) => {
     if (!email || !password) {
@@ -236,9 +287,13 @@ function App() {
       localStorage.setItem(AUTH_TOKEN_KEY, response.token);
       localStorage.setItem(AUTH_REFRESH_KEY, response.refreshToken);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
-      setAuthToken(response.token);
-      setCurrentUser(response.user);
-      setView("home");
+      // La sesión tiene que estar aplicada antes de navegar: si no, una pantalla protegida (ej. /admin) rebotaría al login
+      flushSync(() => {
+        setAuthToken(response.token);
+        setCurrentUser(response.user);
+      });
+      const next = new URLSearchParams(window.location.search).get("next");
+      navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
       await loadCart(response.token);
       if (response.user.role !== "ADMIN") {
         await loadWishlist(response.token);
@@ -255,29 +310,87 @@ function App() {
 
   const navigateTo = (nextView: View) => {
     setMenuOpen(false);
-    setSelectedProductId(null);
     // Inicio, Ofertas y Favoritos trabajan con el catálogo completo: al salir del catálogo se limpian los filtros.
     if (nextView !== "products") {
       setSelectedCategory("all");
       setSearch("");
       setNavSearch("");
     }
-    setView(nextView);
+    navigate(pathFor(nextView));
   };
 
-  /** Abre el catálogo, opcionalmente ya filtrado por una categoría. */
-  const showCatalog = (categoryId = "all") => {
+  /** Abre el catálogo, opcionalmente ya filtrado por una categoría y una búsqueda (quedan en la dirección). */
+  const showCatalog = (categoryId = "all", query = search) => {
     setMenuOpen(false);
-    setSelectedProductId(null);
     setSelectedCategory(categoryId);
-    setView("products");
+    setSearch(query);
+    navigate(pathFor("products", { categoria: categoryId === "all" ? null : categoryId, q: query }));
   };
 
   const handleNavSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    setSearch(navSearch.trim());
-    showCatalog(selectedCategory);
+    showCatalog(selectedCategory, navSearch.trim());
   };
+
+  // Los filtros del catálogo (chips y buscador) actualizan la dirección sin sumar entradas al historial
+  // (se usa una referencia porque la pantalla puede cambiar categoría y búsqueda juntas, y cada cambio debe ver el del otro)
+  const filtersRef = useRef({ category: selectedCategory, query: search });
+  filtersRef.current = { category: selectedCategory, query: search };
+
+  const syncCatalogUrl = () =>
+    navigate(
+      pathFor("products", { categoria: filtersRef.current.category === "all" ? null : filtersRef.current.category, q: filtersRef.current.query }),
+      { replace: true },
+    );
+
+  const handleCategoryChange = (categoryId: string) => {
+    filtersRef.current.category = categoryId;
+    setSelectedCategory(categoryId);
+    syncCatalogUrl();
+  };
+
+  const handleSearchChange = (query: string) => {
+    filtersRef.current.query = query;
+    setSearch(query);
+    syncCatalogUrl();
+  };
+
+  // Al volver atrás o abrir un link con filtros, el catálogo toma la categoría y la búsqueda de la dirección
+  useEffect(() => {
+    if (view !== "products" || selectedProductId) return;
+    setSelectedCategory(location.params.get("categoria") ?? "all");
+    setSearch(location.params.get("q") ?? "");
+  }, [view, selectedProductId, location.search]);
+
+  // Cada pantalla pone su título, cierra el menú móvil y arranca desde arriba
+  useEffect(() => {
+    document.title = SCREEN_TITLES[view] ? `${SCREEN_TITLES[view]} · Petshop` : "Petshop";
+    setMenuOpen(false);
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  // En el detalle, la pestaña del navegador muestra el nombre del producto
+  useEffect(() => {
+    if (selectedProductId && selectedProduct) {
+      document.title = `${selectedProduct.name} · Petshop`;
+    }
+  }, [selectedProductId, selectedProduct]);
+
+  // Direcciones que no corresponden: se redirige en vez de mostrar una pantalla vacía
+  useEffect(() => {
+    if (route.unknown) {
+      navigate("/", { replace: true });
+      return;
+    }
+    const isAdmin = currentUser?.role === "ADMIN";
+    if (["orders", "wishlist", "account", "admin"].includes(view) && !currentUser) {
+      navigate(withQuery(pathFor("login"), { next: location.pathname }), { replace: true });
+    } else if ((view === "admin" && !isAdmin) || (view === "wishlist" && isAdmin)) {
+      navigate("/", { replace: true });
+    } else if (view === "confirmation" && !lastCheckout) {
+      navigate("/", { replace: true });
+    }
+  }, [route.unknown, view, currentUser, lastCheckout, location.pathname]);
 
   // Con el menú móvil abierto, Escape lo cierra
   useEffect(() => {
@@ -294,9 +407,8 @@ function App() {
     localStorage.removeItem(AUTH_USER_KEY);
     setAuthToken(null);
     setCurrentUser(null);
-    setSelectedProductId(null);
     setWishlist([]);
-    setView("home");
+    navigate("/");
   };
 
   useEffect(() => {
@@ -304,7 +416,7 @@ function App() {
       if (!getAuthToken()) return;
       handleLogout();
       setAuthError("Tu sesión expiró. Iniciá sesión de nuevo.");
-      setView("login");
+      navigate(pathFor("login"));
     };
     const handleTokenRefreshed = (event: Event) => {
       const session = (event as CustomEvent<{ token: string; user: User }>).detail;
@@ -392,8 +504,9 @@ function App() {
       const result = await createVenta(authToken, shipping, couponCode, medioPago ?? "tok_aprobado", idempotencyKeyRef.current);
       idempotencyKeyRef.current = null;
       setCartItems([]);
-      setLastCheckout(result);
-      setView("confirmation");
+      // El resultado tiene que estar guardado antes de navegar: la pantalla de confirmación lo necesita para mostrarse
+      flushSync(() => setLastCheckout(result));
+      navigate(pathFor("confirmation"));
     } catch (error) {
       // Solo se reutiliza la Idempotency-Key si no hubo respuesta HTTP (corte de red): así el reintento no duplica la venta.
       if (!(error instanceof TypeError)) {
@@ -424,13 +537,12 @@ function App() {
   };
 
   const openProduct = (id: string) => {
-    setSelectedProductId(id);
-    setView("products");
+    navigate(productPath(id));
   };
 
+  // Vuelve a donde estaba (catálogo con sus filtros, inicio, favoritos...); si entró directo por un link, va al catálogo
   const handleProductDetailBack = () => {
-    setSelectedProductId(null);
-    setView("products");
+    goBack(pathFor("products"));
   };
 
   const renderScreen = () => {
@@ -446,7 +558,15 @@ function App() {
       );
     }
 
-    if (view === "products" && selectedProductId && selectedProduct) {
+    if (view === "products" && selectedProductId && !selectedProduct && (!productsLoaded || directAttemptedId !== selectedProductId)) {
+      return (
+        <div className="page-shell">
+          <div className="empty-state">Cargando producto...</div>
+        </div>
+      );
+    }
+
+    if (view === "products" && selectedProductId) {
       return (
         <ProductDetailScreen
           product={selectedProduct}
@@ -469,9 +589,9 @@ function App() {
           categoryFilter={selectedCategory}
           sort={sort}
           search={search}
-          onCategoryChange={setSelectedCategory}
+          onCategoryChange={handleCategoryChange}
           onSortChange={setSort}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
           onAddToCart={handleAddToCart}
           onOpenProduct={openProduct}
           isAdmin={currentUser?.role === "ADMIN"}
