@@ -145,6 +145,31 @@ export type SiteSettings = {
   announcementMarquee?: boolean;
 };
 
+/** Cuánto cuesta y cuánto tarda el envío a un código postal (el envío gratis se resuelve aparte, según el carrito). */
+export type ShippingQuote = {
+  postalCode: number;
+  zoneName: string;
+  cost: number;
+  eta: string;
+  matchedZone: boolean;
+};
+
+export type ShippingZone = {
+  id?: number;
+  name: string;
+  postalFrom: number;
+  postalTo: number;
+  cost: number;
+  eta: string;
+};
+
+/** Zonas de envío por código postal y lo que se cobra al resto del país. */
+export type ShippingConfig = {
+  defaultCost: number;
+  defaultEta: string;
+  zones: ShippingZone[];
+};
+
 /** Pregunta frecuente de la tienda (editable desde el panel de administración). */
 export type Faq = {
   id?: number;

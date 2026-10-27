@@ -16,6 +16,7 @@ import com.petshop.app.repository.IdempotencyRecordRepository;
 import com.petshop.app.repository.OrderRepository;
 import com.petshop.app.repository.ProductRepository;
 import com.petshop.app.repository.ProductVariantRepository;
+import com.petshop.app.repository.ShippingZoneRepository;
 import com.petshop.app.repository.SiteSettingsRepository;
 import com.petshop.app.service.VentaService.VentaOutcome;
 import org.junit.jupiter.api.AfterEach;
@@ -55,6 +56,7 @@ class VentaServiceTest {
     private VentaService service;
     private SiteSettingsRepository settingsRepository;
     private ShopRules shopRules;
+    private ShippingZoneRepository zoneRepository;
 
     private Product product;
     private final Map<String, IdempotencyRecord> idempotencyStore = new HashMap<>();
@@ -106,7 +108,8 @@ class VentaServiceTest {
         settingsRepository = mock(SiteSettingsRepository.class);
         when(settingsRepository.findById(SiteSettings.SINGLETON_ID)).thenReturn(Optional.empty());
         when(variantRepository.findByProductId(anyString())).thenReturn(List.of());
-        shopRules = new ShopRules(settingsRepository, productRepository, variantRepository);
+        zoneRepository = mock(ShippingZoneRepository.class);
+        shopRules = new ShopRules(settingsRepository, productRepository, variantRepository, zoneRepository);
         service = new VentaService(orderRepository, cartItemRepository, store, productRepository, variantRepository,
                 couponRepository, idempotencyRepository, gateway, executor, publisher, rouletteService, shopRules, 200, 3, 0);
     }
@@ -121,6 +124,7 @@ class VentaServiceTest {
         req.nombre = "Cliente";
         req.direccion = "Calle 1";
         req.ciudad = "CABA";
+        req.codigoPostal = "1425";
         req.medioPago = "tok_aprobado";
         return req;
     }
@@ -480,5 +484,74 @@ class VentaServiceTest {
         assertThat(outcome.status()).isEqualTo(402);
         assertThat(gift.stock).isEqualTo(5);
         assertThat(product.stock).isEqualTo(10);
+    }
+
+    private void zones(com.petshop.app.model.ShippingZone... zones) {
+        when(zoneRepository.findAllByOrderByPostalFromAsc()).thenReturn(List.of(zones));
+    }
+
+    @Test
+    void theShippingCostDependsOnThePostalCodeZone() {
+        gatewayApproves();
+        zones(new com.petshop.app.model.ShippingZone("CABA", 1000, 1499, 1200.0, "24 a 48 hs"));
+
+        VentaOutcome inZone = service.crear("user-1", "key-zona", request());
+
+        assertThat(inZone.status()).isEqualTo(201);
+        assertThat(inZone.order().shippingCost).isEqualTo(1200.0);
+        assertThat(inZone.order().total).isEqualTo(3200.0);
+    }
+
+    @Test
+    void aPostalCodeOutsideEveryZoneGetsTheRestOfTheCountryCost() {
+        gatewayApproves();
+        zones(new com.petshop.app.model.ShippingZone("CABA", 1000, 1499, 1200.0, "24 a 48 hs"));
+        com.petshop.app.model.SiteSettings settings = promos(false, 0, false, null, 0);
+        settings.shippingDefaultCost = 2500.0;
+        VentaRequest req = request();
+        req.codigoPostal = "5000";
+
+        VentaOutcome outcome = service.crear("user-1", "key-resto", req);
+
+        assertThat(outcome.order().shippingCost).isEqualTo(2500.0);
+    }
+
+    @Test
+    void freeShippingWinsOverTheZoneCost() {
+        gatewayApproves();
+        zones(new com.petshop.app.model.ShippingZone("CABA", 1000, 1499, 1200.0, "24 a 48 hs"));
+        promos(true, 2000.0, false, null, 0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-gratis-zona", request());
+
+        assertThat(outcome.order().shippingCost).isEqualTo(0.0);
+        assertThat(outcome.order().total).isEqualTo(2000.0);
+    }
+
+    @Test
+    void anInvalidOrMissingPostalCodeIsRejectedBeforeReservingStock() {
+        for (String bad : new String[] {null, "", "abc", "123", "12345", "1425 Buenos Aires"}) {
+            VentaRequest req = request();
+            req.codigoPostal = bad;
+
+            VentaOutcome outcome = service.crear("user-1", "key-cp-" + bad, req);
+
+            assertThat(outcome.status()).as("cp=" + bad).isEqualTo(422);
+            assertThat(outcome.problemSlug()).isEqualTo("codigo-postal-invalido");
+        }
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    @Test
+    void theFullArgentineFormatOfThePostalCodeIsAccepted() {
+        gatewayApproves();
+        zones(new com.petshop.app.model.ShippingZone("CABA", 1000, 1499, 1200.0, "24 a 48 hs"));
+        VentaRequest req = request();
+        req.codigoPostal = "C1425ABC";
+
+        VentaOutcome outcome = service.crear("user-1", "key-cpa", req);
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().shippingCost).isEqualTo(1200.0);
     }
 }

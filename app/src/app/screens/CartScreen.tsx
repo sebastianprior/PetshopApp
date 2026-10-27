@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { NO_CART_PROMOS, type CartItem, type CartPromos, type ShippingInfo } from "../types";
-import { fetchRouletteCartDiscount, validateCoupon } from "../api";
+import { NO_CART_PROMOS, type CartItem, type CartPromos, type ShippingInfo, type ShippingQuote } from "../types";
+import { fetchRouletteCartDiscount, fetchShippingQuote, validateCoupon } from "../api";
 import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 import { Icon } from "../components/Icon";
 import { CartPromoBars, qualifiesForFreeShipping, qualifiesForGift } from "../components/CartPromoBars";
@@ -22,6 +22,19 @@ type Props = {
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(value);
 
+const POSTAL_CODE_KEY = "petshop_postal_code";
+/** Código postal argentino: 4 números, con o sin letras (C1425ABC). */
+const POSTAL_CODE_PATTERN = /^[A-Za-z]?\d{4}([A-Za-z]{3})?$/;
+
+// Se recuerda el último código postal para no pedirlo de nuevo (si el navegador no deja guardar, simplemente no se recuerda)
+const rememberedPostalCode = () => {
+  try {
+    return localStorage.getItem(POSTAL_CODE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+};
+
 const EMPTY_SHIPPING: ShippingInfo = {
   nombre: "",
   direccion: "",
@@ -31,7 +44,10 @@ const EMPTY_SHIPPING: ShippingInfo = {
 };
 
 export function CartScreen({ items, authToken, productImages, promos = NO_CART_PROMOS, onRemove, onCheckout, onIncrement, onDecrement, onContinueShopping }: Props) {
-  const [shipping, setShipping] = useState<ShippingInfo>(EMPTY_SHIPPING);
+  const [shipping, setShipping] = useState<ShippingInfo>(() => ({ ...EMPTY_SHIPPING, codigoPostal: rememberedPostalCode() }));
+  const [quote, setQuote] = useState<ShippingQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -41,11 +57,48 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const freeShipping = items.length > 0 && qualifiesForFreeShipping(promos, subtotal);
-  const shippingCost = items.length > 0 && !freeShipping ? 1500 : 0;
+  // El envío gratis gana; si no, depende del código postal: mientras no se calcula, no se suma al total
+  const shippingCost: number | null = items.length === 0 || freeShipping ? 0 : quote ? quote.cost : null;
   const giftIncluded = items.length > 0 && qualifiesForGift(promos, subtotal);
   const discountAmount = appliedCoupon?.discountAmount ?? 0;
   const rouletteAmount = roulette.amount;
-  const total = Math.max(0, subtotal + shippingCost - discountAmount - rouletteAmount);
+  const total = Math.max(0, subtotal + (shippingCost ?? 0) - discountAmount - rouletteAmount);
+
+  // Calcula el envío apenas el código postal está completo (con una pequeña espera mientras se escribe)
+  useEffect(() => {
+    const code = shipping.codigoPostal.trim();
+    setQuoteError(null);
+    if (!POSTAL_CODE_PATTERN.test(code)) {
+      setQuote(null);
+      setQuoteLoading(false);
+      if (code.length >= 4) setQuoteError("Revisá el código postal: son 4 números (por ejemplo, 1425).");
+      return;
+    }
+    let active = true;
+    setQuoteLoading(true);
+    const timer = setTimeout(() => {
+      fetchShippingQuote(code)
+        .then((result) => {
+          if (!active) return;
+          setQuote(result);
+          try {
+            localStorage.setItem(POSTAL_CODE_KEY, code);
+          } catch {
+            // sin almacenamiento disponible: no pasa nada
+          }
+        })
+        .catch((error) => {
+          if (!active) return;
+          setQuote(null);
+          setQuoteError(error instanceof Error ? error.message : "No pudimos calcular el envío. Probá de nuevo.");
+        })
+        .finally(() => active && setQuoteLoading(false));
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [shipping.codigoPostal]);
 
   // El descuento de la ruleta lo calcula el servidor sobre el carrito real (solo los productos de la categoría sorteada).
   useEffect(() => {
@@ -198,6 +251,52 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
               {couponError ? <div className="error-box">{couponError}</div> : null}
             </div>
 
+            <div className="shipping-calc">
+              <label>
+                <span>Calculá el costo de tu envío</span>
+                <input
+                  form="checkout-form"
+                  required
+                  inputMode="text"
+                  autoComplete="postal-code"
+                  maxLength={8}
+                  pattern="[A-Za-z]?[0-9]{4}([A-Za-z]{3})?"
+                  title="Código postal de 4 números (por ejemplo, 1425)"
+                  placeholder="Tu código postal"
+                  value={shipping.codigoPostal}
+                  onChange={(e) => setShipping({ ...shipping, codigoPostal: e.target.value })}
+                />
+              </label>
+              {quoteLoading ? <p className="shipping-note">Calculando envío...</p> : null}
+              {quoteError ? (
+                <p className="shipping-note error" role="alert">
+                  {quoteError}
+                </p>
+              ) : null}
+              {quote && !quoteLoading ? (
+                <p className="shipping-note ok">
+                  <Icon name="truck" size={16} />
+                  <span>
+                    {quote.matchedZone ? (
+                      <>
+                        Envío a <strong>{quote.zoneName}</strong>
+                      </>
+                    ) : (
+                      <>
+                        Envío al <strong>resto del país</strong>
+                      </>
+                    )}
+                    : llega en {quote.eta}
+                  </span>
+                </p>
+              ) : null}
+              {!quote && !quoteLoading && !quoteError ? (
+                <p className="shipping-note">
+                  {freeShipping ? "¡Tenés envío gratis! Ingresá tu código postal para ver cuándo llega." : "Ingresá tu código postal para ver el costo y el plazo."}
+                </p>
+              ) : null}
+            </div>
+
             <div className="summary-row">
               <span>Subtotal</span>
               <strong>{formatMoney(subtotal)}</strong>
@@ -216,14 +315,16 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
             ) : null}
             <div className="summary-row">
               <span>Envío</span>
-              <strong>{freeShipping ? "Gratis" : formatMoney(shippingCost)}</strong>
+              <strong className={shippingCost === null ? "pending-value" : undefined}>
+                {freeShipping ? "Gratis" : shippingCost === null ? "A calcular" : formatMoney(shippingCost)}
+              </strong>
             </div>
             <div className="summary-row total-row">
-              <span>Total</span>
+              <span>{shippingCost === null ? "Total (sin envío)" : "Total"}</span>
               <strong>{formatMoney(total)}</strong>
             </div>
 
-            <form onSubmit={handleSubmit} className="shipping-form">
+            <form id="checkout-form" onSubmit={handleSubmit} className="shipping-form">
               <h4>Datos de envío</h4>
               <label>
                 <span>Nombre y apellido</span>
@@ -241,23 +342,14 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
                   onChange={(e) => setShipping({ ...shipping, direccion: e.target.value })}
                 />
               </label>
-              <div className="shipping-form-row">
-                <label>
-                  <span>Ciudad</span>
-                  <input
-                    required
-                    value={shipping.ciudad}
-                    onChange={(e) => setShipping({ ...shipping, ciudad: e.target.value })}
-                  />
-                </label>
-                <label>
-                  <span>Código postal</span>
-                  <input
-                    value={shipping.codigoPostal}
-                    onChange={(e) => setShipping({ ...shipping, codigoPostal: e.target.value })}
-                  />
-                </label>
-              </div>
+              <label>
+                <span>Ciudad</span>
+                <input
+                  required
+                  value={shipping.ciudad}
+                  onChange={(e) => setShipping({ ...shipping, ciudad: e.target.value })}
+                />
+              </label>
               <label>
                 <span>Teléfono (opcional)</span>
                 <input

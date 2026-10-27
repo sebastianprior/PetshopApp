@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CartScreen } from "../../screens/CartScreen";
 import { CartPromosSettings } from "../../screens/CartPromosSettings";
-import { fetchProducts, updateCartPromos } from "../../api";
+import { fetchProducts, fetchShippingQuote, updateCartPromos } from "../../api";
 import type { CartItem, CartPromos, Product } from "../../types";
 import { NO_CART_PROMOS } from "../../types";
 
@@ -11,6 +11,7 @@ vi.mock("../../api", () => ({
   validateCoupon: vi.fn(),
   fetchRouletteCartDiscount: vi.fn().mockResolvedValue({ percent: 10, amount: 0, categoryId: null, categoryName: null }),
   fetchProducts: vi.fn(),
+  fetchShippingQuote: vi.fn().mockResolvedValue({ postalCode: 1425, zoneName: "CABA", cost: 1500, eta: "24 a 48 hs", matchedZone: true }),
   updateCartPromos: vi.fn(),
 }));
 
@@ -46,8 +47,15 @@ function renderCart(items: CartItem[], promos: CartPromos) {
 }
 
 describe("CartScreen: envío gratis y regalo", () => {
-  it("shows how much is missing for the free shipping and for the gift", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("shows how much is missing for the free shipping and for the gift", async () => {
+    const user = userEvent.setup();
     renderCart([ITEM], PROMOS); // subtotal 2000
+    await user.type(screen.getByLabelText("Calculá el costo de tu envío"), "1425");
+    await screen.findByText(/llega en 24 a 48 hs/);
 
     expect(screen.getByText(/Sumá \$\s*3\.000,00 más y el envío es gratis/)).toBeInTheDocument();
     expect(screen.getByText(/Sumá \$\s*6\.000,00 más y llevate de regalo Llavero/)).toBeInTheDocument();
@@ -80,11 +88,13 @@ describe("CartScreen: envío gratis y regalo", () => {
     expect(screen.queryByText("Regalo")).not.toBeInTheDocument();
   });
 
-  it("shows no bars when nothing is configured", () => {
+  it("shows no bars when nothing is configured", async () => {
+    const user = userEvent.setup();
     renderCart([ITEM], NO_CART_PROMOS);
+    await user.type(screen.getByLabelText("Calculá el costo de tu envío"), "1425");
 
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
-    expect(screen.getByText("$ 1.500,00")).toBeInTheDocument();
+    expect(await screen.findByText("$ 1.500,00")).toBeInTheDocument();
   });
 });
 

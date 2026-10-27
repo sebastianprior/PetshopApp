@@ -1,4 +1,4 @@
-import type { CartItem, CartPromos, Category, Faq, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
+import type { CartItem, CartPromos, Category, Faq, ShippingConfig, ShippingQuote, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -562,6 +562,24 @@ export async function updateSiteSettings(token: string, settings: SiteSettings):
     method: "PUT",
     headers: { "X-Auth-Token": token },
     body: JSON.stringify(settings),
+  });
+}
+
+/** Costo y plazo del envío a un código postal (público). */
+export async function fetchShippingQuote(postalCode: string): Promise<ShippingQuote> {
+  return request<ShippingQuote>(`/shipping/quote?postalCode=${encodeURIComponent(postalCode.trim())}`);
+}
+
+export async function fetchShippingConfig(): Promise<ShippingConfig> {
+  return request<ShippingConfig>("/shipping/zones");
+}
+
+/** Reemplaza todas las zonas de envío y el costo del resto del país (solo administradores). */
+export async function updateShippingConfig(token: string, config: ShippingConfig): Promise<ShippingConfig> {
+  return request<ShippingConfig>("/shipping/zones", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(config),
   });
 }
 

@@ -20,8 +20,8 @@ public final class FaqDefaults {
             {"¿Hacen envíos a todo el país?",
                     "Sí, enviamos a todo el país. Ingresás tu dirección, ciudad y código postal al finalizar la compra."},
             {"¿Cuánto cuesta el envío? ¿Hay envío gratis?",
-                    "El envío tiene un costo que ves en el carrito antes de pagar. Cuando la tienda tiene activada la promo de envío gratis, "
-                            + "en el carrito aparece una barra que te muestra cuánto te falta para conseguirlo."},
+                    "El costo depende de tu código postal: ingresalo en el carrito, en \"Calculá el costo de tu envío\", y ves al instante "
+                            + "cuánto cuesta y cuánto tarda. Si tu compra alcanza el monto de envío gratis, figura como \"Gratis\"."},
             {"¿Qué medios de pago aceptan? ¿Hay cuotas?",
                     "Podés pagar con tarjeta. Las compras tienen hasta 6 cuotas sin interés. El pago se confirma al finalizar la compra."},
             {"¿Cómo devuelvo un producto?",

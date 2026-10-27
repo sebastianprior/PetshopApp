@@ -42,7 +42,7 @@ class CartPromosControllerTest {
         productRepository = mock(ProductRepository.class);
         variantRepository = mock(ProductVariantRepository.class);
         JwtUtil jwtUtil = new JwtUtil("test-secret-test-secret-test-secret-test-secret", 60_000);
-        ShopRules shopRules = new ShopRules(repository, productRepository, variantRepository);
+        ShopRules shopRules = new ShopRules(repository, productRepository, variantRepository, mock(com.petshop.app.repository.ShippingZoneRepository.class));
         controller = new CartPromosController(repository, productRepository, shopRules, new AdminGuard(jwtUtil));
         adminToken = jwtUtil.generateToken("admin-1", "admin@example.com", "ADMIN");
         customerToken = jwtUtil.generateToken("user-1", "cliente@example.com", "CUSTOMER");
