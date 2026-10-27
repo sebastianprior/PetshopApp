@@ -121,6 +121,12 @@ public class VentaService {
                     "Completá nombre, dirección y ciudad.");
         }
 
+        Integer postalCode = ShopRules.parsePostalCode(req.codigoPostal);
+        if (postalCode == null) {
+            return problem(422, "codigo-postal-invalido", "Código postal inválido",
+                    "Ingresá un código postal válido de 4 números para calcular el envío.");
+        }
+
         List<CartItem> cart = cartOf(userId);
         if (cart.isEmpty()) {
             return problem(422, "carrito-vacio", "Carrito vacío", "No hay productos en el carrito.");
@@ -150,7 +156,7 @@ public class VentaService {
         double rouletteDiscount = roulette != null ? Math.min(roulette.amount(), Math.max(0, subtotal - discount)) : 0;
 
         // Reglas del administrador: envío gratis a partir de un monto y producto de regalo (se suma al pedido sin costo)
-        double shippingCost = shopRules.shippingCost(subtotal);
+        double shippingCost = shopRules.shippingCost(subtotal, postalCode);
         Product gift = shopRules.giftFor(subtotal, cart).orElse(null);
 
         reservarStock(cart);

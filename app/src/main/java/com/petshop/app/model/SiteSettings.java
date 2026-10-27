@@ -42,5 +42,11 @@ public class SiteSettings {
     /** Ya se cargaron las preguntas frecuentes de ejemplo (para no volver a cargarlas si el admin las borra). */
     public Boolean faqSeeded;
 
+    /** Costo y plazo del envío para los códigos postales que no están en ninguna zona. Nulo = valores por defecto. */
+    public Double shippingDefaultCost;
+    public String shippingDefaultEta;
+    /** Ya se cargaron las zonas de envío de ejemplo (para no volver a cargarlas si el admin las borra). */
+    public Boolean shippingSeeded;
+
     public SiteSettings() {}
 }

@@ -14,6 +14,7 @@ import type { CartPromos, Category, Faq, Coupon, OrderRecord, OrderStats, Produc
 import { AnnouncementSettings } from "./AnnouncementSettings";
 import { CartPromosSettings } from "./CartPromosSettings";
 import { FaqSettings } from "./FaqSettings";
+import { ShippingZonesSettings } from "./ShippingZonesSettings";
 import {
   createCategory,
   createCoupon,
@@ -1427,7 +1428,10 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
       {tab === "faq" ? <FaqSettings authToken={authToken} items={faq} onSaved={onFaqChange} /> : null}
 
       {tab === "cartpromos" ? (
-        <CartPromosSettings authToken={authToken} promos={cartPromos} onSaved={onCartPromosChange} />
+        <>
+          <ShippingZonesSettings authToken={authToken} />
+          <CartPromosSettings authToken={authToken} promos={cartPromos} onSaved={onCartPromosChange} />
+        </>
       ) : null}
 
       {tab === "announcements" ? (

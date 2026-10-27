@@ -2095,3 +2095,48 @@
     text-align: center;
   }
 }
+
+/* ---------- Cálculo de envío por código postal ---------- */
+.shipping-calc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 2px solid var(--sky-300);
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+}
+
+.shipping-calc label > span {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.shipping-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.shipping-note.ok {
+  color: var(--success);
+}
+
+.shipping-note.ok .icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.shipping-note.error {
+  color: var(--danger);
+}
+
+.pending-value {
+  color: var(--text-muted);
+  font-weight: 700;
+}
