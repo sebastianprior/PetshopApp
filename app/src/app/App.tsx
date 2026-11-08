@@ -20,6 +20,7 @@ import { goBack, navigate, parsePath, pathFor, productPath, useLocation, withQue
 import { Icon } from "./components/Icon";
 import { ToastRegion, type ToastMessage } from "./components/Toast";
 import { Marquee } from "./components/Marquee";
+import { GoogleSignInButton } from "./components/GoogleSignInButton";
 import {
   addToCart,
   addToWishlist,
@@ -42,6 +43,7 @@ import {
   getCurrentUser,
   incrementCartItem,
   login,
+  loginWithGoogle,
   register,
   removeFromCart,
   removeFromWishlist,
@@ -283,25 +285,42 @@ function App() {
         authMode === "login"
           ? await login(email, password)
           : await register(email, password, name || email.split("@")[0]);
-
-      localStorage.setItem(AUTH_TOKEN_KEY, response.token);
-      localStorage.setItem(AUTH_REFRESH_KEY, response.refreshToken);
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
-      // La sesión tiene que estar aplicada antes de navegar: si no, una pantalla protegida (ej. /admin) rebotaría al login
-      flushSync(() => {
-        setAuthToken(response.token);
-        setCurrentUser(response.user);
-      });
-      const next = new URLSearchParams(window.location.search).get("next");
-      navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
-      await loadCart(response.token);
-      if (response.user.role !== "ADMIN") {
-        await loadWishlist(response.token);
-      }
+      await startSession(response);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Error de autenticación");
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  /** Ingreso con Google: el servidor verifica el token de Google y devuelve la misma sesión que el ingreso normal. */
+  const handleGoogleCredential = async (credential: string) => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      await startSession(await loginWithGoogle(credential));
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "No pudimos ingresar con Google");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  /** Guarda la sesión, vuelve a donde el cliente quería ir (o al inicio) y carga su carrito y sus favoritos. */
+  const startSession = async (response: { token: string; refreshToken: string; user: User }) => {
+    localStorage.setItem(AUTH_TOKEN_KEY, response.token);
+    localStorage.setItem(AUTH_REFRESH_KEY, response.refreshToken);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
+    // La sesión tiene que estar aplicada antes de navegar: si no, una pantalla protegida (ej. /admin) rebotaría al login
+    flushSync(() => {
+      setAuthToken(response.token);
+      setCurrentUser(response.user);
+    });
+    const next = new URLSearchParams(window.location.search).get("next");
+    navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
+    await loadCart(response.token);
+    if (response.user.role !== "ADMIN") {
+      await loadWishlist(response.token);
     }
   };
 
@@ -554,6 +573,7 @@ function App() {
           loading={authLoading}
           onSubmit={handleLogin}
           onToggleMode={() => setAuthMode((prev) => (prev === "login" ? "register" : "login"))}
+          extra={<GoogleSignInButton onCredential={handleGoogleCredential} disabled={authLoading} />}
         />
       );
     }

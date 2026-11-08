@@ -26,6 +26,10 @@ public class User {
     @ColumnDefault("true")
     public boolean active = true;
 
+    /** Cómo se registró: "GOOGLE" si entró con Google; nulo = con email y contraseña. */
+    @Column(length = 20)
+    public String authProvider;
+
     public User() {}
 
     public User(String id, String email, String password, String name) {

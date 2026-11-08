@@ -39,7 +39,7 @@ class AuthControllerTest {
         NotificationService notificationService = mock(NotificationService.class);
         LoginRateLimiter loginRateLimiter = new LoginRateLimiter();
         controller = new AuthController(jwtUtil, userRepository, resetTokenRepository, notificationService, loginRateLimiter,
-                refreshTokenService);
+                refreshTokenService, new com.petshop.app.service.GoogleTokenVerifier("", keyId -> java.util.Optional.empty()));
     }
 
     @Test

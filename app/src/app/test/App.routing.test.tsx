@@ -20,6 +20,7 @@ vi.mock("../api", async (importOriginal) => {
     fetchWishlist: vi.fn(),
     fetchProductReviews: vi.fn(),
     fetchProductVariants: vi.fn(),
+    fetchAuthConfig: vi.fn(),
   };
 });
 
@@ -56,6 +57,7 @@ describe("App: rutas", () => {
     vi.mocked(api.fetchWishlist).mockResolvedValue([]);
     vi.mocked(api.fetchProductReviews).mockResolvedValue([]);
     vi.mocked(api.fetchProductVariants).mockResolvedValue([]);
+    vi.mocked(api.fetchAuthConfig).mockResolvedValue({ googleClientId: null });
   });
 
   afterEach(() => {

@@ -234,6 +234,20 @@ export async function login(email: string, password: string): Promise<SessionRes
   });
 }
 
+/** Qué métodos de ingreso ofrece la tienda: el Client ID de Google (público) o null si no está configurado. */
+export async function fetchAuthConfig(): Promise<{ googleClientId: string | null }> {
+  return request<{ googleClientId: string | null }>("/auth/config");
+}
+
+/** Ingreso con Google: se manda el token que firmó Google y el servidor lo verifica antes de abrir la sesión. */
+export async function loginWithGoogle(credential: string): Promise<SessionResponse> {
+  return request<SessionResponse>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ credential }),
+    skipAuthRedirect: true,
+  });
+}
+
 export async function register(email: string, password: string, name: string): Promise<SessionResponse> {
   return request<SessionResponse>("/auth/register", {
     method: "POST",

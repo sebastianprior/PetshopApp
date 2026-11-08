@@ -6,6 +6,7 @@ import com.petshop.app.model.ResetToken;
 import com.petshop.app.model.User;
 import com.petshop.app.repository.ResetTokenRepository;
 import com.petshop.app.repository.UserRepository;
+import com.petshop.app.service.GoogleTokenVerifier;
 import com.petshop.app.service.JwtUtil;
 import com.petshop.app.service.LoginRateLimiter;
 import com.petshop.app.service.NotificationService;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class AuthController {
 
     private static final long RESET_TOKEN_MINUTES = 15;
+    private static final String GOOGLE = "GOOGLE";
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
@@ -34,17 +36,66 @@ public class AuthController {
     private final NotificationService notificationService;
     private final LoginRateLimiter loginRateLimiter;
     private final RefreshTokenService refreshTokenService;
+    private final GoogleTokenVerifier googleTokenVerifier;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthController(JwtUtil jwtUtil, UserRepository userRepository, ResetTokenRepository resetTokenRepository,
                            NotificationService notificationService, LoginRateLimiter loginRateLimiter,
-                           RefreshTokenService refreshTokenService) {
+                           RefreshTokenService refreshTokenService, GoogleTokenVerifier googleTokenVerifier) {
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.notificationService = notificationService;
         this.loginRateLimiter = loginRateLimiter;
         this.refreshTokenService = refreshTokenService;
+        this.googleTokenVerifier = googleTokenVerifier;
+    }
+
+    /** Qué métodos de ingreso ofrece la tienda (el Client ID de Google es público: lo necesita el botón del navegador). */
+    @GetMapping("/config")
+    public Map<String, Object> config() {
+        Map<String, Object> config = new HashMap<>();
+        config.put("googleClientId", googleTokenVerifier.isEnabled() ? googleTokenVerifier.clientId() : null);
+        return config;
+    }
+
+    /**
+     * Ingreso con Google. El navegador manda el token que le dio Google y acá se verifica su firma: nunca se confía en el
+     * email que diga el navegador. Si la persona no existe se crea una cuenta de cliente; si ya existe una cuenta con
+     * ese email creada con contraseña no se mezclan (para que nadie pueda adueñarse de una cuenta ajena).
+     */
+    @PostMapping("/google")
+    public ResponseEntity<?> google(@RequestBody Map<String, String> body) {
+        if (!googleTokenVerifier.isEnabled()) {
+            return ResponseEntity.status(404).body(Map.of("error", "El ingreso con Google no está disponible."));
+        }
+        String credential = body == null ? null : body.get("credential");
+        var identity = googleTokenVerifier.verify(credential);
+        if (identity.isEmpty()) {
+            return ResponseEntity.status(401).body(Map.of("error", "No pudimos validar tu cuenta de Google. Probá de nuevo."));
+        }
+
+        String email = identity.get().email();
+        User existing = userRepository.findByEmail(email).orElse(null);
+        if (existing != null) {
+            if (!existing.active) {
+                return ResponseEntity.status(403).body(Map.of("error", "Tu cuenta fue deshabilitada. Contactá a soporte."));
+            }
+            if (!GOOGLE.equals(existing.authProvider)) {
+                return ResponseEntity.status(409).body(Map.of("error",
+                        "Ya existe una cuenta con ese email creada con contraseña. Ingresá con tu contraseña o recuperala desde \"Olvidé mi contraseña\"."));
+            }
+            return ResponseEntity.ok(session(existing));
+        }
+
+        String name = identity.get().name().isBlank() ? email.substring(0, email.indexOf('@')) : identity.get().name();
+        // La cuenta de Google no tiene contraseña propia: se guarda una al azar que nadie conoce
+        User created = new User(UUID.randomUUID().toString(), email, passwordEncoder.encode(UUID.randomUUID().toString()), name);
+        created.role = "CUSTOMER";
+        created.authProvider = GOOGLE;
+        userRepository.save(created);
+        notificationService.notify(created.email, "¡Bienvenido a Petshop, " + created.name + "!");
+        return ResponseEntity.ok(session(created));
     }
 
     @PostMapping("/login")

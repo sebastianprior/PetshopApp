@@ -43,6 +43,7 @@ npm test                             # frontend, desde app/src/app/
 | `DB_URL` | Dirección JDBC de MySQL. | `jdbc:mysql://localhost:3306/petshopdb?...` |
 | `DB_USERNAME` | Usuario de la base. | `petshop` |
 | `DB_PASSWORD` | Contraseña de la base. **Definila en producción.** | `petshop123` (solo desarrollo) |
+| `GOOGLE_CLIENT_ID` | Client ID de Google para "Continuar con Google" (es público). Vacío = el botón no se muestra. | El de este proyecto (ver abajo). |
 | `CORS_ALLOWED_ORIGINS` | Direcciones del frontend que pueden llamar a la API, separadas por coma (por ejemplo `https://mi-tienda.vercel.app`). | `http://localhost:5173,http://localhost:4173` |
 
 ### Frontend
@@ -52,6 +53,18 @@ npm test                             # frontend, desde app/src/app/
 | `VITE_API_URL` | Dirección de la API, incluido `/api` (por ejemplo `https://mi-backend.onrender.com/api`). Se lee **al compilar** (`npm run build`). | `http://localhost:8080/api` |
 
 Hay un ejemplo en `app/src/app/.env.example`. Los archivos `.env` no se suben al repositorio.
+
+## Ingreso con Google
+
+El botón "Continuar con Google" usa Google Identity Services: el navegador recibe un token firmado por Google y el backend lo
+verifica (firma, aplicación, vencimiento y email verificado) antes de abrir la sesión; la tienda nunca ve la contraseña de Google.
+Quien entra por primera vez recibe una cuenta de cliente. Si ya existe una cuenta con ese email creada con contraseña, no se
+mezclan (así nadie puede adueñarse de una cuenta ajena con un email que no verificó).
+
+En [Google Cloud Console](https://console.cloud.google.com) → APIs y servicios → Credenciales, el ID de cliente de OAuth (tipo
+"Aplicación web") tiene que listar en **Orígenes autorizados de JavaScript** cada dirección desde la que se abre la tienda:
+`http://localhost:5173` para desarrollo y la dirección pública (por ejemplo `https://mi-tienda.vercel.app`) al publicar.
+Mientras la pantalla de consentimiento esté en modo "Prueba", solo pueden ingresar los mails cargados en **Usuarios de prueba**.
 
 ## Publicarlo
 

@@ -92,7 +92,7 @@ class SensitiveDataTest {
 
         jwtUtil = new JwtUtil(JWT_SECRET, 60_000);
         auth = new AuthController(jwtUtil, userRepository, resetRepository, new LogNotificationService(outbox.toString()),
-                new LoginRateLimiter(), refreshTokens);
+                new LoginRateLimiter(), refreshTokens, new com.petshop.app.service.GoogleTokenVerifier("", keyId -> java.util.Optional.empty()));
 
         rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         rootLogger.setLevel(Level.DEBUG);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { recoverPassword, resetPassword } from "../api";
 import { Icon } from "../components/Icon";
 
@@ -30,9 +30,11 @@ type Props = {
   loading: boolean;
   onSubmit: (payload: { email: string; password: string; name?: string }) => void;
   onToggleMode: () => void;
+  /** Contenido extra bajo el formulario (por ejemplo, el botón de Google). */
+  extra?: ReactNode;
 };
 
-export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode }: Props) {
+export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode, extra }: Props) {
   const [email, setEmail] = useState("cliente@ejemplo.com");
   const [password, setPassword] = useState("password");
   const [name, setName] = useState("");
@@ -207,6 +209,8 @@ export function LoginScreen({ mode, error, loading, onSubmit, onToggleMode }: Pr
             {loading ? "Procesando..." : mode === "login" ? "Iniciar sesión" : "Registrarme"}
           </button>
         </form>
+
+        {extra}
 
         {mode === "login" ? (
           <button

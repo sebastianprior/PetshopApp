@@ -2140,3 +2140,42 @@
   color: var(--text-muted);
   font-weight: 700;
 }
+
+/* ---------- Ingreso con Google ---------- */
+.google-signin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.google-signin.hidden {
+  display: none;
+}
+
+.google-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.google-divider::before,
+.google-divider::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.google-button {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  color-scheme: light;
+}
