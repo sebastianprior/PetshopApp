@@ -58,8 +58,9 @@ Hay un ejemplo en `app/src/app/.env.example`. Los archivos `.env` no se suben al
 - **Frontend (Vercel o similar).** Carpeta raíz del proyecto: `app/src/app`. Comando de build: `npm run build`, salida: `dist`.
   Definí `VITE_API_URL` en el panel del servicio. La tienda usa direcciones reales (`/productos/p1`, `/carrito`…), así que el
   hosting tiene que devolver `index.html` para cualquier ruta: `vercel.json` ya lo hace en Vercel.
-- **Backend (Render, Railway, etc.).** Compilá con `./mvnw.cmd package` y ejecutá el `.jar` con Java 21. Definí `JWT_SECRET`,
-  `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `CORS_ALLOWED_ORIGINS` con la dirección del frontend.
+- **Backend (Render, Railway, etc.).** Hay un `Dockerfile` en `app/` (en Render: lenguaje Docker, carpeta raíz `app`). Definí
+  `JWT_SECRET`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `CORS_ALLOWED_ORIGINS` con la dirección del frontend. La plataforma
+  define `PORT` y la app lo respeta. Sin Docker: `./mvnw.cmd package` y `java -jar target/app-0.0.1-SNAPSHOT.jar` con Java 21.
 - Los emails (por ejemplo, el código para recuperar la contraseña) hoy se guardan como archivos en la carpeta `outbox/`: es un
   envío simulado. Para producción hay que reemplazarlo por un envío real.
 - Las imágenes que sube el administrador se guardan en `app/uploads/`: en un servicio con disco efímero se pierden al reiniciar.
