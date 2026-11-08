@@ -8,6 +8,8 @@ public class UserDTO {
     public String name;
     public String role;
     public boolean active;
+    /** "GOOGLE" si entra con Google (no tiene contraseña propia) o "LOCAL" si entra con email y contraseña. */
+    public String authProvider = "LOCAL";
 
     public UserDTO() {}
 
@@ -20,6 +22,8 @@ public class UserDTO {
     }
 
     public static UserDTO fromUser(User user) {
-        return new UserDTO(user.id, user.email, user.name, user.role, user.active);
+        UserDTO dto = new UserDTO(user.id, user.email, user.name, user.role, user.active);
+        dto.authProvider = "GOOGLE".equals(user.authProvider) ? "GOOGLE" : "LOCAL";
+        return dto;
     }
 }

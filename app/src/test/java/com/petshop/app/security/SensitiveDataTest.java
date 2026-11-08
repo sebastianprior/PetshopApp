@@ -208,7 +208,7 @@ class SensitiveDataTest {
         JsonNode loginUser = JSON.readTree(JSON.writeValueAsString(login.get("user")));
 
         for (JsonNode node : List.of(me, loginUser)) {
-            assertThat(node.propertyNames()).containsExactlyInAnyOrder("id", "email", "name", "role", "active");
+            assertThat(node.propertyNames()).containsExactlyInAnyOrder("id", "email", "name", "role", "active", "authProvider");
         }
         assertThat(JSON.writeValueAsString(me)).doesNotContain(user.password);
     }

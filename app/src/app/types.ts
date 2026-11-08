@@ -44,6 +44,8 @@ export type User = {
   name: string;
   password?: string;
   role?: "CUSTOMER" | "ADMIN";
+  /** "GOOGLE" si entra con Google (no tiene contraseña propia); "LOCAL" si entra con email y contraseña. */
+  authProvider?: "GOOGLE" | "LOCAL";
   active?: boolean;
 };
 

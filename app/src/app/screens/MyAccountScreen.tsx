@@ -9,7 +9,11 @@ type Props = {
   onProfileUpdated: (user: User) => void;
 };
 
-export function MyAccountScreen({ authToken, currentUser, onProfileUpdated }: Props) {
+export function MyAccountScreen({
+  authToken,
+  currentUser,
+  onProfileUpdated,
+}: Props) {
   const [name, setName] = useState(currentUser.name);
   const [nameError, setNameError] = useState<string | null>(null);
   const [nameSaving, setNameSaving] = useState(false);
@@ -37,7 +41,9 @@ export function MyAccountScreen({ authToken, currentUser, onProfileUpdated }: Pr
       onProfileUpdated(updated);
       setNameSaved(true);
     } catch (error) {
-      setNameError(error instanceof Error ? error.message : "No se pudo guardar el nombre");
+      setNameError(
+        error instanceof Error ? error.message : "No se pudo guardar el nombre",
+      );
     } finally {
       setNameSaving(false);
     }
@@ -60,7 +66,11 @@ export function MyAccountScreen({ authToken, currentUser, onProfileUpdated }: Pr
       setNewPassword("");
       setPasswordSaved(true);
     } catch (error) {
-      setPasswordError(error instanceof Error ? error.message : "No se pudo cambiar la contraseña");
+      setPasswordError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo cambiar la contraseña",
+      );
     } finally {
       setPasswordSaving(false);
     }
@@ -92,31 +102,83 @@ export function MyAccountScreen({ authToken, currentUser, onProfileUpdated }: Pr
           </label>
           <label>
             <span>Nombre</span>
-            <input value={name} autoComplete="name" onChange={(e) => setName(e.target.value)} />
+            <input
+              value={name}
+              autoComplete="name"
+              onChange={(e) => setName(e.target.value)}
+            />
           </label>
-          {nameError ? <div className="error-box" role="alert">{nameError}</div> : null}
-          {nameSaved ? <div className="info-box">Datos actualizados.</div> : null}
+          {nameError ? (
+            <div className="error-box" role="alert">
+              {nameError}
+            </div>
+          ) : null}
+          {nameSaved ? (
+            <div className="info-box">Datos actualizados.</div>
+          ) : null}
           <button className="primary-btn" type="submit" disabled={nameSaving}>
             {nameSaving ? "Guardando..." : "Guardar cambios"}
           </button>
         </form>
 
-        <form className="account-card" onSubmit={handlePasswordSubmit}>
-          <h3>Cambiar contraseña</h3>
-          <label>
-            <span>Contraseña actual</span>
-            <input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-          </label>
-          <label>
-            <span>Contraseña nueva</span>
-            <input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-          </label>
-          {passwordError ? <div className="error-box" role="alert">{passwordError}</div> : null}
-          {passwordSaved ? <div className="info-box">Contraseña actualizada.</div> : null}
-          <button className="primary-btn" type="submit" disabled={passwordSaving}>
-            {passwordSaving ? "Guardando..." : "Cambiar contraseña"}
-          </button>
-        </form>
+        {currentUser.authProvider === "GOOGLE" ? (
+          <div className="account-card">
+            <h3>Contraseña</h3>
+            <p className="google-account-note">
+              <Icon name="shield" size={20} />
+              <span>
+                Ingresás con tu cuenta de Google, así que tu contraseña la
+                administra Google y acá no hay nada que cambiar. Si querés
+                modificarla, hacelo desde la seguridad de tu cuenta de Google.
+              </span>
+            </p>
+            <a
+              className="secondary-btn"
+              href="https://myaccount.google.com/security"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ir a la seguridad de mi cuenta de Google
+            </a>
+          </div>
+        ) : (
+          <form className="account-card" onSubmit={handlePasswordSubmit}>
+            <h3>Cambiar contraseña</h3>
+            <label>
+              <span>Contraseña actual</span>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            </label>
+            <label>
+              <span>Contraseña nueva</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </label>
+            {passwordError ? (
+              <div className="error-box" role="alert">
+                {passwordError}
+              </div>
+            ) : null}
+            {passwordSaved ? (
+              <div className="info-box">Contraseña actualizada.</div>
+            ) : null}
+            <button
+              className="primary-btn"
+              type="submit"
+              disabled={passwordSaving}
+            >
+              {passwordSaving ? "Guardando..." : "Cambiar contraseña"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

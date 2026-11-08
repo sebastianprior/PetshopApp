@@ -166,6 +166,15 @@ class GoogleLoginTest {
     }
 
     @Test
+    void theSessionTellsTheBrowserHowThePersonSignsInSoItCanHideThePasswordChange() {
+        when(userRepository.findByEmail("nueva@gmail.com")).thenReturn(Optional.empty());
+        ResponseEntity<?> google = controller.google(Map.of("credential", googleToken("nueva@gmail.com", "Nueva")));
+        assertThat(((com.petshop.app.dto.UserDTO) body(google).get("user")).authProvider).isEqualTo("GOOGLE");
+
+        assertThat(com.petshop.app.dto.UserDTO.fromUser(new User("u9", "a@b.com", "hash", "A")).authProvider).isEqualTo("LOCAL");
+    }
+
+    @Test
     void theSessionOfAGoogleUserNeverCarriesAnAdminRole() {
         when(userRepository.findByEmail("cliente@gmail.com")).thenReturn(Optional.empty());
 
