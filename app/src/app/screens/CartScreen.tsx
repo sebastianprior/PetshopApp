@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { NO_CART_PROMOS, type CartItem, type CartPromos, type ShippingInfo, type ShippingQuote } from "../types";
+import { useEffect, useRef, useState } from "react";
+import { NO_CART_PROMOS, type CartItem, type CartPromos, type PaymentConfig, type ShippingInfo, type ShippingQuote } from "../types";
 import { fetchRouletteCartDiscount, fetchShippingQuote, validateCoupon } from "../api";
 import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 import { Icon } from "../components/Icon";
@@ -11,6 +11,8 @@ type Props = {
   productImages: Record<string, string>;
   /** Envío gratis y regalo configurados por el administrador (sin datos = todo apagado). */
   promos?: CartPromos;
+  /** Medios de pago disponibles (sin datos = solo los de prueba, como antes). */
+  paymentConfig?: PaymentConfig;
   onRemove: (item: CartItem) => void;
   onCheckout: (shipping: Partial<ShippingInfo>, couponCode?: string | null, medioPago?: string) => void;
   onIncrement: (item: CartItem) => void;
@@ -21,6 +23,8 @@ type Props = {
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(value);
+
+const DEFAULT_PAYMENT_CONFIG: PaymentConfig = { mercadoPago: false, simulated: true };
 
 const POSTAL_CODE_KEY = "petshop_postal_code";
 /** Código postal argentino: 4 números, con o sin letras (C1425ABC). */
@@ -43,7 +47,7 @@ const EMPTY_SHIPPING: ShippingInfo = {
   telefono: "",
 };
 
-export function CartScreen({ items, authToken, productImages, promos = NO_CART_PROMOS, onRemove, onCheckout, onIncrement, onDecrement, onContinueShopping }: Props) {
+export function CartScreen({ items, authToken, productImages, promos = NO_CART_PROMOS, paymentConfig = DEFAULT_PAYMENT_CONFIG, onRemove, onCheckout, onIncrement, onDecrement, onContinueShopping }: Props) {
   const [shipping, setShipping] = useState<ShippingInfo>(() => ({ ...EMPTY_SHIPPING, codigoPostal: rememberedPostalCode() }));
   const [quote, setQuote] = useState<ShippingQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -52,7 +56,15 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
-  const [medioPago, setMedioPago] = useState("tok_aprobado");
+  // Con MercadoPago disponible es el medio por defecto; si no, la tarjeta de prueba aprobada
+  const [medioPago, setMedioPago] = useState(paymentConfig.mercadoPago ? "mercadopago" : "tok_aprobado");
+  const choseMedioPago = useRef(false);
+
+  // La lista de medios de pago puede llegar después de abrir el carrito: mientras el cliente no haya elegido, se usa el mejor disponible
+  useEffect(() => {
+    if (choseMedioPago.current) return;
+    setMedioPago(paymentConfig.mercadoPago ? "mercadopago" : paymentConfig.simulated ? "tok_aprobado" : "");
+  }, [paymentConfig.mercadoPago, paymentConfig.simulated]);
   const [roulette, setRoulette] = useState<{ amount: number; categoryName: string | null }>({ amount: 0, categoryName: null });
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -358,16 +370,29 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
                 />
               </label>
               <label>
-                <span>Medio de pago (simulado)</span>
-                <select value={medioPago} onChange={(e) => setMedioPago(e.target.value)}>
-                  <option value="tok_aprobado">Tarjeta de prueba: aprobada</option>
-                  <option value="tok_rechazado">Tarjeta de prueba: rechazada</option>
-                  <option value="tok_invalido">Tarjeta de prueba: datos inválidos</option>
-                  <option value="tok_demora">Pasarela lenta: queda pendiente y se confirma</option>
-                  <option value="tok_caido">Pasarela caída: queda pendiente y se cancela</option>
+                <span>{paymentConfig.mercadoPago ? "Medio de pago" : "Medio de pago (simulado)"}</span>
+                <select
+                  value={medioPago}
+                  onChange={(e) => {
+                    choseMedioPago.current = true;
+                    setMedioPago(e.target.value);
+                  }}
+                >
+                  {paymentConfig.mercadoPago ? <option value="mercadopago">MercadoPago (tarjeta, efectivo o dinero en cuenta)</option> : null}
+                  {paymentConfig.simulated ? (
+                    <>
+                      <option value="tok_aprobado">Tarjeta de prueba: aprobada</option>
+                      <option value="tok_rechazado">Tarjeta de prueba: rechazada</option>
+                      <option value="tok_invalido">Tarjeta de prueba: datos inválidos</option>
+                      <option value="tok_demora">Pasarela lenta: queda pendiente y se confirma</option>
+                      <option value="tok_caido">Pasarela caída: queda pendiente y se cancela</option>
+                    </>
+                  ) : null}
                 </select>
               </label>
-              <button className="primary-btn block" type="submit">Finalizar compra</button>
+              <button className="primary-btn block" type="submit">
+                {medioPago === "mercadopago" ? "Pagar con MercadoPago" : "Finalizar compra"}
+              </button>
               <p className="secure-note">
                 <Icon name="shield" size={16} /> Compra protegida: el pago se procesa de forma segura.
               </p>

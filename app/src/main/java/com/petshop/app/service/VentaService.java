@@ -12,6 +12,9 @@ import com.petshop.app.payment.AuthResult;
 import com.petshop.app.payment.GatewayFaultException;
 import com.petshop.app.payment.PaymentGateway;
 import com.petshop.app.payment.PaymentStatus;
+import com.petshop.app.payment.mercadopago.MercadoPagoClient;
+import com.petshop.app.payment.mercadopago.MercadoPagoClient.MercadoPagoException;
+import com.petshop.app.payment.mercadopago.MercadoPagoSettings;
 import com.petshop.app.repository.CartItemRepository;
 import com.petshop.app.repository.CouponRepository;
 import com.petshop.app.repository.IdempotencyRecordRepository;
@@ -26,6 +29,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -47,6 +51,8 @@ public class VentaService {
     public static final String COMPLETADA = "COMPLETADA";
     public static final String ENVIADA = "ENVIADA";
     public static final String CANCELADA = "CANCELADA";
+    /** Valor de medioPago para pagar con MercadoPago (Checkout Pro). */
+    public static final String MERCADOPAGO = "mercadopago";
 
     private static final Logger LOG = LoggerFactory.getLogger(VentaService.class);
 
@@ -72,6 +78,8 @@ public class VentaService {
     private final ApplicationEventPublisher publisher;
     private final RouletteService rouletteService;
     private final ShopRules shopRules;
+    private final MercadoPagoClient mercadoPago;
+    private final MercadoPagoSettings paymentSettings;
     private final long timeoutMs;
     private final int maxAttempts;
     private final long minPendingAgeMs;
@@ -81,6 +89,7 @@ public class VentaService {
                         CouponRepository couponRepository, IdempotencyRecordRepository idempotencyRepository,
                         PaymentGateway gateway, @Qualifier("paymentExecutor") ExecutorService paymentExecutor,
                         ApplicationEventPublisher publisher, RouletteService rouletteService, ShopRules shopRules,
+                        MercadoPagoClient mercadoPago, MercadoPagoSettings paymentSettings,
                         @Value("${petshop.payments.timeout-ms:5000}") long timeoutMs,
                         @Value("${petshop.payments.max-attempts:3}") int maxAttempts,
                         @Value("${petshop.payments.min-pending-age-ms:10000}") long minPendingAgeMs) {
@@ -96,6 +105,8 @@ public class VentaService {
         this.publisher = publisher;
         this.rouletteService = rouletteService;
         this.shopRules = shopRules;
+        this.mercadoPago = mercadoPago;
+        this.paymentSettings = paymentSettings;
         this.timeoutMs = timeoutMs;
         this.maxAttempts = maxAttempts;
         this.minPendingAgeMs = minPendingAgeMs;
@@ -115,6 +126,11 @@ public class VentaService {
 
         if (blank(req.medioPago)) {
             return problem(422, "medio-pago-requerido", "Medio de pago requerido", "Indicá el token del medio de pago.");
+        }
+        boolean usaMercadoPago = MERCADOPAGO.equalsIgnoreCase(req.medioPago.trim());
+        if (usaMercadoPago ? !mercadoPago.isEnabled() : !paymentSettings.simulatedEnabled()) {
+            return problem(422, "medio-pago-no-disponible", "Medio de pago no disponible",
+                    usaMercadoPago ? "MercadoPago no está disponible en este momento." : "Ese medio de pago no está disponible.");
         }
         if (blank(req.nombre) || blank(req.direccion) || blank(req.ciudad)) {
             return problem(422, "datos-envio-incompletos", "Datos de envío incompletos",
@@ -185,9 +201,13 @@ public class VentaService {
         order.shippingPhone = req.telefono != null ? req.telefono.trim() : "";
         order.idTransaccion = java.util.UUID.randomUUID().toString();
         order.estadoPago = "PENDIENTE";
-        order.medioPagoToken = req.medioPago.trim();
+        order.medioPagoToken = usaMercadoPago ? MERCADOPAGO : req.medioPago.trim();
         order.intentosPago = 1;
         orderRepository.save(order);
+
+        if (usaMercadoPago) {
+            return iniciarMercadoPago(order, userId, cart, coupon, idemKey, hash);
+        }
 
         AuthOutcome auth = autorizar(order);
         switch (auth.kind()) {
@@ -225,6 +245,16 @@ public class VentaService {
             return problem(409, "transicion-invalida", "No se puede cancelar",
                     "Una venta en estado " + order.estado + " no se puede cancelar.");
         }
+        // Si ya se cobró por MercadoPago, primero se devuelve el dinero: si eso falla, el pedido no se cancela
+        if (esMercadoPago(order) && "APROBADO".equals(order.estadoPago) && order.mpPaymentId != null) {
+            try {
+                mercadoPago.refund(order.mpPaymentId);
+            } catch (MercadoPagoException e) {
+                LOG.error("No se pudo reembolsar el pago {} de la venta {}: {}", order.mpPaymentId, order.id, e.getMessage());
+                return problem(502, "reembolso-fallido", "No se pudo devolver el dinero",
+                        "MercadoPago no pudo procesar el reembolso. El pedido sigue activo: probá de nuevo en unos minutos.");
+            }
+        }
         cancelar(order, "Cancelada por solicitud");
         return new VentaOutcome(200, order, null, null, null);
     }
@@ -259,6 +289,10 @@ public class VentaService {
     }
 
     void procesarPendiente(Order order) {
+        if (esMercadoPago(order)) {
+            sincronizarMercadoPago(order);
+            return;
+        }
         Optional<AuthResult> existente = consultar(order.idTransaccion);
         if (existente.isPresent()) {
             if (existente.get().estado() == PaymentStatus.APROBADO) {
@@ -286,6 +320,104 @@ public class VentaService {
                     fallarDefinitivamente(order);
                 }
             }
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // MercadoPago (Checkout Pro): el cliente paga en el sitio de MercadoPago y vuelve a la tienda. La confirmación nunca
+    // sale de lo que diga el navegador: siempre se le pregunta a MercadoPago por los pagos del pedido.
+    // ---------------------------------------------------------------------------------------------------------------
+
+    private static boolean esMercadoPago(Order order) {
+        return MERCADOPAGO.equals(order.medioPagoToken);
+    }
+
+    /** Crea el link de pago y deja el pedido esperando el pago (202). Si MercadoPago no responde, no queda nada reservado. */
+    private VentaOutcome iniciarMercadoPago(Order order, String userId, List<CartItem> cart, Coupon coupon, String idemKey, String hash) {
+        order.intentosPago = 0;
+        Instant expira = Instant.now().plus(paymentSettings.pendingExpiryMinutes(), ChronoUnit.MINUTES);
+        String front = paymentSettings.frontendUrl();
+        String notification = paymentSettings.publicApiUrl().isEmpty() ? null : paymentSettings.publicApiUrl() + "/api/payments/mercadopago/webhook";
+        try {
+            MercadoPagoClient.Preference preference = mercadoPago.createPreference(new MercadoPagoClient.PreferenceRequest(
+                    String.valueOf(order.id), "Compra en Petshop #" + order.id, order.total,
+                    front + "/pago/resultado?orden=" + order.id, notification, front.startsWith("https://"), expira));
+            order.paymentUrl = preference.initPoint();
+            order.idTransaccion = preference.id();
+        } catch (MercadoPagoException e) {
+            LOG.error("No se pudo crear el link de pago de MercadoPago para la venta {}: {}", order.id, e.getMessage());
+            liberarStock(order);
+            orderRepository.delete(order);
+            // No se recuerda en la tabla de idempotencia: el cliente puede reintentar con la misma clave
+            return problem(502, "mercadopago-no-disponible", "MercadoPago no respondió",
+                    "No pudimos iniciar el pago con MercadoPago. Probá de nuevo en unos minutos.");
+        }
+        consumirCarritoYCupon(userId, cart, coupon);
+        orderRepository.save(order);
+        remember(idemKey, userId, hash, 202, order.id, null, null, null);
+        return new VentaOutcome(202, order, null, null, null);
+    }
+
+    /**
+     * Pregunta a MercadoPago por los pagos del pedido: aprobado (con el monto exacto) lo confirma; si venció el plazo sin
+     * pago lo cancela y libera el stock; si no, sigue esperando. Lo llaman el worker, el webhook y la vuelta del cliente.
+     */
+    public Order sincronizarPago(Order order) {
+        if (esMercadoPago(order)) {
+            sincronizarMercadoPago(order);
+        }
+        return orderRepository.findById(order.id).orElse(order);
+    }
+
+    private void sincronizarMercadoPago(Order order) {
+        List<MercadoPagoClient.Payment> payments;
+        try {
+            payments = mercadoPago.paymentsOf(String.valueOf(order.id));
+        } catch (MercadoPagoException e) {
+            LOG.warn("No se pudo consultar a MercadoPago por la venta {}: {}", order.id, e.getMessage());
+            return;
+        }
+        Optional<MercadoPagoClient.Payment> approved = payments.stream()
+                .filter(p -> "approved".equals(p.status()) && Math.abs(p.amount() - order.total) < 0.01)
+                .findFirst();
+
+        if (PAGO_PENDIENTE.equals(order.estado)) {
+            if (approved.isPresent()) {
+                order.mpPaymentId = approved.get().id();
+                confirmar(order);
+                return;
+            }
+            if (payments.stream().anyMatch(p -> "approved".equals(p.status()))) {
+                LOG.error("La venta {} tiene un pago aprobado con un monto distinto al del pedido ({}): no se confirma", order.id, order.total);
+            }
+            Instant limite = order.fecha.plus(paymentSettings.pendingExpiryMinutes(), ChronoUnit.MINUTES);
+            if (!Instant.now().isBefore(limite)) {
+                cancelar(order, "El pago no se completó a tiempo");
+            }
+        } else if (CANCELADA.equals(order.estado) && approved.isPresent() && order.mpPaymentId == null) {
+            // El cliente pagó después de que el pedido se canceló: se le devuelve el dinero
+            try {
+                mercadoPago.refund(approved.get().id());
+                order.mpPaymentId = approved.get().id();
+                order.estadoPago = "REEMBOLSADO";
+                orderRepository.save(order);
+            } catch (MercadoPagoException e) {
+                LOG.error("Pago {} aprobado para la venta cancelada {}: hay que reembolsarlo a mano ({})", approved.get().id(), order.id, e.getMessage());
+            }
+        }
+    }
+
+    /** Aviso de MercadoPago (webhook) por un pago: se consulta el pago a MercadoPago y se actualiza el pedido que corresponda. */
+    public void procesarAvisoMercadoPago(String paymentId) throws MercadoPagoException {
+        Optional<MercadoPagoClient.Payment> payment = mercadoPago.payment(paymentId);
+        if (payment.isEmpty() || payment.get().externalReference().isBlank()) {
+            return;
+        }
+        try {
+            long orderId = Long.parseLong(payment.get().externalReference());
+            orderRepository.findById(orderId).ifPresent(this::sincronizarPago);
+        } catch (NumberFormatException e) {
+            LOG.debug("Aviso de MercadoPago con referencia que no es de un pedido: {}", payment.get().externalReference());
         }
     }
 

@@ -30,6 +30,8 @@ public class VentaDTO {
     public double ruletaDescuento;
     public String couponCode;
     public double total;
+    /** Link de MercadoPago para pagar: solo mientras el pedido espera el pago. */
+    public String paymentUrl;
 
     public static VentaDTO from(Order order, Function<String, String> productName) {
         VentaDTO dto = new VentaDTO();
@@ -44,6 +46,7 @@ public class VentaDTO {
         dto.ruletaDescuento = order.ruletaDescuento;
         dto.couponCode = order.couponCode;
         dto.total = order.total;
+        dto.paymentUrl = "PAGO_PENDIENTE".equals(order.estado) ? order.paymentUrl : null;
         dto.items = order.items.stream().map(item -> {
             ItemDTO i = new ItemDTO();
             i.productId = item.productId;

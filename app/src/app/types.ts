@@ -68,6 +68,8 @@ export type OrderRecord = {
   couponCode?: string | null;
   total: number;
   estado: string;
+  /** Link de MercadoPago para pagar o reintentar: solo mientras el pedido espera el pago. */
+  paymentUrl?: string | null;
 };
 
 export type TopProductStat = {
@@ -124,6 +126,15 @@ export type CheckoutResult = {
   estado?: string;
   estadoPago?: string;
   ruletaDescuento?: number;
+  /** Link de MercadoPago para pagar: solo mientras el pedido espera el pago. */
+  paymentUrl?: string | null;
+};
+
+/** Medios de pago que ofrece la tienda. */
+export type PaymentConfig = {
+  mercadoPago: boolean;
+  /** Medios de prueba (tarjeta aprobada/rechazada…): solo en desarrollo y demos. */
+  simulated: boolean;
 };
 
 export type Coupon = {
@@ -230,4 +241,5 @@ export type View =
   | "terms"
   | "privacy"
   | "contact"
-  | "faq";
+  | "faq"
+  | "paymentResult";

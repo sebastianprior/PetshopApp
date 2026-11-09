@@ -2198,3 +2198,15 @@
   align-self: flex-start;
   text-decoration: none;
 }
+
+.pay-now-btn {
+  min-height: 38px;
+  padding: 0 var(--space-4);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.confirmation-actions a.primary-btn,
+.confirmation-actions a.secondary-btn {
+  text-decoration: none;
+}

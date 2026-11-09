@@ -62,6 +62,16 @@ public class Order {
     public String shippingPostalCode;
     public String shippingPhone;
 
+    /** Link de pago de MercadoPago mientras el pedido espera el pago (para completarlo o reintentarlo). */
+    @JsonIgnore
+    @Column(length = 500)
+    public String paymentUrl;
+
+    /** Identificador del pago aprobado en MercadoPago (sirve para devolver el dinero si se cancela). */
+    @JsonIgnore
+    @Column(length = 40)
+    public String mpPaymentId;
+
     public Order() {}
 
     public Order(String userId, Instant fecha, List<OrderItem> items, double total, String estado) {

@@ -18,6 +18,7 @@ describe("parsePath", () => {
     expect(parsePath("/privacidad").view).toBe("privacy");
     expect(parsePath("/contacto").view).toBe("contact");
     expect(parsePath("/preguntas-frecuentes").view).toBe("faq");
+    expect(parsePath("/pago/resultado").view).toBe("paymentResult");
   });
 
   it("reads the product id from /productos/:id, including special characters", () => {

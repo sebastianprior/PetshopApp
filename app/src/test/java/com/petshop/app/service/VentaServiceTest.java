@@ -10,6 +10,9 @@ import com.petshop.app.payment.AuthResult;
 import com.petshop.app.payment.GatewayFaultException;
 import com.petshop.app.payment.PaymentGateway;
 import com.petshop.app.payment.PaymentStatus;
+import com.petshop.app.payment.mercadopago.MercadoPagoClient;
+import com.petshop.app.payment.mercadopago.MercadoPagoSettings;
+import org.mockito.ArgumentCaptor;
 import com.petshop.app.repository.CartItemRepository;
 import com.petshop.app.repository.CouponRepository;
 import com.petshop.app.repository.IdempotencyRecordRepository;
@@ -56,6 +59,8 @@ class VentaServiceTest {
     private VentaService service;
     private SiteSettingsRepository settingsRepository;
     private ShopRules shopRules;
+    private com.petshop.app.payment.mercadopago.MercadoPagoClient mercadoPago;
+    private com.petshop.app.payment.mercadopago.MercadoPagoSettings paymentSettings;
     private ShippingZoneRepository zoneRepository;
 
     private Product product;
@@ -110,8 +115,10 @@ class VentaServiceTest {
         when(variantRepository.findByProductId(anyString())).thenReturn(List.of());
         zoneRepository = mock(ShippingZoneRepository.class);
         shopRules = new ShopRules(settingsRepository, productRepository, variantRepository, zoneRepository);
+        mercadoPago = mock(com.petshop.app.payment.mercadopago.MercadoPagoClient.class);
+        paymentSettings = new com.petshop.app.payment.mercadopago.MercadoPagoSettings("", "https://api.mercadopago.com", 30, "http://localhost:5173", "", true);
         service = new VentaService(orderRepository, cartItemRepository, store, productRepository, variantRepository,
-                couponRepository, idempotencyRepository, gateway, executor, publisher, rouletteService, shopRules, 200, 3, 0);
+                couponRepository, idempotencyRepository, gateway, executor, publisher, rouletteService, shopRules, mercadoPago, paymentSettings, 200, 3, 0);
     }
 
     @AfterEach
@@ -553,5 +560,287 @@ class VentaServiceTest {
 
         assertThat(outcome.status()).isEqualTo(201);
         assertThat(outcome.order().shippingCost).isEqualTo(1200.0);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // MercadoPago
+    // ---------------------------------------------------------------------------------------------------------------
+
+    private VentaRequest mercadoPagoRequest() {
+        VentaRequest req = request();
+        req.medioPago = "mercadopago";
+        return req;
+    }
+
+    private void mercadoPagoEnabled() throws Exception {
+        when(mercadoPago.isEnabled()).thenReturn(true);
+        when(mercadoPago.createPreference(any())).thenReturn(new MercadoPagoClient.Preference("pref-1", "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-1"));
+    }
+
+    private VentaService serviceWith(MercadoPagoSettings settings) {
+        return new VentaService(orderRepository, cartItemRepository, store, productRepository, mock(ProductVariantRepository.class),
+                mock(CouponRepository.class), mock(IdempotencyRecordRepository.class), gateway, executor, publisher, rouletteService,
+                shopRules, mercadoPago, settings, 200, 3, 0);
+    }
+
+    private Order pendingMercadoPagoOrder() throws Exception {
+        mercadoPagoEnabled();
+        VentaOutcome outcome = service.crear("user-1", "key-mp-" + System.nanoTime(), mercadoPagoRequest());
+        assertThat(outcome.status()).isEqualTo(202);
+        return outcome.order();
+    }
+
+    private MercadoPagoClient.Payment payment(String id, String status, double amount) {
+        return new MercadoPagoClient.Payment(id, status, amount, "1");
+    }
+
+    @Test
+    void payingWithMercadoPagoLeavesAPendingSaleWithTheLinkAndReservesTheStock() throws Exception {
+        mercadoPagoEnabled();
+
+        VentaOutcome outcome = service.crear("user-1", "key-mp", mercadoPagoRequest());
+
+        assertThat(outcome.status()).isEqualTo(202);
+        Order order = outcome.order();
+        assertThat(order.estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(order.estadoPago).isEqualTo("PENDIENTE");
+        assertThat(order.medioPagoToken).isEqualTo("mercadopago");
+        assertThat(order.paymentUrl).contains("pref_id=pref-1");
+        assertThat(order.idTransaccion).isEqualTo("pref-1");
+        assertThat(order.total).isEqualTo(3500.0);
+        assertThat(product.stock).isEqualTo(8);
+        verify(cartItemRepository).deleteAll(any());
+        verify(gateway, never()).autorizar(anyString(), anyDouble(), any());
+
+        ArgumentCaptor<MercadoPagoClient.PreferenceRequest> sent = ArgumentCaptor.forClass(MercadoPagoClient.PreferenceRequest.class);
+        verify(mercadoPago).createPreference(sent.capture());
+        assertThat(sent.getValue().externalReference()).isEqualTo(String.valueOf(order.id));
+        assertThat(sent.getValue().amount()).isEqualTo(3500.0);
+        assertThat(sent.getValue().backUrl()).isEqualTo("http://localhost:5173/pago/resultado?orden=" + order.id);
+        assertThat(sent.getValue().autoReturn()).isFalse();
+        assertThat(sent.getValue().notificationUrl()).isNull();
+        assertThat(sent.getValue().expiresAt()).isAfter(java.time.Instant.now().plusSeconds(25 * 60));
+    }
+
+    @Test
+    void withAPublicHttpsSiteTheCustomerIsSentBackAutomaticallyAndMercadoPagoCanNotify() throws Exception {
+        mercadoPagoEnabled();
+        VentaService prod = serviceWith(new MercadoPagoSettings("TEST-x", "https://api.mercadopago.com", 30, "https://mi-tienda.vercel.app", "https://mi-api.onrender.com/", true));
+
+        prod.crear("user-1", "key-mp-https", mercadoPagoRequest());
+
+        ArgumentCaptor<MercadoPagoClient.PreferenceRequest> sent = ArgumentCaptor.forClass(MercadoPagoClient.PreferenceRequest.class);
+        verify(mercadoPago).createPreference(sent.capture());
+        assertThat(sent.getValue().autoReturn()).isTrue();
+        assertThat(sent.getValue().backUrl()).startsWith("https://mi-tienda.vercel.app/pago/resultado?orden=");
+        assertThat(sent.getValue().notificationUrl()).isEqualTo("https://mi-api.onrender.com/api/payments/mercadopago/webhook");
+    }
+
+    @Test
+    void ifMercadoPagoCannotCreateTheLinkNothingStaysReservedAndTheCustomerCanRetryWithTheSameKey() throws Exception {
+        when(mercadoPago.isEnabled()).thenReturn(true);
+        when(mercadoPago.createPreference(any()))
+                .thenThrow(new MercadoPagoClient.MercadoPagoException("caído"))
+                .thenReturn(new MercadoPagoClient.Preference("pref-2", "https://mp/pay"));
+
+        VentaOutcome failed = service.crear("user-1", "key-reintento", mercadoPagoRequest());
+
+        assertThat(failed.status()).isEqualTo(502);
+        assertThat(failed.problemSlug()).isEqualTo("mercadopago-no-disponible");
+        assertThat(product.stock).isEqualTo(10);
+        verify(cartItemRepository, never()).deleteAll(any());
+
+        VentaOutcome retry = service.crear("user-1", "key-reintento", mercadoPagoRequest());
+        assertThat(retry.status()).isEqualTo(202);
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void mercadoPagoIsRejectedWhenItIsNotConfigured() {
+        when(mercadoPago.isEnabled()).thenReturn(false);
+
+        VentaOutcome outcome = service.crear("user-1", "key-mp-off", mercadoPagoRequest());
+
+        assertThat(outcome.status()).isEqualTo(422);
+        assertThat(outcome.problemSlug()).isEqualTo("medio-pago-no-disponible");
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    @Test
+    void theTestPaymentMethodsCanBeTurnedOffForProduction() throws Exception {
+        mercadoPagoEnabled();
+        VentaService prod = serviceWith(new MercadoPagoSettings("TEST-x", "https://api.mercadopago.com", 30, "https://mi-tienda.vercel.app", "", false));
+
+        VentaOutcome simulated = prod.crear("user-1", "key-sim", request()); // tok_aprobado
+
+        assertThat(simulated.status()).isEqualTo(422);
+        assertThat(simulated.problemSlug()).isEqualTo("medio-pago-no-disponible");
+        verify(gateway, never()).autorizar(anyString(), anyDouble(), any());
+        assertThat(product.stock).isEqualTo(10);
+        assertThat(prod.crear("user-1", "key-mp-prod", mercadoPagoRequest()).status()).isEqualTo(202);
+    }
+
+    @Test
+    void anApprovedPaymentForTheExactAmountConfirmsTheSale() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("COMPLETADA");
+        assertThat(result.estadoPago).isEqualTo("APROBADO");
+        assertThat(result.mpPaymentId).isEqualTo("999");
+        verify(publisher).publishEvent(any(VentaEvents.VentaConfirmada.class));
+    }
+
+    @Test
+    void anApprovedPaymentForAnotherAmountDoesNotConfirmTheSale() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 1.0)));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(result.mpPaymentId).isNull();
+    }
+
+    @Test
+    void aRejectedOrPendingPaymentKeepsWaitingAndKeepsTheStockReserved() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("1", "rejected", 3500.0), payment("2", "pending", 3500.0)));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void anUnpaidSaleIsCancelledAndItsStockReleasedWhenTheTimeRunsOut() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        order.fecha = java.time.Instant.now().minusSeconds(31 * 60);
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("1", "rejected", 3500.0)));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("CANCELADA");
+        assertThat(result.estadoPago).isEqualTo("CANCELADO");
+        assertThat(product.stock).isEqualTo(10);
+        verify(publisher).publishEvent(any(VentaEvents.VentaCancelada.class));
+    }
+
+    @Test
+    void ifMercadoPagoCannotBeReachedTheSaleSimplyKeepsWaiting() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        order.fecha = java.time.Instant.now().minusSeconds(31 * 60);
+        when(mercadoPago.paymentsOf("1")).thenThrow(new MercadoPagoClient.MercadoPagoException("sin conexión"));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("PAGO_PENDIENTE"); // sin información no se cancela nada
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void syncingAnAlreadyConfirmedSaleChangesNothing() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+        service.sincronizarPago(order);
+
+        service.sincronizarPago(order);
+        service.sincronizarPago(order);
+
+        verify(publisher, times(1)).publishEvent(any(VentaEvents.VentaConfirmada.class));
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void thePaymentSyncDoesNotTouchSalesPaidWithTheSimulatedGateway() {
+        gatewayApproves();
+        Order order = service.crear("user-1", "key-sim-sync", request()).order();
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("COMPLETADA");
+        org.mockito.Mockito.verifyNoInteractions(mercadoPago);
+    }
+
+    @Test
+    void cancellingAPaidMercadoPagoSaleRefundsTheMoneyFirst() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+        service.sincronizarPago(order);
+
+        VentaOutcome cancel = service.cancelarPorSolicitud(order);
+
+        assertThat(cancel.status()).isEqualTo(200);
+        verify(mercadoPago).refund("999");
+        assertThat(order.estado).isEqualTo("CANCELADA");
+        assertThat(order.estadoPago).isEqualTo("REEMBOLSADO");
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    @Test
+    void ifTheRefundFailsTheSaleIsNotCancelled() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+        service.sincronizarPago(order);
+        org.mockito.Mockito.doThrow(new MercadoPagoClient.MercadoPagoException("no se pudo")).when(mercadoPago).refund("999");
+
+        VentaOutcome cancel = service.cancelarPorSolicitud(order);
+
+        assertThat(cancel.status()).isEqualTo(502);
+        assertThat(cancel.problemSlug()).isEqualTo("reembolso-fallido");
+        assertThat(order.estado).isEqualTo("COMPLETADA");
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void aPaymentThatArrivesAfterTheSaleWasCancelledIsRefunded() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        service.cancelarPorSolicitud(order);
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("777", "approved", 3500.0)));
+
+        service.sincronizarPago(order);
+
+        verify(mercadoPago).refund("777");
+        assertThat(order.estado).isEqualTo("CANCELADA");
+        assertThat(order.estadoPago).isEqualTo("REEMBOLSADO");
+        assertThat(order.mpPaymentId).isEqualTo("777");
+    }
+
+    @Test
+    void theWorkerFinishesMercadoPagoSalesTheCustomerNeverCameBackForAndIgnoresTheSimulatedGateway() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+
+        service.procesarPendientes();
+
+        assertThat(order.estado).isEqualTo("COMPLETADA");
+        verify(gateway, never()).consultarPago(anyString());
+    }
+
+    @Test
+    void aMercadoPagoNoticeIsResolvedByAskingMercadoPagoWhichSaleItBelongsTo() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.payment("999")).thenReturn(Optional.of(payment("999", "approved", 3500.0)));
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+
+        service.procesarAvisoMercadoPago("999");
+
+        assertThat(order.estado).isEqualTo("COMPLETADA");
+    }
+
+    @Test
+    void aNoticeForAPaymentThatIsNotFromAnOrderOfTheShopIsIgnored() throws Exception {
+        when(mercadoPago.payment("5")).thenReturn(Optional.of(new MercadoPagoClient.Payment("5", "approved", 10.0, "factura-abc")));
+        when(mercadoPago.payment("6")).thenReturn(Optional.of(new MercadoPagoClient.Payment("6", "approved", 10.0, "")));
+        when(mercadoPago.payment("7")).thenReturn(Optional.empty());
+
+        service.procesarAvisoMercadoPago("5");
+        service.procesarAvisoMercadoPago("6");
+        service.procesarAvisoMercadoPago("7");
+
+        verify(publisher, never()).publishEvent(any(VentaEvents.VentaConfirmada.class));
     }
 }

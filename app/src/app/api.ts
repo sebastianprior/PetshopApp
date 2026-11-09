@@ -1,4 +1,4 @@
-import type { CartItem, CartPromos, Category, Faq, ShippingConfig, ShippingQuote, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
+import type { CartItem, CartPromos, PaymentConfig, Category, Faq, ShippingConfig, ShippingQuote, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
 
 /** Dirección del backend. En producción se define con VITE_API_URL al compilar (ver .env.example); en desarrollo usa el backend local. */
 export const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8080/api").replace(/\/+$/, "");
@@ -367,21 +367,10 @@ type VentaResponse = {
   ruletaDescuento?: number;
   couponCode: string | null;
   total: number;
+  paymentUrl?: string | null;
 };
 
-export async function createVenta(
-  token: string | null,
-  shipping: Partial<ShippingInfo>,
-  couponCode: string | null | undefined,
-  medioPago: string,
-  idempotencyKey: string,
-): Promise<CheckoutResult> {
-  const venta = await request<VentaResponse>("/v1/ventas", {
-    method: "POST",
-    headers: { ...cartHeaders(token), "Idempotency-Key": idempotencyKey },
-    body: JSON.stringify({ ...shipping, ...(couponCode ? { cupon: couponCode } : {}), medioPago }),
-  });
-
+function toCheckoutResult(venta: VentaResponse): CheckoutResult {
   return {
     ok: true,
     items: venta.items.map((item) => ({
@@ -401,7 +390,38 @@ export async function createVenta(
     orderId: venta.id,
     estado: venta.estado,
     estadoPago: venta.estadoPago,
+    paymentUrl: venta.paymentUrl ?? null,
   };
+}
+
+/** Medios de pago de la tienda (MercadoPago y/o los de prueba). */
+export async function fetchPaymentConfig(): Promise<PaymentConfig> {
+  return request<PaymentConfig>("/payments/config");
+}
+
+/** Al volver de MercadoPago: el servidor le pregunta por los pagos del pedido y devuelve la venta actualizada. */
+export async function syncVentaPayment(orderId: number): Promise<CheckoutResult> {
+  const venta = await request<VentaResponse>(`/v1/ventas/${orderId}/pago/sincronizacion`, {
+    method: "POST",
+    headers: cartHeaders(getAuthToken()),
+  });
+  return toCheckoutResult(venta);
+}
+
+export async function createVenta(
+  token: string | null,
+  shipping: Partial<ShippingInfo>,
+  couponCode: string | null | undefined,
+  medioPago: string,
+  idempotencyKey: string,
+): Promise<CheckoutResult> {
+  const venta = await request<VentaResponse>("/v1/ventas", {
+    method: "POST",
+    headers: { ...cartHeaders(token), "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify({ ...shipping, ...(couponCode ? { cupon: couponCode } : {}), medioPago }),
+  });
+
+  return toCheckoutResult(venta);
 }
 
 export async function validateCoupon(code: string, subtotal: number): Promise<{ code: string; discountAmount: number }> {

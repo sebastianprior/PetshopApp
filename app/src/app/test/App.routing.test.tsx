@@ -21,6 +21,8 @@ vi.mock("../api", async (importOriginal) => {
     fetchProductReviews: vi.fn(),
     fetchProductVariants: vi.fn(),
     fetchAuthConfig: vi.fn(),
+    fetchPaymentConfig: vi.fn(),
+    syncVentaPayment: vi.fn(),
   };
 });
 
@@ -58,6 +60,7 @@ describe("App: rutas", () => {
     vi.mocked(api.fetchProductReviews).mockResolvedValue([]);
     vi.mocked(api.fetchProductVariants).mockResolvedValue([]);
     vi.mocked(api.fetchAuthConfig).mockResolvedValue({ googleClientId: null });
+    vi.mocked(api.fetchPaymentConfig).mockResolvedValue({ mercadoPago: false, simulated: true });
   });
 
   afterEach(() => {
@@ -151,6 +154,44 @@ describe("App: rutas", () => {
     await user.type(screen.getByPlaceholderText("Nombre o marca..."), "pel");
     expect(window.location.search).toBe("?categoria=juguetes&q=pel");
     expect(window.history.length).toBe(history);
+  });
+
+  it("confirms the payment when the customer comes back from MercadoPago", async () => {
+    vi.mocked(api.syncVentaPayment).mockResolvedValue({
+      ok: true,
+      items: [{ productId: "p1", name: "Collar Comfort", variant: "accesorios", quantity: 1, price: 899 }],
+      subtotal: 899,
+      shippingCost: 1200,
+      discountAmount: 0,
+      couponCode: null,
+      total: 2099,
+      orderId: 12,
+      estado: "COMPLETADA",
+      estadoPago: "APROBADO",
+    });
+    at("/pago/resultado?orden=12&status=approved&payment_id=999");
+    render(<App />);
+
+    expect(await screen.findByText("¡Compra confirmada!")).toBeInTheDocument();
+    expect(api.syncVentaPayment).toHaveBeenCalledWith(12);
+    expect(document.title).toBe("Resultado del pago · Petshop");
+  });
+
+  it("does not ask the server anything when the return address has no valid order number", async () => {
+    at("/pago/resultado?orden=abc");
+    render(<App />);
+
+    expect(await screen.findByText("No encontramos ese pedido")).toBeInTheDocument();
+    expect(api.syncVentaPayment).not.toHaveBeenCalled();
+  });
+
+  it("gets a guest's cart back after reloading the page", async () => {
+    vi.mocked(api.fetchCart).mockResolvedValue([{ productId: "p1", name: "Collar Comfort", variant: "accesorios", variantId: null, quantity: 2, price: 899 }]);
+    at("/carrito");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { level: 3, name: "Collar Comfort" })).toBeInTheDocument();
+    expect(api.fetchCart).toHaveBeenCalledWith(null);
   });
 
   it("opens the frequently asked questions at its own address from the footer", async () => {

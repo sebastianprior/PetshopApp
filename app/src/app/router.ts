@@ -22,6 +22,7 @@ const VIEW_PATHS: Record<View, string> = {
   privacy: "/privacidad",
   contact: "/contacto",
   faq: "/preguntas-frecuentes",
+  paymentResult: "/pago/resultado",
 };
 
 const PRODUCT_PATH = /^\/productos\/([^/]+)$/;

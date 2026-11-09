@@ -43,6 +43,11 @@ npm test                             # frontend, desde app/src/app/
 | `DB_URL` | Dirección JDBC de MySQL. | `jdbc:mysql://localhost:3306/petshopdb?...` |
 | `DB_USERNAME` | Usuario de la base. | `petshop` |
 | `DB_PASSWORD` | Contraseña de la base. **Definila en producción.** | `petshop123` (solo desarrollo) |
+| `MP_ACCESS_TOKEN` | Access Token de MercadoPago (**secreto**; empieza con `TEST-` en pruebas). Sin él, MercadoPago no se ofrece. | Vacío: solo los medios de prueba. |
+| `FRONTEND_URL` | Dirección de la tienda: a donde MercadoPago devuelve al cliente después de pagar. | `http://localhost:5173` |
+| `PUBLIC_API_URL` | Dirección pública del backend (por ejemplo `https://mi-api.onrender.com`), para que MercadoPago avise los pagos (webhook). | Vacío: sin webhook; igual se confirma al volver y con el worker. |
+| `SIMULATED_PAYMENTS` | `false` apaga los medios de prueba (tarjeta aprobada/rechazada…). **Ponelo en `false` en producción**: la pasarela simulada aprueba cualquier cosa. | `true` |
+| `MP_PENDING_EXPIRY_MINUTES` | Minutos que un pedido espera el pago antes de cancelarse y liberar el stock. | `30` |
 | `GOOGLE_CLIENT_ID` | Client ID de Google para "Continuar con Google" (es público). Vacío = el botón no se muestra. | El de este proyecto (ver abajo). |
 | `CORS_ALLOWED_ORIGINS` | Direcciones del frontend que pueden llamar a la API, separadas por coma (por ejemplo `https://mi-tienda.vercel.app`). | `http://localhost:5173,http://localhost:4173` |
 
@@ -53,6 +58,23 @@ npm test                             # frontend, desde app/src/app/
 | `VITE_API_URL` | Dirección de la API, incluido `/api` (por ejemplo `https://mi-backend.onrender.com/api`). Se lee **al compilar** (`npm run build`). | `http://localhost:8080/api` |
 
 Hay un ejemplo en `app/src/app/.env.example`. Los archivos `.env` no se suben al repositorio.
+
+## Pagos con MercadoPago
+
+La tienda usa Checkout Pro: el cliente elige "MercadoPago" en el carrito, paga en el sitio de MercadoPago y vuelve a la tienda
+(`/pago/resultado`). El pedido queda **pago pendiente** (con el stock reservado) hasta que MercadoPago confirma el pago. La
+confirmación nunca sale de lo que diga el navegador: el backend le pregunta a MercadoPago por los pagos del pedido y solo
+confirma si hay uno **aprobado por el monto exacto**. Se actualiza de tres formas: al volver el cliente, por el aviso
+(webhook `POST /api/payments/mercadopago/webhook`) y por un proceso que revisa los pendientes cada 15 segundos. Si el pago no
+se completa en `MP_PENDING_EXPIRY_MINUTES`, el pedido se cancela y se libera el stock; cancelar un pedido ya pagado devuelve el
+dinero por la API de MercadoPago.
+
+Para probarlo:
+1. En [MercadoPago Developers](https://www.mercadopago.com.ar/developers) creá una aplicación y copiá el **Access Token de prueba**
+   (`TEST-...`). Definilo como variable de entorno `MP_ACCESS_TOKEN` (nunca en el código ni en el chat).
+2. Creá dos usuarios de prueba (comprador y vendedor) desde el mismo panel y pagá con el comprador de prueba.
+3. En local no hace falta el webhook: al volver a la tienda y por el proceso de pendientes el pago se confirma igual. En un
+   servidor público, definí `PUBLIC_API_URL` para que MercadoPago también avise.
 
 ## Ingreso con Google
 

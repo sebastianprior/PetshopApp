@@ -143,6 +143,11 @@ export function MyOrdersScreen({ authToken }: Props) {
                     </div>
                     <div className="my-order-header-right">
                       <span className={`status-badge tone-${statusTone(order.estado)}`}>{order.estado}</span>
+                      {order.paymentUrl ? (
+                        <a className="primary-btn pay-now-btn" href={order.paymentUrl}>
+                          Pagar ahora
+                        </a>
+                      ) : null}
                       <strong>{formatMoney(order.total)}</strong>
                     </div>
                   </div>

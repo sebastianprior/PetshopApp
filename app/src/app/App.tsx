@@ -16,6 +16,7 @@ import { SalchiBot } from "./screens/SalchiBot";
 import { DailyRoulette } from "./screens/DailyRoulette";
 import { WishlistScreen } from "./screens/WishlistScreen";
 import { FaqScreen } from "./screens/FaqScreen";
+import { PaymentResultScreen } from "./screens/PaymentResultScreen";
 import { goBack, navigate, parsePath, pathFor, productPath, useLocation, withQuery } from "./router";
 import { Icon } from "./components/Icon";
 import { ToastRegion, type ToastMessage } from "./components/Toast";
@@ -31,6 +32,7 @@ import {
   decrementCartItem,
   fetchCart,
   fetchCartPromos,
+  fetchPaymentConfig,
   fetchFaq,
   fetchProduct,
   fetchCategories,
@@ -51,7 +53,7 @@ import {
   TOKEN_REFRESHED_EVENT,
   UNAUTHORIZED_EVENT,
 } from "./api";
-import { NO_CART_PROMOS, type CartPromos, type Faq } from "./types";
+import { NO_CART_PROMOS, type CartPromos, type Faq, type PaymentConfig } from "./types";
 import type { CartItem, CheckoutResult, Category, Product, ProductVariant, RouletteState, ShippingInfo, SiteSettings, User, View } from "./types";
 
 // Valores que se muestran hasta que llega la configuración del servidor (los mismos que trae por defecto).
@@ -75,6 +77,7 @@ const SCREEN_TITLES: Partial<Record<View, string>> = {
   privacy: "Privacidad",
   contact: "Contacto",
   faq: "Preguntas frecuentes",
+  paymentResult: "Resultado del pago",
 };
 
 /** Categoría y búsqueda del catálogo guardadas en la dirección (/productos?categoria=perros&q=collar). */
@@ -122,6 +125,7 @@ function App() {
   const [navSearch, setNavSearch] = useState("");
   const [cartPromos, setCartPromos] = useState<CartPromos>(NO_CART_PROMOS);
   const [faq, setFaq] = useState<Faq[]>([]);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({ mercadoPago: false, simulated: true });
   const [faqLoading, setFaqLoading] = useState(true);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
@@ -218,11 +222,12 @@ function App() {
     if (token) {
       setAuthToken(token);
       setCurrentUser(user);
-      void loadCart(token);
       if (user?.role !== "ADMIN") {
         void loadWishlist(token);
       }
     }
+    // El carrito se recupera siempre: el de un invitado también vive en el servidor, ligado a su identificador
+    void loadCart(token);
     void loadCategories();
     void loadProducts();
     fetchSiteSettings()
@@ -232,6 +237,9 @@ function App() {
       .then(setFaq)
       .catch((error) => console.error("No se pudieron cargar las preguntas frecuentes", error))
       .finally(() => setFaqLoading(false));
+    fetchPaymentConfig()
+      .then(setPaymentConfig)
+      .catch((error) => console.error("No se pudieron cargar los medios de pago", error));
     fetchCartPromos()
       .then(setCartPromos)
       .catch((error) => console.error("No se pudo cargar el envío gratis y el regalo", error));
@@ -523,6 +531,11 @@ function App() {
       const result = await createVenta(authToken, shipping, couponCode, medioPago ?? "tok_aprobado", idempotencyKeyRef.current);
       idempotencyKeyRef.current = null;
       setCartItems([]);
+      if (result.paymentUrl) {
+        // Pago con MercadoPago: se manda al cliente a pagar allá; al volver, /pago/resultado confirma el pago con el servidor
+        window.location.assign(result.paymentUrl);
+        return;
+      }
       // El resultado tiene que estar guardado antes de navegar: la pantalla de confirmación lo necesita para mostrarse
       flushSync(() => setLastCheckout(result));
       navigate(pathFor("confirmation"));
@@ -630,6 +643,7 @@ function App() {
           authToken={authToken}
           productImages={productImages}
           promos={cartPromos}
+          paymentConfig={paymentConfig}
           onRemove={handleRemoveFromCart}
           onCheckout={handleCheckout}
           onIncrement={handleIncrementCartItem}
@@ -651,6 +665,18 @@ function App() {
 
     if (view === "terms" || view === "privacy" || view === "contact") {
       return <LegalScreen section={view} />;
+    }
+
+    if (view === "paymentResult") {
+      const order = Number(location.params.get("orden"));
+      return (
+        <PaymentResultScreen
+          orderId={Number.isInteger(order) && order > 0 ? order : null}
+          returnedStatus={location.params.get("status") ?? location.params.get("collection_status")}
+          isLoggedIn={!!currentUser}
+          onNavigate={(next) => (next === "products" ? showCatalog() : navigateTo(next))}
+        />
+      );
     }
 
     if (view === "faq") {

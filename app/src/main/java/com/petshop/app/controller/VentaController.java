@@ -130,6 +130,24 @@ public class VentaController {
         return ResponseEntity.ok(body);
     }
 
+    @PostMapping("/{id}/pago/sincronizacion")
+    @Operation(summary = "Actualizar el estado del pago con MercadoPago",
+            description = "Se usa cuando el cliente vuelve de MercadoPago: se le consulta a MercadoPago por los pagos del pedido "
+                    + "y se confirma, se cancela (si venció) o sigue pendiente. Devuelve la venta actualizada.")
+    public ResponseEntity<?> sincronizarPago(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                              @Parameter(description = "Identificador de invitado, usado cuando no hay token") @RequestHeader(value = "X-Guest-Id", required = false) String guestId,
+                                              @PathVariable Long id) {
+        String principal = principal(token, guestId);
+        if (principal == null) {
+            return Problems.unauthorized();
+        }
+        Order order = visibleOrder(token, principal, id);
+        if (order == null) {
+            return Problems.notFound("No existe la venta " + id + ".");
+        }
+        return ResponseEntity.ok(ventaService.toDto(ventaService.sincronizarPago(order)));
+    }
+
     @PostMapping("/{id}/cancelacion")
     @Operation(summary = "Cancelar una venta", description = "Libera el stock; si ya estaba paga, el pago pasa a REEMBOLSADO.")
     public ResponseEntity<?> cancelar(@RequestHeader(value = "X-Auth-Token", required = false) String token,

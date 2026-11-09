@@ -31,6 +31,8 @@ public class OrderDTO {
     public double total;
     public String estado;
     public String estadoPago;
+    /** Link de MercadoPago para pagar o reintentar el pago: solo mientras el pedido espera el pago. */
+    public String paymentUrl;
 
     // Solo para administradores
     public String userId;
@@ -42,7 +44,9 @@ public class OrderDTO {
     public String shippingPhone;
 
     public static OrderDTO forCustomer(Order order) {
-        return base(order);
+        OrderDTO dto = base(order);
+        dto.paymentUrl = "PAGO_PENDIENTE".equals(order.estado) ? order.paymentUrl : null;
+        return dto;
     }
 
     public static OrderDTO forAdmin(Order order) {
