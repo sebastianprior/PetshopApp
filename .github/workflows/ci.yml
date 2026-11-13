@@ -67,8 +67,21 @@ jobs:
           fetch-depth: 0 # todo el historial, no solo el último commit
       - name: Buscar secretos en todo el historial
         run: |
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.18.4 \
-            detect --source /repo --config /repo/.gitleaks.toml --redact --verbose
+          status=0
+          # safe.directory: dentro del contenedor el repo pertenece a otro usuario y git se niega a leerlo
+          docker run --rm -v "$PWD:/repo" \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            zricethezav/gitleaks:v8.18.4 \
+            detect --source /repo --config /repo/.gitleaks.toml --redact \
+            --report-format json --report-path /repo/gitleaks-report.json || status=$?
+          # Cada hallazgo queda como anotación (regla, archivo y commit; nunca el valor del secreto)
+          python3 - <<'PY'
+          import json, os
+          path = "gitleaks-report.json"
+          for f in (json.load(open(path)) if os.path.exists(path) else []) or []:
+              print(f"::error title=Secreto ({f['RuleID']})::{f['File']}:{f['StartLine']} en el commit {f['Commit'][:7]}")
+          PY
+          exit $status
 
   sistema-completo:
     name: Sistema completo (docker compose)
