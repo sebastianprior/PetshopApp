@@ -150,7 +150,7 @@ class ProductControllerTest {
         for (String token : new String[]{null, "", "token-roto", customerToken}) {
             int expected = customerToken.equals(token) ? 403 : 401;
             assertThat(controller.create(token, body).getStatusCode().value()).isEqualTo(expected);
-            assertThat(controller.update(token, "p1", body).getStatusCode().value()).isEqualTo(expected);
+            assertThat(controller.update(token, null, "p1", body).getStatusCode().value()).isEqualTo(expected);
             assertThat(controller.delete(token, "p1").getStatusCode().value()).isEqualTo(expected);
         }
         verify(products, never()).save(any());
@@ -175,10 +175,10 @@ class ProductControllerTest {
 
     @Test
     void updateUsesTheIdFromTheAddressNotTheOneInTheBody() {
-        when(products.existsById("p1")).thenReturn(true);
+        when(products.findById("p1")).thenReturn(Optional.of(product("p1", "Collar", "x", 1, "c")));
         Product body = product("otro-id", "Cambiado", "x", 99, "c");
 
-        ResponseEntity<?> response = controller.update(adminToken, "p1", body);
+        ResponseEntity<?> response = controller.update(adminToken, null, "p1", body);
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(body.id).isEqualTo("p1");
@@ -187,12 +187,70 @@ class ProductControllerTest {
 
     @Test
     void updateOfAMissingProductIsRejected() {
-        when(products.existsById("p1")).thenReturn(false);
+        when(products.findById("p1")).thenReturn(Optional.empty());
 
-        ResponseEntity<?> response = controller.update(adminToken, "p1", product("p1", "x", "x", 1, "c"));
+        ResponseEntity<?> response = controller.update(adminToken, null, "p1", product("p1", "x", "x", 1, "c"));
 
         assertThat(response.getStatusCode().value()).isEqualTo(400);
         verify(products, never()).save(any());
+    }
+
+    // ---- ETag / If-Match: no pisar el cambio de otra persona --------------------------------------------------------
+
+    private Product stored;
+
+    private String readETag() {
+        when(products.findById("p1")).thenAnswer(inv -> Optional.of(stored));
+        return controller.get("p1").getHeaders().getETag();
+    }
+
+    @Test
+    void readingAProductGivesItsETagAndItChangesWithTheData() {
+        stored = product("p1", "Collar", "x", 899, "c");
+        String before = readETag();
+        assertThat(before).isNotBlank().startsWith("\"");
+        assertThat(readETag()).isEqualTo(before);
+
+        stored.price = 999;
+
+        assertThat(readETag()).isNotEqualTo(before);
+    }
+
+    @Test
+    void aStaleETagRejectsTheUpdateWith412AndSavesNothing() {
+        stored = product("p1", "Collar", "x", 899, "c");
+        String mine = readETag();
+        stored.stock = 3; // otro administrador lo modificó después de que yo lo leí
+
+        ResponseEntity<?> response = controller.update(adminToken, mine, "p1", product("p1", "Collar", "x", 1000, "c"));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(412);
+        assertThat(response.getBody()).isInstanceOf(org.springframework.http.ProblemDetail.class);
+        assertThat(((org.springframework.http.ProblemDetail) response.getBody()).getDetail()).contains("ETag desactualizado");
+        verify(products, never()).save(any());
+    }
+
+    @Test
+    void aCurrentETagAllowsTheUpdateAndReturnsTheNewOne() {
+        stored = product("p1", "Collar", "x", 899, "c");
+        String mine = readETag();
+        Product body = product("p1", "Collar", "x", 1000, "c");
+
+        ResponseEntity<?> response = controller.update(adminToken, mine, "p1", body);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getETag()).isNotEqualTo(mine);
+        verify(products).save(body);
+    }
+
+    @Test
+    void ifMatchWithSeveralValuesOrAWeakPrefixIsUnderstood() {
+        stored = product("p1", "Collar", "x", 899, "c");
+        String mine = readETag();
+
+        assertThat(controller.update(adminToken, "\"otro\", W/" + mine, "p1", product("p1", "A", "x", 1, "c")).getStatusCode().value()).isEqualTo(200);
+        assertThat(controller.update(adminToken, "*", "p1", product("p1", "B", "x", 1, "c")).getStatusCode().value()).isEqualTo(200);
+        assertThat(controller.update(adminToken, "\"otro\"", "p1", product("p1", "C", "x", 1, "c")).getStatusCode().value()).isEqualTo(412);
     }
 
     @Test

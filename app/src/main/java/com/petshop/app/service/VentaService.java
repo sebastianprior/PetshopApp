@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -449,14 +450,22 @@ public class VentaService {
     }
 
     private AuthOutcome autorizar(Order order) {
-        Future<AuthResult> future = paymentExecutor.submit(
-                () -> gateway.autorizar(order.idTransaccion, order.total, order.medioPagoToken));
+        Future<AuthResult> future;
+        try {
+            future = paymentExecutor.submit(() -> gateway.autorizar(order.idTransaccion, order.total, order.medioPagoToken));
+        } catch (RejectedExecutionException e) {
+            // Demasiadas llamadas a la pasarela en curso: la venta queda pendiente y el worker reintenta
+            LOG.warn("Pasarela saturada: no se envió la autorización (idTransaccion={})", order.idTransaccion);
+            return new AuthOutcome(AuthKind.SIN_RESPUESTA, null);
+        }
         try {
             AuthResult result = future.get(timeoutMs, TimeUnit.MILLISECONDS);
             return result.estado() == PaymentStatus.APROBADO
                     ? new AuthOutcome(AuthKind.APROBADO, null)
                     : new AuthOutcome(AuthKind.RECHAZADO, result.motivo());
         } catch (TimeoutException e) {
+            // Se interrumpe la llamada: no queda un hilo esperando a una pasarela que no contesta
+            future.cancel(true);
             LOG.warn("La pasarela no respondió en {} ms (idTransaccion={})", timeoutMs, order.idTransaccion);
             return new AuthOutcome(AuthKind.SIN_RESPUESTA, null);
         } catch (ExecutionException e) {
@@ -472,10 +481,18 @@ public class VentaService {
     }
 
     private Optional<AuthResult> consultar(String idTransaccion) {
-        Future<Optional<AuthResult>> future = paymentExecutor.submit(() -> gateway.consultarPago(idTransaccion));
+        Future<Optional<AuthResult>> future;
+        try {
+            future = paymentExecutor.submit(() -> gateway.consultarPago(idTransaccion));
+        } catch (RejectedExecutionException e) {
+            return Optional.empty();
+        }
         try {
             return future.get(timeoutMs, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException | ExecutionException e) {
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            return Optional.empty();
+        } catch (ExecutionException e) {
             return Optional.empty();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

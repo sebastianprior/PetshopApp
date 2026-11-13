@@ -104,7 +104,7 @@ public class VentaController {
         if (order == null) {
             return Problems.notFound("No existe la venta " + id + ".");
         }
-        return ResponseEntity.ok(ventaService.toDto(order));
+        return ResponseEntity.ok().eTag(etag(order)).body(ventaService.toDto(order));
     }
 
     @GetMapping("/{id}/pago")
@@ -167,6 +167,8 @@ public class VentaController {
     @PatchMapping("/{id}")
     @Operation(summary = "Cambiar el estado de una venta (solo administrador)")
     public ResponseEntity<?> cambiarEstado(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                            @Parameter(description = "ETag de la venta que se leyó (header ETag de GET /{id}): si cambió desde entonces, responde 412")
+                                            @RequestHeader(value = "If-Match", required = false) String ifMatch,
                                             @PathVariable Long id,
                                             @RequestBody(required = false) Map<String, String> body) {
         if (!authenticated(token)) {
@@ -179,6 +181,10 @@ public class VentaController {
         if (order == null) {
             return Problems.notFound("No existe la venta " + id + ".");
         }
+        if (ETags.stale(ifMatch, etag(order))) {
+            return Problems.of(412, "precondicion-fallida", "Precondición fallida",
+                    "La venta cambió desde que la leíste (ETag desactualizado): volvé a pedirla y reintentá.");
+        }
         String estado = body != null ? body.get("estado") : null;
         if (estado == null || estado.isBlank()) {
             return Problems.of(400, "estado-requerido", "Estado requerido", "Falta el campo 'estado'.");
@@ -190,7 +196,12 @@ public class VentaController {
         if (outcome.isProblem()) {
             return Problems.of(outcome.status(), outcome.problemSlug(), outcome.problemTitle(), outcome.problemDetail());
         }
-        return ResponseEntity.ok(ventaService.toDto(outcome.order()));
+        return ResponseEntity.ok().eTag(etag(outcome.order())).body(ventaService.toDto(outcome.order()));
+    }
+
+    /** Huella de lo que puede cambiar de una venta: su estado, el del pago, los intentos de cobro y el total. */
+    private static String etag(Order order) {
+        return ETags.of(order.id, order.estado, order.estadoPago, order.intentosPago, order.total);
     }
 
     private boolean authenticated(String token) {

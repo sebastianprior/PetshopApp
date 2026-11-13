@@ -286,6 +286,44 @@ class VentaServiceTest {
     }
 
     @Test
+    void whenTheGatewayTimesOutTheCallIsInterruptedSoNoThreadStaysHanging() throws Exception {
+        java.util.concurrent.atomic.AtomicBoolean interrupted = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.CountDownLatch finished = new java.util.concurrent.CountDownLatch(1);
+        when(gateway.autorizar(anyString(), anyDouble(), any())).thenAnswer(inv -> {
+            try {
+                Thread.sleep(10_000);
+            } catch (InterruptedException e) {
+                interrupted.set(true);
+            } finally {
+                finished.countDown();
+            }
+            return new AuthResult(PaymentStatus.APROBADO, null);
+        });
+
+        VentaOutcome outcome = service.crear("user-1", "key-hang", request());
+
+        assertThat(outcome.status()).isEqualTo(202);
+        assertThat(finished.await(3, java.util.concurrent.TimeUnit.SECONDS)).as("la llamada terminó poco después del timeout").isTrue();
+        assertThat(interrupted.get()).as("fue interrumpida, no esperó a que la pasarela contestara").isTrue();
+    }
+
+    @Test
+    void whenTheGatewayPoolIsFullTheSaleStaysPendingInsteadOfFailing() {
+        ExecutorService full = mock(ExecutorService.class);
+        when(full.submit(any(java.util.concurrent.Callable.class))).thenThrow(new java.util.concurrent.RejectedExecutionException("lleno"));
+        VentaService saturated = new VentaService(orderRepository, cartItemRepository, store, productRepository, mock(ProductVariantRepository.class),
+                mock(CouponRepository.class), mock(IdempotencyRecordRepository.class), gateway, full, publisher, rouletteService,
+                shopRules, mercadoPago, paymentSettings, 200, 3, 0);
+
+        VentaOutcome outcome = saturated.crear("user-1", "key-full", request());
+
+        assertThat(outcome.status()).isEqualTo(202);
+        assertThat(outcome.order().estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(product.stock).as("el stock sigue reservado").isEqualTo(8);
+        verify(gateway, never()).autorizar(anyString(), anyDouble(), any());
+    }
+
+    @Test
     void sameIdempotencyKeyAndBodyReplaysTheOriginalResult() {
         gatewayApproves();
 

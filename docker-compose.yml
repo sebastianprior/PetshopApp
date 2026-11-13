@@ -39,6 +39,10 @@ services:
       # JWT_SECRET sin definir: el backend genera una al azar en cada arranque (las sesiones no sobreviven a un reinicio).
       # Para fijarla, definí la variable JWT_SECRET (32 caracteres o más) al ejecutar docker compose up.
       JWT_SECRET: ${JWT_SECRET:-}
+      ARTEMIS_PERSISTENT: "true"
+    volumes:
+      # Los mensajes del broker en cola sobreviven a un reinicio del backend
+      - artemis-data:/app/artemis-data
     ports:
       - "8080:8080"
     healthcheck:
@@ -62,3 +66,4 @@ services:
 
 volumes:
   mysql-data:
+  artemis-data:

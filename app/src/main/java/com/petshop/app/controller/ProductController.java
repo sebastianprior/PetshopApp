@@ -92,7 +92,13 @@ public class ProductController {
             return ResponseEntity.status(404).body(Map.of("error", "Producto no encontrado"));
         }
         product.hasVariants = !productVariantRepository.findByProductId(id).isEmpty();
-        return ResponseEntity.ok(product);
+        return ResponseEntity.ok().eTag(etag(product)).body(product);
+    }
+
+    /** Huella de los datos de un producto que el administrador puede editar. */
+    private static String etag(Product product) {
+        return ETags.of(product.id, product.name, product.brand, product.price, product.oldPrice, product.rating,
+                product.imageUrl, product.badge, product.categoryId, product.stock);
     }
 
     @AdminOnly
@@ -113,19 +119,26 @@ public class ProductController {
     @AdminOnly
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@RequestHeader(value = "X-Auth-Token", required = false) String token,
+                                     @RequestHeader(value = "If-Match", required = false) String ifMatch,
                                      @PathVariable String id,
                                      @RequestBody Product product) {
         if (!adminGuard.isAdmin(token)) {
             return adminGuard.denied(token);
         }
 
-        if (!productRepository.existsById(id)) {
+        Product current = productRepository.findById(id).orElse(null);
+        if (current == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Producto no encontrado"));
+        }
+        // Si otra persona lo modificó después de que este administrador lo leyó, no se pisa su cambio (412)
+        if (ETags.stale(ifMatch, etag(current))) {
+            return Problems.of(412, "precondicion-fallida", "Precondición fallida",
+                    "El producto cambió desde que lo leíste (ETag desactualizado): volvé a pedirlo y reintentá.");
         }
 
         product.id = id;
         productRepository.save(product);
-        return ResponseEntity.ok(product);
+        return ResponseEntity.ok().eTag(etag(product)).body(product);
     }
 
     @AdminOnly

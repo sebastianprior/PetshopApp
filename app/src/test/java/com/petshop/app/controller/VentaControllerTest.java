@@ -24,6 +24,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class VentaControllerTest {
@@ -142,8 +144,71 @@ class VentaControllerTest {
         assertThat(controller.obtener(adminToken, null, 5L).getStatusCode().value()).isEqualTo(200);
     }
 
+    // ---- ETag / If-Match: no pisar el cambio de otra persona --------------------------------------------------------
+
+    private Order storedOrder(Long id, String estado) {
+        Order order = order(id, "user-1", estado);
+        when(orderRepository.findById(id)).thenReturn(Optional.of(order));
+        when(ventaService.toDto(order)).thenReturn(new VentaDTO());
+        return order;
+    }
+
+    @Test
+    void readingASaleGivesItsETag() {
+        storedOrder(5L, "COMPLETADA");
+
+        String etag = controller.obtener(customerToken, null, 5L).getHeaders().getETag();
+
+        assertThat(etag).isNotBlank().startsWith("\"").endsWith("\"");
+    }
+
+    @Test
+    void theETagChangesWhenTheSaleChangesAndStaysTheSameOtherwise() {
+        Order order = storedOrder(5L, "COMPLETADA");
+        String before = controller.obtener(customerToken, null, 5L).getHeaders().getETag();
+        assertThat(controller.obtener(customerToken, null, 5L).getHeaders().getETag()).isEqualTo(before);
+
+        order.estado = "ENVIADA";
+
+        assertThat(controller.obtener(customerToken, null, 5L).getHeaders().getETag()).isNotEqualTo(before);
+    }
+
+    @Test
+    void aStaleETagMakesThePatchFailWith412AndNothingChanges() {
+        Order order = storedOrder(5L, "COMPLETADA");
+        String stale = controller.obtener(customerToken, null, 5L).getHeaders().getETag();
+        order.estado = "ENVIADA"; // otra persona la cambió mientras tanto
+
+        ResponseEntity<?> response = controller.cambiarEstado(adminToken, stale, 5L, Map.of("estado", "CANCELADA"));
+
+        assertProblem(response, 412, "precondicion-fallida");
+        verify(ventaService, never()).cambiarEstado(any(), anyString());
+    }
+
+    @Test
+    void aCurrentETagLetsThePatchThrough() {
+        Order order = storedOrder(5L, "COMPLETADA");
+        String current = controller.obtener(customerToken, null, 5L).getHeaders().getETag();
+        when(ventaService.cambiarEstado(order, "ENVIADA")).thenReturn(new VentaOutcome(200, order, null, null, null));
+
+        ResponseEntity<?> response = controller.cambiarEstado(adminToken, current, 5L, Map.of("estado", "ENVIADA"));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getETag()).isNotBlank();
+        verify(ventaService).cambiarEstado(order, "ENVIADA");
+    }
+
+    @Test
+    void withoutIfMatchOrWithAStarThePatchIsNotBlocked() {
+        Order order = storedOrder(5L, "COMPLETADA");
+        when(ventaService.cambiarEstado(order, "ENVIADA")).thenReturn(new VentaOutcome(200, order, null, null, null));
+
+        assertThat(controller.cambiarEstado(adminToken, null, 5L, Map.of("estado", "ENVIADA")).getStatusCode().value()).isEqualTo(200);
+        assertThat(controller.cambiarEstado(adminToken, "*", 5L, Map.of("estado", "ENVIADA")).getStatusCode().value()).isEqualTo(200);
+    }
+
     @Test
     void onlyAdminsCanPatchTheState() {
-        assertProblem(controller.cambiarEstado(customerToken, 1L, Map.of("estado", "ENVIADA")), 403, "prohibido");
+        assertProblem(controller.cambiarEstado(customerToken, null, 1L, Map.of("estado", "ENVIADA")), 403, "prohibido");
     }
 }

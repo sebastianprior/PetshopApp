@@ -35,3 +35,5 @@ build/
 ### Local runtime files ###
 logs/
 outbox/
+artemis-data/
+sonda_seguridad_resultado.json

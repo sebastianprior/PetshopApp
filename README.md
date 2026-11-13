@@ -55,9 +55,31 @@ npm test                             # frontend, desde app/src/app/
 npx tsc --noEmit                     # revisión de tipos del frontend
 ```
 
-En cada push, GitHub Actions (`.github/workflows/ci.yml`) compila y prueba el backend, revisa los tipos y prueba el
-frontend, escanea el historial en busca de secretos (gitleaks) y levanta el sistema completo con `docker compose` para
-comprobar que responde.
+En cada push, GitHub Actions (`.github/workflows/ci.yml`) compila y prueba el backend (con control de cobertura), revisa los
+tipos y prueba el frontend, corre las pruebas de mutación (PIT), escanea el historial en busca de secretos (gitleaks) y
+levanta el sistema completo con `docker compose` para comprobar que responde.
+
+Con la aplicación en ejecución, la sonda de seguridad ataca la API real (BOLA, BFLA, JWT alterado, mass assignment,
+inyecciones, XXE, fuerza bruta, headers, CORS, ETag/412, estados y cola de mensajes muertos):
+
+```bash
+python tests-api/sonda_seguridad.py     # desde app/
+```
+
+## Seguridad y resiliencia
+
+- **Headers.** Toda respuesta lleva `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`; lo que depende de la sesión, además, `Cache-Control: no-store`.
+- **Sesión.** Sin una sesión válida (sin token, vencido, con la firma alterada o de otro emisor) las operaciones de
+  administrador responden **401**; con la sesión de un cliente, **403**. El rol se controla antes de leer el cuerpo.
+- **Entrada.** Los textos con etiquetas HTML (`<script>`…) se rechazan con 400; las contraseñas no se revisan.
+- **Pagos.** La llamada a la pasarela vence a los 5 segundos y se interrumpe; si se vence o la pasarela está saturada, la venta
+  queda `PAGO_PENDIENTE` con el stock reservado y un proceso la reintenta (con tope de intentos).
+- **Mensajería.** Cada evento de venta se guarda primero en la tabla `outbox_events` y un proceso lo entrega al broker con
+  reintentos: si el broker está caído, no se pierde. El consumidor descarta duplicados (`eventId`). Un mensaje que falla 3
+  veces pasa a la cola `DLQ`; el administrador la ve con `GET /api/admin/dlq` y la reprocesa con `POST /api/admin/dlq/reprocess`.
+- **Concurrencia.** `GET /api/v1/ventas/{id}` y `GET /api/products/{id}` devuelven un `ETag`; `PATCH /api/v1/ventas/{id}` y
+  `PUT /api/products/{id}` aceptan `If-Match` y responden **412** si el recurso cambió desde que se leyó.
 
 ## Variables de entorno
 
@@ -76,6 +98,8 @@ comprobar que responde.
 | `MP_PENDING_EXPIRY_MINUTES` | Minutos que un pedido espera el pago antes de cancelarse y liberar el stock. | `30` |
 | `GOOGLE_CLIENT_ID` | Client ID de Google para "Continuar con Google" (es público). Vacío = el botón no se muestra. | El de este proyecto (ver abajo). |
 | `CORS_ALLOWED_ORIGINS` | Direcciones del frontend que pueden llamar a la API, separadas por coma (por ejemplo `https://mi-tienda.vercel.app`). | `http://localhost:5173,http://localhost:4173` |
+| `ARTEMIS_PERSISTENT` | `true` guarda en disco los mensajes del broker (sobreviven a un reinicio). Lo activan el `docker-compose.yml` y el `Dockerfile`. | `false` (en desarrollo local con Java 25 o más el broker no puede releer su journal) |
+| `ARTEMIS_DATA_DIR` | Carpeta del journal del broker. | `artemis-data` |
 
 ### Frontend
 

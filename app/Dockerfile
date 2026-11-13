@@ -18,9 +18,10 @@ WORKDIR /app
 COPY --from=build /build/app.jar app.jar
 
 # Carpetas donde la app guarda archivos (imágenes subidas por el admin y emails simulados)
-RUN mkdir -p uploads outbox logs
+RUN mkdir -p uploads outbox logs artemis-data
 
 # Memoria acotada: los planes gratuitos tienen ~512 MB
+ENV ARTEMIS_PERSISTENT=true
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=60 -XX:+UseSerialGC -Xss512k"
 
 # El puerto lo define la plataforma con PORT (por defecto, 8080)

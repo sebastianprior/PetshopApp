@@ -1,8 +1,10 @@
 package com.petshop.app.config;
 
+import org.apache.activemq.artemis.api.core.SimpleString;
 import org.apache.activemq.artemis.core.config.Configuration;
 import org.apache.activemq.artemis.core.security.CheckType;
 import org.apache.activemq.artemis.core.security.Role;
+import org.apache.activemq.artemis.core.settings.impl.AddressSettings;
 import org.apache.activemq.artemis.spi.core.protocol.RemotingConnection;
 import org.apache.activemq.artemis.spi.core.security.ActiveMQSecurityManager5;
 import org.apache.activemq.artemis.spi.core.security.jaas.RolePrincipal;
@@ -25,18 +27,35 @@ public final class BrokerSecurity {
     public static final String PRODUCER_ROLE = "productor";
     public static final String CONSUMER_ROLE = "consumidor";
 
+    /** Cola de mensajes muertos: acá termina un mensaje que el consumidor no logró procesar tras todos los intentos. */
+    public static final String DEAD_LETTER_QUEUE = "DLQ";
+    /** Entregas de un mismo mensaje antes de mandarlo a la cola de mensajes muertos. */
+    public static final int MAX_DELIVERY_ATTEMPTS = 3;
+    /** Espera entre un intento y el siguiente. */
+    public static final long REDELIVERY_DELAY_MS = 1000;
+
     private static final List<String> PROTECTED_ADDRESSES = List.of("ventas.#", "pagos.#");
 
     private BrokerSecurity() {}
 
-    /** Activa la seguridad y define qué rol puede hacer qué en cada dirección protegida. */
+    /**
+     * Activa la seguridad, define qué rol puede hacer qué en cada dirección protegida y la política de reintentos: un
+     * mensaje que falla {@link #MAX_DELIVERY_ATTEMPTS} veces se mueve a la cola {@link #DEAD_LETTER_QUEUE}.
+     */
     public static void apply(Configuration configuration) {
         configuration.setSecurityEnabled(true);
         Role producer = new Role(PRODUCER_ROLE, true, false, false, false, false, false, false, false, false, false, false, false);
         Role consumer = new Role(CONSUMER_ROLE, false, true, false, false, false, false, false, false, false, false, false, false);
         for (String match : PROTECTED_ADDRESSES) {
             configuration.putSecurityRoles(match, Set.of(producer, consumer));
+            configuration.addAddressSetting(match, new AddressSettings()
+                    .setMaxDeliveryAttempts(MAX_DELIVERY_ATTEMPTS)
+                    .setRedeliveryDelay(REDELIVERY_DELAY_MS)
+                    .setDeadLetterAddress(SimpleString.of(DEAD_LETTER_QUEUE)));
         }
+        // La cola de mensajes muertos solo la lee (y recorre) el consumidor; nadie más publica ahí: el broker mueve los mensajes
+        Role deadLetterReader = new Role(CONSUMER_ROLE, false, true, false, false, false, false, false, true, false, false, false, false);
+        configuration.putSecurityRoles(DEAD_LETTER_QUEUE, Set.of(deadLetterReader));
     }
 
     /** Usuario del broker: contraseña y roles. */

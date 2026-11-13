@@ -61,7 +61,7 @@ public class SoapConfig {
     @Bean
     public WebServiceTemplate pagosWebServiceTemplate(WebServiceTemplateBuilder builder, Jaxb2Marshaller pagosMarshaller,
                                                       @Value("${petshop.payments.soap-url:http://localhost:${server.port:8080}/ws}") String url,
-                                                      @Value("${petshop.payments.soap-read-timeout-ms:30000}") long readTimeoutMs) {
+                                                      @Value("${petshop.payments.soap-read-timeout-ms:5000}") long readTimeoutMs) {
         HttpUrlConnectionMessageSender sender = new HttpUrlConnectionMessageSender();
         sender.setConnectionTimeout(Duration.ofSeconds(3));
         sender.setReadTimeout(Duration.ofMillis(readTimeoutMs));
