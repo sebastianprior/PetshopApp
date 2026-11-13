@@ -64,7 +64,7 @@ class RefundControllerTest {
         returnWith(Return.Status.APROBADA, 1);
 
         for (String token : new String[]{null, "token-roto", customerToken}) {
-            assertThat(controller.process(token, 5L).getStatusCode().value()).isEqualTo(403);
+            assertThat(controller.process(token, 5L).getStatusCode().value()).isEqualTo(customerToken.equals(token) ? 403 : 401);
         }
         verify(refunds, never()).save(any());
         verify(returns, never()).save(any());

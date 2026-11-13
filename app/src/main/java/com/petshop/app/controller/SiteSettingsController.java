@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.petshop.app.config.AdminOnly;
 
 /** Textos de las barras de anuncio de la tienda: lectura pública, edición solo para administradores. */
 @RestController
@@ -37,11 +38,12 @@ public class SiteSettingsController {
         return repository.findById(SiteSettings.SINGLETON_ID).map(SiteSettingsController::toDto).orElseGet(SiteSettingsController::defaults);
     }
 
+    @AdminOnly
     @PutMapping
     public ResponseEntity<?> update(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                     @RequestBody SiteSettingsDTO body) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         List<String> items = new ArrayList<>();

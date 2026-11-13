@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.petshop.app.config.AdminOnly;
 
 /** Preguntas frecuentes: lectura pública (la página FAQ y Salchi Bot), edición solo para administradores. */
 @RestController
@@ -39,12 +40,13 @@ public class FaqController {
     }
 
     /** Reemplaza toda la lista, en el orden recibido (así el administrador agrega, edita, reordena y borra en un solo guardado). */
+    @AdminOnly
     @PutMapping
     @Transactional
     public ResponseEntity<?> replace(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @RequestBody List<FaqDTO> body) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
         if (body == null) {
             return error("Falta la lista de preguntas.");

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import com.petshop.app.config.AdminOnly;
 
 @RestController
 @RequestMapping("/api/products/{productId}/variants")
@@ -31,12 +32,13 @@ public class ProductVariantController {
         return variantRepository.findByProductId(productId);
     }
 
+    @AdminOnly
     @PostMapping
     public ResponseEntity<?> create(@PathVariable String productId,
                                      @RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @RequestBody ProductVariant variant) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
         if (!productRepository.existsById(productId)) {
             return ResponseEntity.badRequest().body(Map.of("error", "Producto no encontrado"));
@@ -54,13 +56,14 @@ public class ProductVariantController {
         return ResponseEntity.ok(variant);
     }
 
+    @AdminOnly
     @PutMapping("/{variantId}")
     public ResponseEntity<?> update(@PathVariable String productId,
                                      @PathVariable Long variantId,
                                      @RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @RequestBody ProductVariant variant) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         ProductVariant existing = variantRepository.findById(variantId).orElse(null);
@@ -82,12 +85,13 @@ public class ProductVariantController {
         return ResponseEntity.ok(existing);
     }
 
+    @AdminOnly
     @DeleteMapping("/{variantId}")
     public ResponseEntity<?> delete(@PathVariable String productId,
                                      @PathVariable Long variantId,
                                      @RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         ProductVariant existing = variantRepository.findById(variantId).orElse(null);

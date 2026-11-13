@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import com.petshop.app.config.AdminOnly;
 
 @RestController
 @RequestMapping("/api/returns")
@@ -80,21 +81,23 @@ public class ReturnController {
         return ResponseEntity.ok(returnRepository.findByUserIdOrderByRequestedAtDesc(userId));
     }
 
+    @AdminOnly
     @GetMapping
     public ResponseEntity<?> listAll(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         return ResponseEntity.ok(returnRepository.findAllByOrderByRequestedAtDesc());
     }
 
+    @AdminOnly
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                            @PathVariable Long id,
                                            @RequestBody Map<String, String> body) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         Return devolucion = returnRepository.findById(id).orElse(null);

@@ -146,10 +146,12 @@ class ProductControllerTest {
     void onlyAnAdministratorCanCreateUpdateOrDelete() {
         Product body = product("p1", "Collar", "x", 1, "c");
 
+        // Sin una sesión válida es 401; con la sesión de un cliente, 403
         for (String token : new String[]{null, "", "token-roto", customerToken}) {
-            assertThat(controller.create(token, body).getStatusCode().value()).isEqualTo(403);
-            assertThat(controller.update(token, "p1", body).getStatusCode().value()).isEqualTo(403);
-            assertThat(controller.delete(token, "p1").getStatusCode().value()).isEqualTo(403);
+            int expected = customerToken.equals(token) ? 403 : 401;
+            assertThat(controller.create(token, body).getStatusCode().value()).isEqualTo(expected);
+            assertThat(controller.update(token, "p1", body).getStatusCode().value()).isEqualTo(expected);
+            assertThat(controller.delete(token, "p1").getStatusCode().value()).isEqualTo(expected);
         }
         verify(products, never()).save(any());
         verify(products, never()).deleteById(any());

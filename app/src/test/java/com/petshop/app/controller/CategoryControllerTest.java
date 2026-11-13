@@ -46,10 +46,12 @@ class CategoryControllerTest {
     void onlyAnAdministratorCanChangeCategories() {
         Category body = new Category("perros", "Perros", "#FFD6A5");
 
+        // Sin una sesión válida es 401; con la sesión de un cliente, 403
         for (String token : new String[]{null, "token-roto", customerToken}) {
-            assertThat(controller.create(token, body).getStatusCode().value()).isEqualTo(403);
-            assertThat(controller.update(token, "perros", body).getStatusCode().value()).isEqualTo(403);
-            assertThat(controller.delete(token, "perros").getStatusCode().value()).isEqualTo(403);
+            int expected = customerToken.equals(token) ? 403 : 401;
+            assertThat(controller.create(token, body).getStatusCode().value()).isEqualTo(expected);
+            assertThat(controller.update(token, "perros", body).getStatusCode().value()).isEqualTo(expected);
+            assertThat(controller.delete(token, "perros").getStatusCode().value()).isEqualTo(expected);
         }
         verify(categories, never()).save(any());
         verify(categories, never()).deleteById(any());

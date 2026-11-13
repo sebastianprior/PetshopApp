@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.Optional;
+import com.petshop.app.config.AdminOnly;
 
 /** Envío gratis y regalo del carrito: lectura pública (la tienda lo muestra), edición solo para administradores. */
 @RestController
@@ -38,11 +39,12 @@ public class CartPromosController {
         return toDto(shopRules.promos());
     }
 
+    @AdminOnly
     @PutMapping
     public ResponseEntity<?> update(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                     @RequestBody CartPromosDTO body) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         if (body.freeShippingEnabled && !validAmount(body.freeShippingThreshold)) {

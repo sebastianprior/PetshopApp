@@ -131,7 +131,7 @@ class ShippingControllerTest {
         ShippingConfigDTO body = config(2000, "5 días", zone("Z", 1000, 1100, 10, "1 día"));
 
         assertThat(controller.replace(customerToken, body).getStatusCode().value()).isEqualTo(403);
-        assertThat(controller.replace(null, body).getStatusCode().value()).isEqualTo(403);
+        assertThat(controller.replace(null, body).getStatusCode().value()).isEqualTo(401);
         verify(zoneRepository, never()).deleteAllInBatch();
     }
 

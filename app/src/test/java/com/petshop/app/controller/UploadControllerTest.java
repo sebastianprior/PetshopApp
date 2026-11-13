@@ -53,7 +53,7 @@ class UploadControllerTest {
     void aCustomerCannotUploadAnything() throws IOException {
         for (String token : new String[]{null, "token-roto", customerToken}) {
             ResponseEntity<?> response = controller.upload(token, file("foto.png", new byte[]{1, 2, 3}));
-            assertThat(response.getStatusCode().value()).isEqualTo(403);
+            assertThat(response.getStatusCode().value()).isEqualTo(customerToken.equals(token) ? 403 : 401);
         }
         assertThat(storedFiles()).isZero();
     }

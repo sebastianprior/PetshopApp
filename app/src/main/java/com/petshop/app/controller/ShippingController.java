@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import com.petshop.app.config.AdminOnly;
 
 /**
  * Costo de envío según el código postal. La cotización es pública (el carrito la consulta); las zonas las edita solo un
@@ -70,12 +71,13 @@ public class ShippingController {
     }
 
     /** Reemplaza todas las zonas y el costo del resto del país en un solo guardado. */
+    @AdminOnly
     @PutMapping("/zones")
     @Transactional
     public ResponseEntity<?> replace(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @RequestBody ShippingConfigDTO body) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
         if (body == null || body.zones == null) {
             return error("Falta la configuración de envíos.");

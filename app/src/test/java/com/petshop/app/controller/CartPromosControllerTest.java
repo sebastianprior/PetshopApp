@@ -80,7 +80,7 @@ class CartPromosControllerTest {
     @Test
     void onlyAdminsCanUpdate() {
         assertThat(controller.update(customerToken, body(true, 20000, false, null, 0)).getStatusCode().value()).isEqualTo(403);
-        assertThat(controller.update(null, body(true, 20000, false, null, 0)).getStatusCode().value()).isEqualTo(403);
+        assertThat(controller.update(null, body(true, 20000, false, null, 0)).getStatusCode().value()).isEqualTo(401);
         verify(repository, never()).save(any());
     }
 

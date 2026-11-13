@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.petshop.app.config.AdminOnly;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -48,19 +49,21 @@ public class OrderController {
         return ResponseEntity.ok(orderRepository.findByUserIdOrderByFechaDesc(userId).stream().map(OrderDTO::forCustomer).toList());
     }
 
+    @AdminOnly
     @GetMapping
     public ResponseEntity<?> listAll(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         return ResponseEntity.ok(orderRepository.findAllByOrderByFechaDesc().stream().map(OrderDTO::forAdmin).toList());
     }
 
+    @AdminOnly
     @GetMapping("/stats")
     public ResponseEntity<?> stats(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         List<Order> orders = orderRepository.findAll();
@@ -93,12 +96,13 @@ public class OrderController {
         return ResponseEntity.ok(new OrderStatsDTO(totalOrders, totalRevenue, ordersToday, topProducts));
     }
 
+    @AdminOnly
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                            @PathVariable Long id,
                                            @RequestBody Map<String, String> body) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         Order order = orderRepository.findById(id).orElse(null);

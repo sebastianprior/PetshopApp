@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.petshop.app.config.AdminOnly;
 
 @RestController
 @RequestMapping("/api/products")
@@ -94,11 +95,12 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
+    @AdminOnly
     @PostMapping
     public ResponseEntity<?> create(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @RequestBody Product product) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         if (product.id == null || product.id.isBlank()) {
@@ -108,12 +110,13 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
+    @AdminOnly
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @PathVariable String id,
                                      @RequestBody Product product) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         if (!productRepository.existsById(id)) {
@@ -125,11 +128,12 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
+    @AdminOnly
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @PathVariable String id) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         if (!productRepository.existsById(id)) {

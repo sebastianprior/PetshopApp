@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import com.petshop.app.config.AdminOnly;
 
 @RestController
 @RequestMapping("/api/users")
@@ -29,22 +30,24 @@ public class UserController {
         this.refreshTokenService = refreshTokenService;
     }
 
+    @AdminOnly
     @GetMapping
     public ResponseEntity<?> list(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         List<UserDTO> users = userRepository.findAll().stream().map(UserDTO::fromUser).toList();
         return ResponseEntity.ok(users);
     }
 
+    @AdminOnly
     @PatchMapping("/{id}/role")
     public ResponseEntity<?> updateRole(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                          @PathVariable String id,
                                          @RequestBody Map<String, String> body) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         String nuevoRol = body.get("role");
@@ -68,12 +71,13 @@ public class UserController {
         return ResponseEntity.ok(UserDTO.fromUser(user));
     }
 
+    @AdminOnly
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                            @PathVariable String id,
                                            @RequestBody Map<String, Boolean> body) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         Boolean active = body.get("active");

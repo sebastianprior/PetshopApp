@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import com.petshop.app.config.AdminOnly;
 
 @RestController
 @RequestMapping("/api/uploads")
@@ -32,11 +33,12 @@ public class UploadController {
         this.uploadsDir = Path.of(uploadsDirPath).toAbsolutePath().normalize();
     }
 
+    @AdminOnly
     @PostMapping
     public ResponseEntity<?> upload(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @RequestParam("file") MultipartFile file) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         if (file.isEmpty()) {

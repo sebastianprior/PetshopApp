@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.Map;
+import com.petshop.app.config.AdminOnly;
 
 @RestController
 @RequestMapping("/api/refunds")
@@ -38,11 +39,12 @@ public class RefundController {
         this.adminGuard = adminGuard;
     }
 
+    @AdminOnly
     @PostMapping("/process/{returnId}")
     public ResponseEntity<?> process(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                       @PathVariable Long returnId) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         Return devolucion = returnRepository.findById(returnId).orElse(null);

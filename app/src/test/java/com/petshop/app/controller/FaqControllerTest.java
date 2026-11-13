@@ -69,7 +69,7 @@ class FaqControllerTest {
     @Test
     void onlyAdminsCanReplaceTheList() {
         assertThat(controller.replace(customerToken, List.of(dto("¿Q?", "A"))).getStatusCode().value()).isEqualTo(403);
-        assertThat(controller.replace(null, List.of(dto("¿Q?", "A"))).getStatusCode().value()).isEqualTo(403);
+        assertThat(controller.replace(null, List.of(dto("¿Q?", "A"))).getStatusCode().value()).isEqualTo(401);
         verify(repository, never()).deleteAllInBatch();
     }
 

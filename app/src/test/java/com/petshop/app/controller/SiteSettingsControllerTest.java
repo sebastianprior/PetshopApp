@@ -51,7 +51,7 @@ class SiteSettingsControllerTest {
     @Test
     void onlyAdminsCanUpdate() {
         assertThat(controller.update(customerToken, dto(List.of("a"), "AUTO", "")).getStatusCode().value()).isEqualTo(403);
-        assertThat(controller.update(null, dto(List.of("a"), "AUTO", "")).getStatusCode().value()).isEqualTo(403);
+        assertThat(controller.update(null, dto(List.of("a"), "AUTO", "")).getStatusCode().value()).isEqualTo(401);
         verify(repository, never()).save(any());
     }
 

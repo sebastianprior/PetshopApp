@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import com.petshop.app.config.AdminOnly;
 
 @RestController
 @RequestMapping("/api/products/{productId}/reviews")
@@ -75,12 +76,13 @@ public class ReviewController {
         return ResponseEntity.ok(toDto(review));
     }
 
+    @AdminOnly
     @DeleteMapping("/{reviewId}")
     public ResponseEntity<?> delete(@PathVariable String productId,
                                      @PathVariable Long reviewId,
                                      @RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (!adminGuard.isAdmin(token)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Requiere permisos de administrador"));
+            return adminGuard.denied(token);
         }
 
         Review review = reviewRepository.findById(reviewId).orElse(null);
