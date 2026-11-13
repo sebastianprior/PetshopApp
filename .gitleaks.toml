@@ -1,0 +1,14 @@
+# Configuración del escaneo de secretos (gitleaks). Usa las reglas por defecto y solo declara como falsos positivos
+# los valores de DESARROLLO que están a propósito en el repositorio, para que el reporte muestre solo hallazgos reales.
+title = "Petshop"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Contraseñas de desarrollo local documentadas en el README (no se usan en producción)"
+regexTarget = "match"
+regexes = [
+  '''petshop123''',
+  '''admin123''',
+]

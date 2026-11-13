@@ -6,7 +6,28 @@ preguntas frecuentes y Salchi Bot (asistente de recomendaciones).
 - **Backend** (`app/`): Spring Boot, Java 21 y MySQL.
 - **Frontend** (`app/src/app/`): React 18, TypeScript y Vite.
 
-## Cómo levantarlo en local
+## Levantar todo con un solo comando (Docker)
+
+Necesitás [Docker](https://docs.docker.com/get-docker/) con Compose. Desde la raíz del repositorio:
+
+```bash
+docker compose up --build
+```
+
+La primera vez tarda unos minutos (compila el backend y la tienda). Cuando termina:
+
+| Qué | Dónde |
+| --- | --- |
+| Tienda | <http://localhost:5173> |
+| API | <http://localhost:8080/api> |
+| Documentación de la API (Swagger) | <http://localhost:8080/swagger-ui.html> |
+
+El comando levanta MySQL, el backend (que trae adentro el broker de mensajes Artemis y la pasarela de pago SOAP simulada) y
+la tienda. Los datos de ejemplo y los usuarios de desarrollo se cargan solos (ver abajo). Para apagar todo:
+`docker compose down` (agregá `--volumes` para borrar también la base). Opcional: `JWT_SECRET=<32 o más caracteres>` para que
+las sesiones sobrevivan a un reinicio, y `DB_PASSWORD` para cambiar la contraseña de la base.
+
+## Cómo levantarlo en local, sin Docker
 
 1. **Base de datos.** Necesitás MySQL en `localhost:3306`. El script `setup-petshop-db.sql` crea la base y el usuario de desarrollo.
 2. **Backend** (puerto 8080), desde `app/`:
@@ -29,9 +50,14 @@ zonas de envío de ejemplo, y crea usuarios de **desarrollo**: `admin@petshop.co
 ## Tests
 
 ```bash
-./mvnw.cmd test                      # backend, desde app/
+./mvnw.cmd test                      # backend, desde app/ (en Linux o Mac: ./mvnw test)
 npm test                             # frontend, desde app/src/app/
+npx tsc --noEmit                     # revisión de tipos del frontend
 ```
+
+En cada push, GitHub Actions (`.github/workflows/ci.yml`) compila y prueba el backend, revisa los tipos y prueba el
+frontend, escanea el historial en busca de secretos (gitleaks) y levanta el sistema completo con `docker compose` para
+comprobar que responde.
 
 ## Variables de entorno
 
