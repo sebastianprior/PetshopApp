@@ -6,9 +6,16 @@ title = "Petshop"
 useDefault = true
 
 [allowlist]
-description = "Contraseñas de desarrollo local documentadas en el README (no se usan en producción)"
+description = "Valores ficticios o de desarrollo local que están a propósito en el repositorio"
 regexTarget = "match"
 regexes = [
+  # Contraseñas de desarrollo documentadas en el README (no se usan en producción)
   '''petshop123''',
   '''admin123''',
+  # Texto de ejemplo de un comentario del docker-compose (no es un secreto)
+  '''una-clave-larga-de-32-caracteres-o-mas''',
+]
+paths = [
+  # Prueba que verifica que la API no filtre datos sensibles: usa una clave y contraseñas inventadas
+  '''app/src/test/java/com/petshop/app/security/SensitiveDataTest\.java''',
 ]

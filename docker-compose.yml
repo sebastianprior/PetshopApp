@@ -37,7 +37,7 @@ services:
       CORS_ALLOWED_ORIGINS: http://localhost:5173
       FRONTEND_URL: http://localhost:5173
       # JWT_SECRET sin definir: el backend genera una al azar en cada arranque (las sesiones no sobreviven a un reinicio).
-      # Para fijarla:  JWT_SECRET=una-clave-larga-de-32-caracteres-o-mas docker compose up
+      # Para fijarla, definí la variable JWT_SECRET (32 caracteres o más) al ejecutar docker compose up.
       JWT_SECRET: ${JWT_SECRET:-}
     ports:
       - "8080:8080"
