@@ -25,14 +25,40 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Compilar y correr todas las pruebas
+      - name: Compilar, correr todas las pruebas y controlar la cobertura (JaCoCo)
         run: ./mvnw -B verify
-      - name: Guardar los reportes de pruebas
+      - name: Guardar los reportes de pruebas y de cobertura
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: reportes-backend
-          path: app/target/surefire-reports
+          path: |
+            app/target/surefire-reports
+            app/target/site/jacoco
+          if-no-files-found: ignore
+
+  mutacion:
+    name: Pruebas de mutación (PIT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Mutar la capa de negocio (falla si el puntaje baja de 60%)
+        run: ./mvnw -B test-compile org.pitest:pitest-maven:mutationCoverage
+      - name: Guardar el informe de mutación
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-mutacion
+          path: app/target/pit-reports
           if-no-files-found: ignore
 
   frontend:
