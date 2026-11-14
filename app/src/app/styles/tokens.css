@@ -13,6 +13,7 @@
   --sky-500: #65b9e9;
   --sky-600: #3a9fdb;
   --sky-700: #1f7db5;
+  --sky-800: #1b6fa3; /* texto blanco encima: contraste 5,4:1 (WCAG AA pide 4,5:1) */
 
   --mint-100: #e4f8f0;
   --mint-300: #a8e6cf;
@@ -24,6 +25,7 @@
   --coral-500: #ff916b;
   --coral-600: #f4743f;
   --coral-700: #c4521f;
+  --coral-800: #a8441a; /* texto sobre coral-100: contraste 5,1:1 (WCAG AA pide 4,5:1) */
 
   --sun-100: #fff6d9;
   --sun-300: #ffe69a;
@@ -149,7 +151,7 @@
   --link: var(--sky-700);
 
   --nav-bg: rgba(255, 255, 255, 0.92);
-  --topbar-bg: var(--sky-600);
+  --topbar-bg: var(--sky-800);
   --topbar-text: #ffffff;
   --footer-bg: var(--navy-900);
   --footer-text: #cdd8e3;

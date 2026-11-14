@@ -1024,7 +1024,7 @@
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-md);
   background: var(--accent-soft);
-  color: var(--accent-strong);
+  color: var(--text); /* con --accent-strong el contraste era 3,9:1 (WCAG AA pide 4,5:1) */
   font-weight: 700;
 }
 

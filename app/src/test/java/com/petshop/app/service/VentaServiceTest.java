@@ -323,6 +323,67 @@ class VentaServiceTest {
         verify(gateway, never()).autorizar(anyString(), anyDouble(), any());
     }
 
+    // ---------------------------------------------------------------------------------------------------------------
+    // Máquina de estados de la venta: toda transición inválida da 409 (o 422 si el destino no existe) y no guarda nada
+    // ---------------------------------------------------------------------------------------------------------------
+
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> transiciones() {
+        return java.util.stream.Stream.of(
+                // desde             hacia           status  estado final
+                args("PAGO_PENDIENTE", "ENVIADA",      409, "PAGO_PENDIENTE"),
+                args("PAGO_PENDIENTE", "CANCELADA",    200, "CANCELADA"),
+                args("COMPLETADA",     "ENVIADA",      200, "ENVIADA"),
+                args("COMPLETADA",     "CANCELADA",    200, "CANCELADA"),
+                args("ENVIADA",        "ENVIADA",      409, "ENVIADA"),
+                args("ENVIADA",        "CANCELADA",    409, "ENVIADA"),
+                args("CANCELADA",      "ENVIADA",      409, "CANCELADA"),
+                args("CANCELADA",      "CANCELADA",    409, "CANCELADA"));
+    }
+
+    private static org.junit.jupiter.params.provider.Arguments args(String desde, String hacia, int status, String finalState) {
+        return org.junit.jupiter.params.provider.Arguments.of(desde, hacia, status, finalState);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0} -> {1} = {2}")
+    @org.junit.jupiter.params.provider.MethodSource("transiciones")
+    void everyStateTransitionIsAllowedOrRejectedAsTheStateMachineSays(String desde, String hacia, int status, String estadoFinal) {
+        Order order = new Order("user-1", java.time.Instant.now(), List.of(), 100.0, desde);
+        order.id = 99L;
+
+        VentaOutcome outcome = service.cambiarEstado(order, hacia);
+
+        assertThat(outcome.status()).isEqualTo(status);
+        assertThat(order.estado).isEqualTo(estadoFinal);
+        if (status == 409) {
+            assertThat(outcome.problemSlug()).isEqualTo("transicion-invalida");
+            verify(orderRepository, never()).save(any(Order.class));
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0} -> destino inexistente ({1})")
+    @org.junit.jupiter.params.provider.CsvSource(value = {
+            "PAGO_PENDIENTE,BASURA", "COMPLETADA,BASURA", "ENVIADA,BASURA", "CANCELADA,BASURA",
+            "COMPLETADA,COMPLETADA", "COMPLETADA,PAGO_PENDIENTE", "COMPLETADA,enviada", "COMPLETADA,'  '"})
+    void aTargetStateThatDoesNotExistIsRejectedWith422AndNothingChanges(String desde, String hacia) {
+        Order order = new Order("user-1", java.time.Instant.now(), List.of(), 100.0, desde);
+        order.id = 99L;
+
+        VentaOutcome outcome = service.cambiarEstado(order, hacia);
+
+        assertThat(outcome.status()).isEqualTo(422);
+        assertThat(outcome.problemSlug()).isEqualTo("estado-invalido");
+        assertThat(order.estado).isEqualTo(desde);
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void aMissingTargetStateIsRejectedWith422() {
+        Order order = new Order("user-1", java.time.Instant.now(), List.of(), 100.0, "COMPLETADA");
+
+        assertThat(service.cambiarEstado(order, null).status()).isEqualTo(422);
+        assertThat(order.estado).isEqualTo("COMPLETADA");
+    }
+
     @Test
     void sameIdempotencyKeyAndBodyReplaysTheOriginalResult() {
         gatewayApproves();
