@@ -154,8 +154,30 @@ jobs:
       - run: npm ci
       - name: Revisar tipos
         run: npx tsc --noEmit
-      - name: Pruebas
-        run: npm test
+      - name: "Pruebas (3 corridas seguidas; ninguna puede fallar ni dar un resultado distinto)"
+        run: |
+          status=0
+          for i in 1 2 3; do
+            npx vitest run --reporter=default --reporter=json --outputFile="vitest-$i.json" || status=$?
+          done
+          # Cada prueba que falle queda como anotación (corrida, archivo, nombre y mensaje)
+          python3 - <<'PY'
+          import json, os
+          totales = set()
+          for i in (1, 2, 3):
+              p = f"vitest-{i}.json"
+              if not os.path.exists(p):
+                  print(f"::error title=Frontend::la corrida {i} no produjo resultados"); continue
+              r = json.load(open(p))
+              totales.add((r["numTotalTests"], r["numFailedTests"]))
+              for f in r["testResults"]:
+                  for a in f["assertionResults"]:
+                      if a["status"] == "failed":
+                          msg = (a.get("failureMessages") or [""])[0].splitlines()[0][:200]
+                          print(f"::error title=Frontend corrida {i}::{os.path.basename(f['name'])} > {a['fullName']} | {msg}")
+          print(f"::notice title=Frontend::resultados por corrida (pruebas, fallos): {sorted(totales)}")
+          PY
+          exit $status
       - name: Compilar
         run: npm run build
 
