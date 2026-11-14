@@ -24,12 +24,12 @@ Todos los defectos de esta tabla los encontraron las propias pruebas (no la cát
 ## Defectos abiertos
 | Sev. | Descripción | Mitigación |
 | --- | --- | --- |
-| Mayor | El sembrado de desarrollo crea `admin@petshop.com / admin123` y `juan@petshop.com / 123456` | Solo desarrollo (README). Antes de publicar: definir la contraseña del administrador por variable de entorno y quitar al usuario de ejemplo |
+| Menor | La contraseña por defecto del administrador de desarrollo (`admin123`) | Se define con `ADMIN_PASSWORD`; el usuario de ejemplo con contraseña débil se eliminó. Falta usarla al publicar |
 | Menor | Los emails son simulados (archivos en `outbox/`) | Documentado; falta SMTP real |
 | Menor | `style-src 'unsafe-inline'` en la CSP de la tienda (estilos en línea de React) | ZAP lo marca Medium; aceptado, no ejecuta scripts |
 | Menor | Vulnerabilidades solo de desarrollo en Vite y vitest (`npm audit`: 5; en producción 0) | No llegan al paquete publicado; migrar Vite/vitest a una versión mayor |
 
-Máximo admitido: 0 bloqueantes, 0 críticos, 3 mayores con workaround. **Hay 1 mayor abierto.**
+Máximo admitido: 0 bloqueantes, 0 críticos, 3 mayores con workaround. **No hay mayores abiertos.**
 
 ## Lecciones aprendidas (3 defectos que llegaron tarde)
 1. **D-01, sobreventa.** Llegó tarde porque las pruebas unitarias usaban repositorios simulados que mutaban el objeto en memoria, y un simulacro no tiene carreras. Lo habría atrapado una prueba con compradores simultáneos contra la base real, que ahora existe (`concurrencia_stock.py` y la de 30 hilos en MySQL).

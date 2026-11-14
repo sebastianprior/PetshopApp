@@ -37,7 +37,7 @@ class DatabaseSeederTest {
         categories = mock(CategoryRepository.class);
         products = mock(ProductRepository.class);
         users = mock(UserRepository.class);
-        seeder = new DatabaseSeeder(categories, products, users);
+        seeder = new DatabaseSeeder(categories, products, users, "admin123");
     }
 
     @Test
@@ -55,9 +55,9 @@ class DatabaseSeederTest {
         });
 
         ArgumentCaptor<User> savedUsers = ArgumentCaptor.forClass(User.class);
-        verify(users, times(3)).save(savedUsers.capture());
+        verify(users, times(2)).save(savedUsers.capture());
         assertThat(savedUsers.getAllValues()).extracting(u -> u.email)
-                .containsExactlyInAnyOrder("cliente@ejemplo.com", "admin@petshop.com", "juan@petshop.com");
+                .containsExactlyInAnyOrder("cliente@ejemplo.com", "admin@petshop.com");
     }
 
     @Test
@@ -65,7 +65,7 @@ class DatabaseSeederTest {
         seeder.run(null);
 
         ArgumentCaptor<User> savedUsers = ArgumentCaptor.forClass(User.class);
-        verify(users, times(3)).save(savedUsers.capture());
+        verify(users, times(2)).save(savedUsers.capture());
         User admin = savedUsers.getAllValues().stream().filter(u -> u.email.equals("admin@petshop.com")).findFirst().orElseThrow();
         User customer = savedUsers.getAllValues().stream().filter(u -> u.email.equals("cliente@ejemplo.com")).findFirst().orElseThrow();
 
@@ -143,7 +143,7 @@ class DatabaseSeederTest {
         seeder.run(null);
 
         ArgumentCaptor<User> savedUsers = ArgumentCaptor.forClass(User.class);
-        verify(users, times(3)).save(savedUsers.capture());
+        verify(users, times(2)).save(savedUsers.capture());
         List<User> admins = savedUsers.getAllValues().stream().filter(u -> "ADMIN".equals(u.role)).toList();
         assertThat(admins).hasSize(1);
     }

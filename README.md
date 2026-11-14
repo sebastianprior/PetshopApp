@@ -44,7 +44,7 @@ las sesiones sobrevivan a un reinicio, y `DB_PASSWORD` para cambiar la contrase�
    ```
 
 La tienda queda en <http://localhost:5173>. Al arrancar, el backend carga categorías, productos, preguntas frecuentes y
-zonas de envío de ejemplo, y crea usuarios de **desarrollo**: `admin@petshop.com` / `admin123` (administrador) y
+zonas de envío de ejemplo, y crea usuarios de **desarrollo**: `admin@petshop.com` / `admin123` (administrador, o el valor de `ADMIN_PASSWORD`) y
 `cliente@ejemplo.com` / `password` (cliente). No uses esas credenciales en un entorno real.
 
 ## Tests
@@ -98,6 +98,7 @@ python tests-api/sonda_seguridad.py     # desde app/
 | `MP_PENDING_EXPIRY_MINUTES` | Minutos que un pedido espera el pago antes de cancelarse y liberar el stock. | `30` |
 | `GOOGLE_CLIENT_ID` | Client ID de Google para "Continuar con Google" (es público). Vacío = el botón no se muestra. | El de este proyecto (ver abajo). |
 | `CORS_ALLOWED_ORIGINS` | Direcciones del frontend que pueden llamar a la API, separadas por coma (por ejemplo `https://mi-tienda.vercel.app`). | `http://localhost:5173,http://localhost:4173` |
+| `ADMIN_PASSWORD` | Contraseña con la que se crea al administrador (`admin@petshop.com`) la primera vez que arranca. **Definila en producción.** | `admin123` (solo desarrollo) |
 | `ARTEMIS_PERSISTENT` | `true` guarda en disco los mensajes del broker (sobreviven a un reinicio). Lo activan el `docker-compose.yml` y el `Dockerfile`. | `false` (en desarrollo local con Java 25 o más el broker no puede releer su journal) |
 | `ARTEMIS_DATA_DIR` | Carpeta del journal del broker. | `artemis-data` |
 

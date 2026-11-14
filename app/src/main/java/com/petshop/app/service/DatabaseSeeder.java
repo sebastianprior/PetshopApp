@@ -18,10 +18,13 @@ public class DatabaseSeeder implements ApplicationRunner {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final String adminPassword;
 
     public DatabaseSeeder(CategoryRepository categoryRepository,
                           ProductRepository productRepository,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          @org.springframework.beans.factory.annotation.Value("${petshop.seed.admin-password:admin123}") String adminPassword) {
+        this.adminPassword = adminPassword;
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
@@ -90,11 +93,10 @@ public class DatabaseSeeder implements ApplicationRunner {
 
         saveUserIfMissing(new User("u1", "cliente@ejemplo.com", "password", "Cliente Demo"));
 
-        User admin = new User("u2", "admin@petshop.com", "admin123", "Administrador");
+        User admin = new User("u2", "admin@petshop.com", adminPassword, "Administrador");
         admin.role = "ADMIN";
         saveUserIfMissing(admin);
 
-        saveUserIfMissing(new User("u3", "juan@petshop.com", "123456", "Juan Petshop"));
     }
 
     /** Cada producto tiene su propia ilustración (src/app/public/products/<id>.svg), que representa lo que dice el título. */
