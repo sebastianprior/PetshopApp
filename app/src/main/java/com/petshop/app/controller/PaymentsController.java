@@ -31,12 +31,12 @@ public class PaymentsController {
 
     /** Qué medios de pago ofrece la tienda (nunca incluye credenciales). */
     @GetMapping("/config")
-    public Map<String, Object> config() {
-        Map<String, Object> config = new HashMap<>();
-        config.put("mercadoPago", mercadoPago.isEnabled());
-        config.put("simulated", settings.simulatedEnabled());
-        return config;
+    public PaymentConfig config() {
+        return new PaymentConfig(mercadoPago.isEnabled(), settings.simulatedEnabled());
     }
+
+    /** Medios de pago disponibles (nunca lleva credenciales). */
+    public record PaymentConfig(boolean mercadoPago, boolean simulated) {}
 
     /**
      * Aviso de MercadoPago: "hay novedades del pago X". El aviso solo dice de qué pago hablar: el estado y el monto se le

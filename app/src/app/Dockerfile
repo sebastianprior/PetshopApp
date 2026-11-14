@@ -13,7 +13,9 @@ RUN npm run build
 
 # --- 2) Servir los archivos estáticos ----------------------------------------------------------------------------------
 FROM nginx:1.27-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
+# nginx procesa los archivos de templates/ al arrancar (reemplaza ${API_ORIGIN}) y los deja en conf.d/
+ENV API_ORIGIN=http://localhost:8080
+COPY default.conf.template /etc/nginx/templates/default.conf.template
+COPY security-headers.inc.template /etc/nginx/templates/security-headers.inc.template
 COPY --from=build /build/dist /usr/share/nginx/html
 EXPOSE 80

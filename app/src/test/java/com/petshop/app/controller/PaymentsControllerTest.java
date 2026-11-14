@@ -38,15 +38,16 @@ class PaymentsControllerTest {
 
     @Test
     void tellsWhichPaymentMethodsAreAvailableWithoutExposingAnyCredential() {
-        Map<String, Object> config = controller.config();
+        PaymentsController.PaymentConfig config = controller.config();
 
-        assertThat(config).containsOnlyKeys("mercadoPago", "simulated");
-        assertThat(config.get("mercadoPago")).isEqualTo(true);
-        assertThat(config.get("simulated")).isEqualTo(true);
+        assertThat(config.mercadoPago()).isTrue();
+        assertThat(config.simulated()).isTrue();
         assertThat(config.toString()).doesNotContain("TEST-x");
 
         when(mercadoPago.isEnabled()).thenReturn(false);
-        assertThat(controller(false).config()).containsEntry("mercadoPago", false).containsEntry("simulated", false);
+        PaymentsController.PaymentConfig off = controller(false).config();
+        assertThat(off.mercadoPago()).isFalse();
+        assertThat(off.simulated()).isFalse();
     }
 
     @Test

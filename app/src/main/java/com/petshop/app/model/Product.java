@@ -23,7 +23,9 @@ public class Product {
     public String badge;
     public String categoryId;
     public int stock;
+    @io.swagger.v3.oas.annotations.media.Schema(nullable = true)
     public Double precioPromocional;
+    @io.swagger.v3.oas.annotations.media.Schema(nullable = true)
     public String tipoPromocion;
 
     @Transient

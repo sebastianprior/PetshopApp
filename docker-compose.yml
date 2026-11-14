@@ -58,6 +58,9 @@ services:
       args:
         # La API se llama desde el navegador, por eso es la dirección pública y no el nombre interno del servicio
         VITE_API_URL: http://localhost:8080/api
+    environment:
+      # Dirección del backend que el navegador puede usar (nginx la pone en la política de contenido)
+      API_ORIGIN: http://localhost:8080
     depends_on:
       backend:
         condition: service_healthy

@@ -78,8 +78,8 @@ class GoogleLoginTest {
 
     @Test
     void exposesTheClientIdOnlyWhenGoogleIsConfigured() {
-        assertThat(controller.config().get("googleClientId")).isEqualTo(CLIENT_ID);
-        assertThat(controllerWithoutGoogle.config().get("googleClientId")).isNull();
+        assertThat(controller.config().googleClientId()).isEqualTo(CLIENT_ID);
+        assertThat(controllerWithoutGoogle.config().googleClientId()).isNull();
     }
 
     @Test

@@ -73,7 +73,7 @@ describe("App: rutas", () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Collar Comfort" })).toBeInTheDocument();
-    expect(document.title).toBe("Collar Comfort · Petshop");
+    await waitFor(() => expect(document.title).toBe("Collar Comfort · Petshop"));
   });
 
   it("fetches a product that is not in the loaded catalog (shared link)", async () => {
@@ -174,7 +174,7 @@ describe("App: rutas", () => {
 
     expect(await screen.findByText("¡Compra confirmada!")).toBeInTheDocument();
     expect(api.syncVentaPayment).toHaveBeenCalledWith(12);
-    expect(document.title).toBe("Resultado del pago · Petshop");
+    await waitFor(() => expect(document.title).toBe("Resultado del pago · Petshop"));
   });
 
   it("does not ask the server anything when the return address has no valid order number", async () => {
@@ -203,6 +203,6 @@ describe("App: rutas", () => {
 
     expect(window.location.pathname).toBe("/preguntas-frecuentes");
     expect(await screen.findByRole("heading", { level: 1, name: "Preguntas frecuentes" })).toBeInTheDocument();
-    expect(document.title).toBe("Preguntas frecuentes · Petshop");
+    await waitFor(() => expect(document.title).toBe("Preguntas frecuentes · Petshop"));
   });
 });

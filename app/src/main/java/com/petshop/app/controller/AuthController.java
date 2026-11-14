@@ -53,11 +53,12 @@ public class AuthController {
 
     /** Qué métodos de ingreso ofrece la tienda (el Client ID de Google es público: lo necesita el botón del navegador). */
     @GetMapping("/config")
-    public Map<String, Object> config() {
-        Map<String, Object> config = new HashMap<>();
-        config.put("googleClientId", googleTokenVerifier.isEnabled() ? googleTokenVerifier.clientId() : null);
-        return config;
+    public AuthConfig config() {
+        return new AuthConfig(googleTokenVerifier.isEnabled() ? googleTokenVerifier.clientId() : null);
     }
+
+    /** Qué métodos de ingreso hay: googleClientId es null si el ingreso con Google no está configurado. */
+    public record AuthConfig(@io.swagger.v3.oas.annotations.media.Schema(nullable = true) String googleClientId) {}
 
     /**
      * Ingreso con Google. El navegador manda el token que le dio Google y acá se verifica su firma: nunca se confía en el
