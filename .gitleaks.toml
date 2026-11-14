@@ -12,6 +12,8 @@ regexes = [
   # Contraseñas de desarrollo documentadas en el README (no se usan en producción)
   '''petshop123''',
   '''admin123''',
+  # Contraseña descartable que usaba la primera versión de la sonda de seguridad (hoy se genera al azar)
+  '''Clave-Segura-123''',
   # Texto de ejemplo de un comentario del docker-compose (no es un secreto)
   '''una-clave-larga-de-32-caracteres-o-mas''',
 ]

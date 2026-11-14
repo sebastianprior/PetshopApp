@@ -15,6 +15,8 @@ import base64, hashlib, hmac, json, os, sys, time, uuid, urllib.request, urllib.
 BASE = os.environ.get("PETSHOP_URL", "http://localhost:8080").rstrip("/")
 API = BASE + "/api"
 RESULTS = []
+# Contraseña de los usuarios descartables que crea la sonda: se inventa en cada corrida (nunca hay una fija en el código)
+PW = "Aa1-" + uuid.uuid4().hex
 
 
 def call(method, path, body=None, token=None, headers=None, raw=None, base=API):
@@ -60,8 +62,8 @@ assert admin and cliente, "no se pudo iniciar sesión con los usuarios de desarr
 
 # usuario B (otro cliente)
 mail_b = f"sonda-{uuid.uuid4().hex[:8]}@ejemplo.com"
-st, t, _ = call("POST", "/auth/register", {"email": mail_b, "password": "Clave-Segura-123", "name": "Sonda B"})
-tok_b = login(mail_b, "Clave-Segura-123")
+st, t, _ = call("POST", "/auth/register", {"email": mail_b, "password": PW, "name": "Sonda B"})
+tok_b = login(mail_b, PW)
 assert tok_b, f"no se pudo crear el usuario B ({st}: {t[:100]})"
 
 # ---------------------------------------------------------------- BOLA / IDOR
@@ -129,8 +131,8 @@ check("JWT", "GET /orders (admin) sin token", 401, st)
 
 # ---------------------------------------------------------------- Mass assignment
 mail_c = f"sonda-{uuid.uuid4().hex[:8]}@ejemplo.com"
-call("POST", "/auth/register", {"email": mail_c, "password": "Clave-Segura-123", "name": "Sonda C", "role": "ADMIN", "id": "u2"})
-tok_c = login(mail_c, "Clave-Segura-123")
+call("POST", "/auth/register", {"email": mail_c, "password": PW, "name": "Sonda C", "role": "ADMIN", "id": "u2"})
+tok_c = login(mail_c, PW)
 me = js(call("GET", "/auth/me", token=tok_c)[1]) or {}
 check("MASS", "register con role=ADMIN no da rol de administrador", "CUSTOMER", me.get("role"))
 check("MASS", "register con id=u2 no pisa al administrador", True, me.get("id") != "u2")
@@ -161,9 +163,9 @@ st, t, _ = call("GET", "/products?search=%27%3B%20DROP%20TABLE%20products%3B--&c
 check("INYECCION", "búsqueda con SQL injection devuelve 200 sin romper", 200, st)
 check("INYECCION", "…y el catálogo sigue completo después", True, len(js(call("GET", "/products")[1]) or []) >= 50)
 xss = "<script>alert(1)</script>"
-st, t, h = call("POST", "/auth/register", {"email": f"xss-{uuid.uuid4().hex[:6]}@ejemplo.com", "password": "Clave-Segura-123", "name": xss})
+st, t, h = call("POST", "/auth/register", {"email": f"xss-{uuid.uuid4().hex[:6]}@ejemplo.com", "password": PW, "name": xss})
 check("INYECCION", "registro con <script> en el nombre: rechazado con 400", 400, st)
-st, t, _ = call("POST", "/auth/register", {"email": f"ok-{uuid.uuid4().hex[:6]}@ejemplo.com", "password": "Clave-Segura-123", "name": "Ñandú O'Brien & Hijos"})
+st, t, _ = call("POST", "/auth/register", {"email": f"ok-{uuid.uuid4().hex[:6]}@ejemplo.com", "password": PW, "name": "Ñandú O'Brien & Hijos"})
 check("INYECCION", "…y un nombre normal con símbolos sigue siendo válido", [200, 201], st)
 st, t, _ = call("POST", "/auth/login", {"email": mail_b, "password": "<script>x</script>-no-es-la-clave"})
 check("INYECCION", "una contraseña con símbolos no es rechazada por el filtro de HTML (solo 401)", 401, st)
