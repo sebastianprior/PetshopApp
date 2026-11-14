@@ -19,6 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import com.petshop.app.config.AdminOnly;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -39,6 +43,7 @@ public class OrderController {
         this.adminGuard = adminGuard;
     }
 
+    @ApiResponse(responseCode = "200", description = "Mis pedidos", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.dto.OrderDTO.class))))
     @GetMapping("/me")
     public ResponseEntity<?> listMine(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (token == null || !jwtUtil.isTokenValid(token)) {
@@ -49,6 +54,7 @@ public class OrderController {
         return ResponseEntity.ok(orderRepository.findByUserIdOrderByFechaDesc(userId).stream().map(OrderDTO::forCustomer).toList());
     }
 
+    @ApiResponse(responseCode = "200", description = "Todos los pedidos", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.dto.OrderDTO.class))))
     @AdminOnly
     @GetMapping
     public ResponseEntity<?> listAll(@RequestHeader(value = "X-Auth-Token", required = false) String token) {

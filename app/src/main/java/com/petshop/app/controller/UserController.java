@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import com.petshop.app.config.AdminOnly;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
 @RequestMapping("/api/users")
@@ -30,6 +34,7 @@ public class UserController {
         this.refreshTokenService = refreshTokenService;
     }
 
+    @ApiResponse(responseCode = "200", description = "Los usuarios", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.dto.UserDTO.class))))
     @AdminOnly
     @GetMapping
     public ResponseEntity<?> list(@RequestHeader(value = "X-Auth-Token", required = false) String token) {

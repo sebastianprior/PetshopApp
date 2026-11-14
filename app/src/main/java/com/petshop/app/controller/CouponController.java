@@ -10,6 +10,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import com.petshop.app.config.AdminOnly;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
 @RequestMapping("/api/coupons")
@@ -23,6 +27,7 @@ public class CouponController {
         this.adminGuard = adminGuard;
     }
 
+    @ApiResponse(responseCode = "200", description = "Los cupones", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.model.Coupon.class))))
     @AdminOnly
     @GetMapping
     public ResponseEntity<?> list(@RequestHeader(value = "X-Auth-Token", required = false) String token) {

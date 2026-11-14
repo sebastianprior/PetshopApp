@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
 @RequestMapping("/api/wishlist")
@@ -26,6 +30,7 @@ public class WishlistController {
         this.jwtUtil = jwtUtil;
     }
 
+    @ApiResponse(responseCode = "200", description = "Los identificadores de los productos favoritos", content = @Content(array = @ArraySchema(schema = @Schema(type = "string"))))
     @GetMapping
     public ResponseEntity<?> list(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (token == null || !jwtUtil.isTokenValid(token)) {
@@ -65,6 +70,7 @@ public class WishlistController {
         return ResponseEntity.ok(productIds);
     }
 
+    @ApiResponse(responseCode = "200", description = "Los identificadores de los productos favoritos que quedan", content = @Content(array = @ArraySchema(schema = @Schema(type = "string"))))
     @DeleteMapping("/{productId}")
     public ResponseEntity<?> remove(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                      @PathVariable String productId) {

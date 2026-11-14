@@ -15,6 +15,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import com.petshop.app.config.AdminOnly;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
 @RequestMapping("/api/products/{productId}/reviews")
@@ -35,6 +39,7 @@ public class ReviewController {
         this.adminGuard = adminGuard;
     }
 
+    @ApiResponse(responseCode = "200", description = "Las reseñas del producto", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.dto.ReviewDTO.class))))
     @GetMapping
     public ResponseEntity<?> list(@PathVariable String productId) {
         List<ReviewDTO> reviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(productId).stream()

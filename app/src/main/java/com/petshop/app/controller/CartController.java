@@ -22,6 +22,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -90,6 +94,7 @@ public class CartController {
         return token != null && !token.isBlank() && jwtUtil.isTokenValid(token) && "ADMIN".equals(jwtUtil.extractRole(token));
     }
 
+    @ApiResponse(responseCode = "200", description = "Los productos del carrito", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.model.CartItem.class))))
     @GetMapping
     public ResponseEntity<?> getCart(@RequestHeader(value = "X-Auth-Token", required = false) String token,
                                       @RequestHeader(value = "X-Guest-Id", required = false) String guestId) {

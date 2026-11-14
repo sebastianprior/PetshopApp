@@ -19,6 +19,9 @@ import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 @RestController
 @RequestMapping("/api/v1/ventas")
@@ -79,6 +82,7 @@ public class VentaController {
                 : ResponseEntity.accepted().location(location).body(body);
     }
 
+    @ApiResponse(responseCode = "200", description = "Las ventas del usuario (o todas, para el administrador)", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.dto.VentaDTO.class))))
     @GetMapping
     @Operation(summary = "Listar ventas", description = "Las propias del usuario; el administrador ve todas.")
     public ResponseEntity<?> listar(@RequestHeader(value = "X-Auth-Token", required = false) String token) {

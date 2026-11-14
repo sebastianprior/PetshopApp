@@ -14,6 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import com.petshop.app.config.AdminOnly;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /** Preguntas frecuentes: lectura pública (la página FAQ y Salchi Bot), edición solo para administradores. */
 @RestController
@@ -40,6 +44,7 @@ public class FaqController {
     }
 
     /** Reemplaza toda la lista, en el orden recibido (así el administrador agrega, edita, reordena y borra en un solo guardado). */
+    @ApiResponse(responseCode = "200", description = "Las preguntas frecuentes guardadas", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.dto.FaqDTO.class))))
     @AdminOnly
     @PutMapping
     @Transactional

@@ -16,6 +16,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import com.petshop.app.config.AdminOnly;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
 @RequestMapping("/api/returns")
@@ -102,6 +106,7 @@ public class ReturnController {
         return ResponseEntity.ok(devolucion);
     }
 
+    @ApiResponse(responseCode = "200", description = "Mis devoluciones", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.model.Return.class))))
     @GetMapping("/me")
     public ResponseEntity<?> listMine(@RequestHeader(value = "X-Auth-Token", required = false) String token) {
         if (token == null || !jwtUtil.isTokenValid(token)) {
@@ -112,6 +117,7 @@ public class ReturnController {
         return ResponseEntity.ok(returnRepository.findByUserIdOrderByRequestedAtDesc(userId));
     }
 
+    @ApiResponse(responseCode = "200", description = "Todas las devoluciones", content = @Content(array = @ArraySchema(schema = @Schema(implementation = com.petshop.app.model.Return.class))))
     @AdminOnly
     @GetMapping
     public ResponseEntity<?> listAll(@RequestHeader(value = "X-Auth-Token", required = false) String token) {

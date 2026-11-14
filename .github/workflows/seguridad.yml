@@ -117,10 +117,13 @@ jobs:
           python3 - <<'PY'
           import re
           log = open("resultados/schemathesis.log", encoding="utf-8", errors="ignore").read()
-          m = re.search(r"=+ (.*?) =+\s*$", log.strip(), re.S)
-          print("::notice title=Schemathesis::" + (m.group(1).replace("\n", " ")[:300] if m else "sin resumen"))
-          for line in re.findall(r"^(?:\d+\. )?(?:Server error|Schema validation mismatch|Undocumented Content-Type|.*5\d\d.*)$", log, re.M)[:25]:
-              print(f"::warning title=Schemathesis::{line.strip()[:250]}")
+          block = re.search(r"Performed checks:\n(.*?)\n\n", log, re.S)
+          for line in (block.group(1).splitlines() if block else []):
+              print(f"::notice title=Schemathesis::{' '.join(line.split())}")
+          final = re.findall(r"=+ (\d+ passed.*?) =+", log)
+          print("::notice title=Schemathesis::" + (final[-1] if final else "sin resumen (ver el archivo schemathesis.log)"))
+          for name in re.findall(r"^_+ (.+?) _+$", log, re.M)[:25]:
+              print(f"::warning title=Schemathesis contrato::{name}")
           PY
 
       - name: Lighthouse sobre las páginas principales (móvil)
