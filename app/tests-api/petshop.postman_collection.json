@@ -12,6 +12,17 @@
      "name": "Configuración de autenticación",
      "event": [
       {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "// Contraseñas descartables de esta corrida: nunca hay una fija en la colección",
+         "const azar = () => \"Aa1-\" + Date.now() + \"-\" + Math.random().toString(36).slice(2, 10);",
+         "pm.collectionVariables.set(\"pw1\", azar()); pm.collectionVariables.set(\"pw2\", azar());"
+        ]
+       }
+      },
+      {
        "listen": "test",
        "script": {
         "type": "text/javascript",
@@ -256,7 +267,7 @@
         "type": "text/javascript",
         "exec": [
          "pm.collectionVariables.set(\"bEmail\", \"newman-\" + Date.now() + \"@ejemplo.com\");",
-         "pm.collectionVariables.set(\"bPassword\", \"Clave-\" + Date.now() + \"-Nm\");",
+         "pm.collectionVariables.set(\"bPassword\", \"Aa1-\" + Date.now() + \"-\" + Math.random().toString(36).slice(2, 10));",
          "pm.request.body.update(JSON.stringify({email: pm.collectionVariables.get(\"bEmail\"), password: pm.collectionVariables.get(\"bPassword\"), name: \"Usuario Newman\"}));"
         ]
        }
@@ -295,7 +306,7 @@
       },
       "body": {
        "mode": "raw",
-       "raw": "{\"email\": \"newman-{{$timestamp}}@ejemplo.com\", \"password\": \"Clave-Newman-{{$timestamp}}\", \"name\": \"Usuario Newman\"}",
+       "raw": "{\"email\": \"newman-{{$timestamp}}@ejemplo.com\", \"password\": \"{{pw1}}\", \"name\": \"Usuario Newman\"}",
        "options": {
         "raw": {
          "language": "json"
@@ -338,7 +349,7 @@
       },
       "body": {
        "mode": "raw",
-       "raw": "{\"email\": \"{{clienteEmail}}\", \"password\": \"Clave-Segura-9999\", \"name\": \"Duplicado\"}",
+       "raw": "{\"email\": \"{{clienteEmail}}\", \"password\": \"{{pw1}}\", \"name\": \"Duplicado\"}",
        "options": {
         "raw": {
          "language": "json"
@@ -381,7 +392,7 @@
       },
       "body": {
        "mode": "raw",
-       "raw": "{\"email\": \"no-es-un-email\", \"password\": \"Clave-Segura-9999\", \"name\": \"X\"}",
+       "raw": "{\"email\": \"no-es-un-email\", \"password\": \"{{pw1}}\", \"name\": \"X\"}",
        "options": {
         "raw": {
          "language": "json"
@@ -467,7 +478,7 @@
       },
       "body": {
        "mode": "raw",
-       "raw": "{\"email\": \"xss-{{$timestamp}}@ejemplo.com\", \"password\": \"Clave-Segura-9999\", \"name\": \"<script>alert(1)</script>\"}",
+       "raw": "{\"email\": \"xss-{{$timestamp}}@ejemplo.com\", \"password\": \"{{pw1}}\", \"name\": \"<script>alert(1)</script>\"}",
        "options": {
         "raw": {
          "language": "json"
@@ -837,7 +848,7 @@
       },
       "body": {
        "mode": "raw",
-       "raw": "{\"currentPassword\": \"{{bPassword}}\", \"newPassword\": \"Otra-Clave-Newman-77\"}",
+       "raw": "{\"currentPassword\": \"{{bPassword}}\", \"newPassword\": \"{{pw2}}\"}",
        "options": {
         "raw": {
          "language": "json"
@@ -884,7 +895,7 @@
       },
       "body": {
        "mode": "raw",
-       "raw": "{\"currentPassword\": \"incorrecta\", \"newPassword\": \"Otra-Clave-Newman-88\"}",
+       "raw": "{\"currentPassword\": \"incorrecta\", \"newPassword\": \"{{pw2}}\"}",
        "options": {
         "raw": {
          "language": "json"
@@ -1013,7 +1024,7 @@
       },
       "body": {
        "mode": "raw",
-       "raw": "{\"token\": \"codigo-invalido\", \"newPassword\": \"Clave-Nueva-12345\"}",
+       "raw": "{\"token\": \"codigo-invalido\", \"newPassword\": \"{{pw1}}\"}",
        "options": {
         "raw": {
          "language": "json"

@@ -14,6 +14,11 @@ regexes = [
   '''admin123''',
   # Contraseña descartable que usaba la primera versión de la sonda de seguridad (hoy se genera al azar)
   '''Clave-Segura-123''',
+  # Contraseñas descartables de la primera versión de la colección de Postman (hoy se inventan en cada corrida)
+  '''Clave-Segura-9999''',
+  '''Clave-Nueva-12345''',
+  '''Otra-Clave-Newman-''',
+  '''Clave-Newman-''',
   # Texto de ejemplo de un comentario del docker-compose (no es un secreto)
   '''una-clave-larga-de-32-caracteres-o-mas''',
 ]

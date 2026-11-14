@@ -225,7 +225,23 @@ jobs:
           python3 app/tests-api/generar_coleccion.py
           git diff --exit-code app/tests-api/petshop.postman_collection.json || { echo "::error::La colección versionada no coincide con la generada: corré python tests-api/generar_coleccion.py y subí el resultado"; exit 1; }
       - name: Pruebas de API con Newman (colección de Postman, éxito y error de cada endpoint)
-        run: npx --yes newman@6.2.1 run app/tests-api/petshop.postman_collection.json --working-dir app/tests-api --reporters cli,junit --reporter-junit-export newman-resultado.xml
+        run: |
+          status=0
+          npx --yes newman@6.2.1 run app/tests-api/petshop.postman_collection.json --working-dir app/tests-api \
+            --reporters cli,junit,json --reporter-junit-export newman-resultado.xml --reporter-json-export newman-resultado.json || status=$?
+          # Cada aserción fallida queda como anotación (solicitud, qué se esperaba y qué código respondió)
+          python3 - <<'PY'
+          import json, os
+          if os.path.exists("newman-resultado.json"):
+              run = json.load(open("newman-resultado.json"))["run"]
+              codes = {e["item"]["name"]: e.get("response", {}).get("code") for e in run["executions"]}
+              for f in run["failures"]:
+                  n = f["source"]["name"]
+                  print(f"::error title=Newman::{n} | esperado: {f['error'].get('test') or f['error'].get('message')} | código real: {codes.get(n)}")
+              s = run["stats"]
+              print(f"::notice title=Newman::{s['requests']['total']} solicitudes, {s['assertions']['total']} aserciones, {s['assertions']['failed']} fallidas")
+          PY
+          exit $status
       - name: Guardar el resultado de Newman
         if: always()
         uses: actions/upload-artifact@v4
