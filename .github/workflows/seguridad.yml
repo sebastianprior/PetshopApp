@@ -1,0 +1,160 @@
+name: Seguridad y calidad (escaneos)
+
+# Escaneos más lentos que el CI principal (ci.yml), en un workflow aparte para que ese siga por debajo de los 15 minutos:
+# dependencias vulnerables, ZAP contra la API y la tienda, contrato contra OpenAPI y Lighthouse. Los hallazgos quedan como
+# anotaciones del trabajo y el resultado completo como archivo descargable.
+on:
+  push:
+    branches: [main, "feature/**"]
+    tags: ["v*"]
+  pull_request:
+  schedule:
+    - cron: "0 7 * * 1" # los lunes: aparecen vulnerabilidades nuevas aunque el código no cambie
+  workflow_dispatch:
+
+concurrency:
+  group: seguridad-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependencias:
+    name: Dependencias vulnerables (Trivy y npm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy sobre el backend (pom.xml) y la tienda (package-lock.json)
+        run: |
+          mkdir -p resultados && chmod 777 resultados
+          docker run --rm -v "$PWD:/repo" -v "$PWD/resultados:/out" aquasec/trivy:0.58.1 \
+            fs --scanners vuln --severity HIGH,CRITICAL --format json --output /out/trivy.json /repo/app || true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: npm audit (dependencias de producción y de desarrollo)
+        working-directory: app/src/app
+        run: |
+          npm audit --omit=dev --json > ../../../resultados/npm-audit-produccion.json || true
+          npm audit --json > ../../../resultados/npm-audit-todo.json || true
+      - name: Resumen de vulnerabilidades altas y críticas
+        run: |
+          python3 - <<'PY'
+          import json, os
+          found = {}
+          p = "resultados/trivy.json"
+          if os.path.exists(p):
+              for r in json.load(open(p)).get("Results", []):
+                  for v in r.get("Vulnerabilities") or []:
+                      key = (v["PkgName"], v["InstalledVersion"], v["VulnerabilityID"])
+                      found[key] = (v["Severity"], v.get("FixedVersion", "sin arreglo publicado"), r["Target"])
+          print(f"::notice title=Trivy::{len(found)} vulnerabilidades HIGH/CRITICAL (incluye las que aún no tienen arreglo)")
+          for (pkg, ver, cve), (sev, fix, target) in sorted(found.items(), key=lambda x: x[1][0])[:40]:
+              print(f"::warning title=Trivy {sev}::{cve} en {pkg} {ver} ({target}); arreglada en: {fix}")
+          for name in ("produccion", "todo"):
+              p = f"resultados/npm-audit-{name}.json"
+              if os.path.exists(p):
+                  meta = json.load(open(p)).get("metadata", {}).get("vulnerabilities", {})
+                  print(f"::notice title=npm audit ({name})::{meta}")
+          PY
+      - name: Guardar los resultados
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-dependencias
+          path: resultados
+          if-no-files-found: ignore
+
+  api-y-tienda:
+    name: ZAP, contrato OpenAPI y Lighthouse contra el sistema levantado
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levantar el sistema completo
+        run: docker compose up --build --detach --wait --wait-timeout 300
+
+      - name: Iniciar sesión como administrador para los escaneos autenticados
+        run: |
+          mkdir -p resultados && chmod 777 resultados
+          TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' \
+            -d '{"email":"admin@petshop.com","password":"admin123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+          echo "::add-mask::$TOKEN"
+          echo "ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - name: ZAP contra la API (escaneo activo autenticado, a partir del OpenAPI)
+        run: |
+          docker run --rm --network host -v "$PWD/resultados:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:2.15.0 \
+            zap-api-scan.py -t http://localhost:8080/v3/api-docs -f openapi -J zap-api.json -T 12 -I \
+            -z "-config replacer.full_list(0).description=auth -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstring=X-Auth-Token -config replacer.full_list(0).replacement=$ADMIN_TOKEN" || true
+      - name: ZAP contra la tienda (baseline pasivo)
+        run: |
+          docker run --rm --network host -v "$PWD/resultados:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:2.15.0 \
+            zap-baseline.py -t http://localhost:5173 -J zap-tienda.json -I || true
+      - name: Resumen de ZAP
+        run: |
+          python3 - <<'PY'
+          import json, os
+          for name, label in (("zap-api.json", "API"), ("zap-tienda.json", "tienda")):
+              p = f"resultados/{name}"
+              if not os.path.exists(p):
+                  print(f"::warning title=ZAP {label}::no produjo resultados"); continue
+              alerts = [a for s in json.load(open(p)).get("site", []) for a in s.get("alerts", [])]
+              by = {}
+              for a in alerts:
+                  by.setdefault(a["riskdesc"].split(" ")[0], []).append(a)
+              print(f"::notice title=ZAP {label}::{ {k: len(v) for k, v in by.items()} }")
+              for risk in ("High", "Medium"):
+                  for a in by.get(risk, []):
+                      print(f"::warning title=ZAP {label} {risk}::{a['name']} ({len(a.get('instances', []))} casos); ej. {(a.get('instances') or [{}])[0].get('uri', '')}")
+          PY
+
+      - name: Contrato contra el OpenAPI publicado (Schemathesis)
+        run: |
+          pip install --quiet schemathesis==3.39.16
+          schemathesis run http://localhost:8080/v3/api-docs --base-url http://localhost:8080 \
+            --checks not_a_server_error,response_schema_conformance,content_type_conformance \
+            --hypothesis-max-examples=15 --workers=2 --header "X-Auth-Token: $ADMIN_TOKEN" \
+            --exclude-path-regex '(/api/admin/dlq|/api/uploads|/ws)' > resultados/schemathesis.log 2>&1 || true
+          python3 - <<'PY'
+          import re
+          log = open("resultados/schemathesis.log", encoding="utf-8", errors="ignore").read()
+          m = re.search(r"=+ (.*?) =+\s*$", log.strip(), re.S)
+          print("::notice title=Schemathesis::" + (m.group(1).replace("\n", " ")[:300] if m else "sin resumen"))
+          for line in re.findall(r"^(?:\d+\. )?(?:Server error|Schema validation mismatch|Undocumented Content-Type|.*5\d\d.*)$", log, re.M)[:25]:
+              print(f"::warning title=Schemathesis::{line.strip()[:250]}")
+          PY
+
+      - name: Lighthouse sobre las páginas principales (móvil)
+        run: |
+          for page in "inicio:/" "productos:/productos" "carrito:/carrito" "ingreso:/ingresar"; do
+            name="${page%%:*}"; path="${page#*:}"
+            npx --yes lighthouse@12.3.0 "http://localhost:5173$path" --quiet \
+              --chrome-flags="--headless=new --no-sandbox" --only-categories=performance,accessibility,best-practices,seo \
+              --output json --output-path "resultados/lighthouse-$name.json" || true
+          done
+          python3 - <<'PY'
+          import glob, json, os
+          bajos = 0
+          for p in sorted(glob.glob("resultados/lighthouse-*.json")):
+              cats = json.load(open(p))["categories"]
+              puntaje = {k: round((v["score"] or 0) * 100) for k, v in cats.items()}
+              nombre = os.path.basename(p)[11:-5]
+              print(f"::notice title=Lighthouse {nombre}::{puntaje}")
+              if puntaje.get("accessibility", 0) < 90:
+                  bajos += 1
+                  print(f"::error title=Lighthouse {nombre}::accesibilidad {puntaje.get('accessibility')} (la rúbrica pide >= 90)")
+          raise SystemExit(1 if bajos else 0)
+          PY
+
+      - name: Guardar los resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-escaneos
+          path: resultados
+          if-no-files-found: ignore
+      - name: Mostrar los logs si algo falló
+        if: failure()
+        run: docker compose logs --no-color --tail 100 backend
+      - name: Apagar
+        if: always()
+        run: docker compose down --volumes
