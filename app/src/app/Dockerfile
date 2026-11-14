@@ -12,10 +12,11 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # --- 2) Servir los archivos estáticos ----------------------------------------------------------------------------------
-FROM nginx:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 # nginx procesa los archivos de templates/ al arrancar (reemplaza ${API_ORIGIN}) y los deja en conf.d/
 ENV API_ORIGIN=http://localhost:8080
 COPY default.conf.template /etc/nginx/templates/default.conf.template
 COPY security-headers.inc.template /etc/nginx/templates/security-headers.inc.template
 COPY --from=build /build/dist /usr/share/nginx/html
-EXPOSE 80
+# Sin root: esta imagen de nginx corre con un usuario sin privilegios y por eso escucha en el 8080 (no en el 80)
+EXPOSE 8080

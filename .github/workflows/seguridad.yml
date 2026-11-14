@@ -74,7 +74,8 @@ jobs:
 
       - name: Iniciar sesión como administrador para los escaneos autenticados
         run: |
-          mkdir -p resultados && chmod 777 resultados
+          mkdir -p resultados zap-out
+          sudo chown 1000:1000 zap-out   # ZAP escribe como el usuario 1000 dentro del contenedor, sin abrir el permiso a todos
           TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' \
             -d '{"email":"admin@petshop.com","password":"admin123"}' | jq -r .token)
           echo "::add-mask::$TOKEN"
@@ -113,13 +114,15 @@ jobs:
 
       - name: ZAP contra la API (escaneo activo autenticado, a partir del OpenAPI)
         run: |
-          docker run --rm --network host -v "$PWD/resultados:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:2.15.0 \
+          docker run --rm --network host -v "$PWD/zap-out:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:2.15.0 \
             zap-api-scan.py -t http://localhost:8080/v3/api-docs -f openapi -J zap-api.json -T 12 -I \
             -z "-config replacer.full_list(0).description=auth -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstring=X-Auth-Token -config replacer.full_list(0).replacement=$ADMIN_TOKEN" || true
+          cp zap-out/zap-api.json resultados/ || true
       - name: ZAP contra la tienda (baseline pasivo)
         run: |
-          docker run --rm --network host -v "$PWD/resultados:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:2.15.0 \
+          docker run --rm --network host -v "$PWD/zap-out:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:2.15.0 \
             zap-baseline.py -t http://localhost:5173 -J zap-tienda.json -I || true
+          cp zap-out/zap-tienda.json resultados/ || true
       - name: Resumen de ZAP
         run: |
           python3 - <<'PY'

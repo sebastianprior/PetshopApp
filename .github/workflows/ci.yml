@@ -35,7 +35,7 @@ jobs:
       # sonar-project.properties. Sin el secreto SONAR_TOKEN (por ejemplo en un fork ajeno) el paso se omite.
       - name: Análisis de calidad (SonarCloud) y Quality Gate
         if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@v7.2.1
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1
       - name: Guardar los reportes de pruebas y de cobertura
         if: always()
         uses: actions/upload-artifact@v4

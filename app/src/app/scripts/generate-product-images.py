@@ -666,7 +666,7 @@ def main():
     unknown = [pid for pid in sys.argv[1:] if pid not in PRODUCTS]
     if unknown:
         sys.exit(f"Productos desconocidos: {', '.join(unknown)}")
-    only = sys.argv[1:] or list(PRODUCTS)
+    only = [pid for pid in PRODUCTS if not sys.argv[1:] or pid in sys.argv[1:]]
     for pid in only:
         with open(os.path.join(OUT, pid + ".svg"), "w", encoding="utf-8", newline="\n") as f:
             f.write(render(pid))

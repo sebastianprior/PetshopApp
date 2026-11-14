@@ -17,8 +17,11 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /build/app.jar app.jar
 
-# Carpetas donde la app guarda archivos (imágenes subidas por el admin y emails simulados)
-RUN mkdir -p uploads outbox logs artemis-data
+# Sin root: la app corre con un usuario propio. Carpetas donde guarda archivos (imágenes subidas por el admin y emails simulados)
+RUN useradd --system --uid 10001 --home-dir /app app \
+    && mkdir -p uploads outbox logs artemis-data \
+    && chown -R app:app /app
+USER app
 
 # Memoria acotada: los planes gratuitos tienen ~512 MB
 ENV ARTEMIS_PERSISTENT=true
