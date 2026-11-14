@@ -135,7 +135,7 @@ f += [
     req("Ruleta sin identificación", "GET", "/api/roulette", 401),
     req("Descuento de la ruleta en el carrito", "GET", "/api/roulette/cart-discount", 200, headers={"X-Guest-Id": "newman-invitado"}),
     req("Descuento de la ruleta sin identificación", "GET", "/api/roulette/cart-discount", [200, 401], kind="error"),
-    req("Webhook de MercadoPago con un tipo que se ignora", "POST", "/api/payments/mercadopago/webhook?type=merchant_order&data.id=1", 200),
+    req("Webhook de MercadoPago con un tipo que se ignora (404 si MercadoPago no está configurado)", "POST", "/api/payments/mercadopago/webhook?type=merchant_order&data.id=1", [200, 404]),
     req("Webhook de MercadoPago con un pago inexistente", "POST", "/api/payments/mercadopago/webhook?type=payment&data.id=999999999", [200, 404, 502], kind="error"),
     req("Cupón: validar un código que no existe", "POST", "/api/coupons/validate", [400, 404], body={"code": "NO-EXISTE", "subtotal": 5000}),
 ]

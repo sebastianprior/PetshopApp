@@ -80,7 +80,7 @@ jobs:
         run: docker compose up --build --detach --wait --wait-timeout 300
       - name: Prueba de carga sobre catálogo, login y checkout (p95 < 500 ms y errores < 1 %)
         run: |
-          mkdir -p resultados
+          mkdir -p resultados && chmod 777 resultados   # k6 corre con otro usuario dentro del contenedor
           docker run --rm --network host -v "$PWD/app/tests-api:/scripts:ro" -v "$PWD/resultados:/out" \
             grafana/k6:0.54.0 run --summary-export=/out/carga.json /scripts/carga.k6.js || echo "K6_FALLO=1" >> "$GITHUB_ENV"
       - name: Resultados de la carga

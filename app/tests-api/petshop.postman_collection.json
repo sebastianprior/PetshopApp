@@ -1987,14 +1987,14 @@
      }
     },
     {
-     "name": "Webhook de MercadoPago con un tipo que se ignora",
+     "name": "Webhook de MercadoPago con un tipo que se ignora (404 si MercadoPago no está configurado)",
      "event": [
       {
        "listen": "test",
        "script": {
         "type": "text/javascript",
         "exec": [
-         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+         "pm.test(\"estado 200/404\", function () { pm.expect([200, 404]).to.include(pm.response.code); });"
         ]
        }
       }
