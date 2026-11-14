@@ -3,6 +3,7 @@ package com.petshop.app.controller;
 import com.petshop.app.model.Product;
 import com.petshop.app.model.ProductVariant;
 import com.petshop.app.model.Return;
+import com.petshop.app.repository.OrderRepository;
 import com.petshop.app.repository.ProductRepository;
 import com.petshop.app.repository.ProductVariantRepository;
 import com.petshop.app.repository.ReturnRepository;
@@ -23,16 +24,37 @@ public class ReturnController {
     private final ReturnRepository returnRepository;
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
+    private final OrderRepository orderRepository;
     private final JwtUtil jwtUtil;
     private final AdminGuard adminGuard;
 
     public ReturnController(ReturnRepository returnRepository, ProductRepository productRepository,
-                             ProductVariantRepository variantRepository, JwtUtil jwtUtil, AdminGuard adminGuard) {
+                             ProductVariantRepository variantRepository, OrderRepository orderRepository,
+                             JwtUtil jwtUtil, AdminGuard adminGuard) {
         this.returnRepository = returnRepository;
         this.productRepository = productRepository;
         this.variantRepository = variantRepository;
+        this.orderRepository = orderRepository;
         this.jwtUtil = jwtUtil;
         this.adminGuard = adminGuard;
+    }
+
+    /** Unidades que el usuario compró de un producto en ventas que llegaron a buen puerto (sin contar los regalos). */
+    private int unidadesCompradas(String userId, String productId) {
+        return orderRepository.findByUserIdOrderByFechaDesc(userId).stream()
+                .filter(o -> "COMPLETADA".equals(o.estado) || "ENVIADA".equals(o.estado))
+                .flatMap(o -> o.items.stream())
+                .filter(i -> productId.equals(i.productId) && i.price > 0)
+                .mapToInt(i -> i.quantity)
+                .sum();
+    }
+
+    /** Unidades de ese producto que el usuario ya pidió devolver (las rechazadas no cuentan). */
+    private int unidadesYaDevueltas(String userId, String productId) {
+        return returnRepository.findByUserIdOrderByRequestedAtDesc(userId).stream()
+                .filter(r -> productId.equals(r.productId) && r.estado != Return.Status.RECHAZADA)
+                .mapToInt(r -> r.cantidad)
+                .sum();
     }
 
     @PostMapping
@@ -63,6 +85,15 @@ public class ReturnController {
 
         String motivo = body.get("motivo") != null ? body.get("motivo").toString() : "";
         String userId = jwtUtil.extractUserId(token);
+
+        // Solo se puede devolver lo que se compró, y no más unidades de las compradas (descontando lo que ya se pidió devolver)
+        int disponibles = unidadesCompradas(userId, productId) - unidadesYaDevueltas(userId, productId);
+        if (disponibles < 1) {
+            return ResponseEntity.status(422).body(Map.of("error", "No compraste este producto o ya pediste devolver todas las unidades"));
+        }
+        if (cantidad > disponibles) {
+            return ResponseEntity.status(422).body(Map.of("error", "Solo podés devolver " + disponibles + " unidad(es) de este producto"));
+        }
 
         Return devolucion = new Return(userId, productId, cantidad, motivo, Return.Status.PENDIENTE, Instant.now());
         devolucion.variantId = variantId;

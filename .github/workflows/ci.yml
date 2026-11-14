@@ -220,6 +220,19 @@ jobs:
           name: reporte-e2e
           path: app/src/app/playwright-report
           if-no-files-found: ignore
+      - name: La colección de Postman está al día y cubre todas las operaciones (éxito y error)
+        run: |
+          python3 app/tests-api/generar_coleccion.py
+          git diff --exit-code app/tests-api/petshop.postman_collection.json || { echo "::error::La colección versionada no coincide con la generada: corré python tests-api/generar_coleccion.py y subí el resultado"; exit 1; }
+      - name: Pruebas de API con Newman (colección de Postman, éxito y error de cada endpoint)
+        run: npx --yes newman@6.2.1 run app/tests-api/petshop.postman_collection.json --working-dir app/tests-api --reporters cli,junit --reporter-junit-export newman-resultado.xml
+      - name: Guardar el resultado de Newman
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-newman
+          path: newman-resultado.xml
+          if-no-files-found: ignore
       - name: Sonda de seguridad y resiliencia contra la API real (BOLA, BFLA, JWT, XXE, headers, ETag, DLQ...)
         run: python3 app/tests-api/sonda_seguridad.py sonda-resultado.json
       - name: Guardar el resultado de la sonda

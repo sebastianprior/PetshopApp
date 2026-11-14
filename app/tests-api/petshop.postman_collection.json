@@ -1,0 +1,8095 @@
+{
+ "info": {
+  "name": "Petshop API",
+  "description": "Casos de éxito y de error de cada endpoint. Generada por tests-api/generar_coleccion.py.",
+  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+ },
+ "item": [
+  {
+   "name": "00 Preparación: sesiones y usuarios",
+   "item": [
+    {
+     "name": "Configuración de autenticación",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"trae googleClientId\", () => pm.expect(pm.response.json()).to.have.property(\"googleClientId\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/config",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "config"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Configuración de pagos",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"indica los medios disponibles\", () => pm.expect(pm.response.json()).to.have.property(\"simulated\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/payments/config",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "payments",
+        "config"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Login del administrador",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "const b = pm.response.json();",
+         "pm.test(\"devuelve token y refreshToken\", () => { pm.expect(b.token).to.be.a(\"string\"); pm.expect(b.refreshToken).to.be.a(\"string\"); });",
+         "pm.collectionVariables.set(\"adminToken\", b.token);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"{{adminEmail}}\", \"password\": \"{{adminPassword}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Login del cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "const b = pm.response.json();",
+         "pm.collectionVariables.set(\"clienteToken\", b.token);",
+         "pm.collectionVariables.set(\"clienteRefresh\", b.refreshToken);",
+         "pm.collectionVariables.set(\"clienteId\", b.user ? b.user.id : '');"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"{{clienteEmail}}\", \"password\": \"{{clientePassword}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Login con contraseña incorrecta",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"{{clienteEmail}}\", \"password\": \"incorrecta\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Login con cuerpo vacío",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/401\", function () { pm.expect([400, 401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Registro de un usuario nuevo",
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.collectionVariables.set(\"bEmail\", \"newman-\" + Date.now() + \"@ejemplo.com\");",
+         "pm.collectionVariables.set(\"bPassword\", \"Clave-\" + Date.now() + \"-Nm\");",
+         "pm.request.body.update(JSON.stringify({email: pm.collectionVariables.get(\"bEmail\"), password: pm.collectionVariables.get(\"bPassword\"), name: \"Usuario Newman\"}));"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/201\", function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+         "const b = pm.response.json();",
+         "pm.collectionVariables.set(\"bId\", (b.user && b.user.id) || b.id);",
+         "pm.test(\"el usuario nuevo es CUSTOMER\", () => pm.expect(((b.user || b).role)).to.eql(\"CUSTOMER\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"newman-{{$timestamp}}@ejemplo.com\", \"password\": \"Clave-Newman-{{$timestamp}}\", \"name\": \"Usuario Newman\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Registro con un email ya usado",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 409\", function () { pm.expect([409]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"{{clienteEmail}}\", \"password\": \"Clave-Segura-9999\", \"name\": \"Duplicado\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Registro con un email inválido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"no-es-un-email\", \"password\": \"Clave-Segura-9999\", \"name\": \"X\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Registro con una contraseña débil",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"debil-{{$timestamp}}@ejemplo.com\", \"password\": \"123\", \"name\": \"X\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Registro con HTML en el nombre (se rechaza)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"xss-{{$timestamp}}@ejemplo.com\", \"password\": \"Clave-Segura-9999\", \"name\": \"<script>alert(1)</script>\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Login del usuario nuevo",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "const b = pm.response.json();",
+         "pm.collectionVariables.set(\"bToken\", b.token);",
+         "pm.collectionVariables.set(\"bRefresh\", b.refreshToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"{{bEmail}}\", \"password\": \"{{bPassword}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Mi perfil",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"es el cliente\", () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get(\"clienteEmail\")));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "me"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Mi perfil sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "me"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Mi perfil con un token falso",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "token.falso.firma"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "me"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cambiar mi nombre",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{bToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "me"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Newman Renombrado\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar mi nombre sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "me"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"X\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Renovar la sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "const b = pm.response.json();",
+         "pm.collectionVariables.set(\"bToken\", b.token);",
+         "pm.collectionVariables.set(\"bRefresh\", b.refreshToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/refresh",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "refresh"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"refreshToken\": \"{{bRefresh}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Renovar con un token inválido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/refresh",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "refresh"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"refreshToken\": \"no-existe\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar la contraseña",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{bToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/change-password",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "change-password"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"currentPassword\": \"{{bPassword}}\", \"newPassword\": \"Otra-Clave-Newman-77\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar la contraseña con la actual incorrecta",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/401/403\", function () { pm.expect([400, 401, 403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{bToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/change-password",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "change-password"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"currentPassword\": \"incorrecta\", \"newPassword\": \"Otra-Clave-Newman-88\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Recuperar la contraseña (siempre responde igual)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/recover",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "recover"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"email\": \"{{clienteEmail}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Recuperar sin email (responde igual: no revela qué emails existen)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/400/422\", function () { pm.expect([200, 400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/recover",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "recover"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Restablecer con un código inválido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404/410\", function () { pm.expect([400, 404, 410]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/reset",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "reset"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"token\": \"codigo-invalido\", \"newPassword\": \"Clave-Nueva-12345\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Ingreso con Google y una credencial inválida",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/401/503\", function () { pm.expect([400, 401, 503]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/google",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "google"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"credential\": \"no-es-un-token-de-google\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cerrar sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/logout",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "logout"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"refreshToken\": \"{{bRefresh}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cerrar sesión sin indicar la sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/400/422\", function () { pm.expect([200, 400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/logout",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "logout"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Renovar con el token ya cerrado",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/auth/refresh",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "auth",
+        "refresh"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"refreshToken\": \"{{bRefresh}}\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "01 Catálogo público",
+   "item": [
+    {
+     "name": "Listar productos",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "const b = pm.response.json();",
+         "pm.test(\"hay productos\", () => pm.expect(b.length).to.be.above(0));",
+         "pm.collectionVariables.set(\"productoExistente\", b[0].id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Filtrar por categoría y buscar",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"todos son de juguetes\", () => pm.response.json().forEach(p => pm.expect(p.categoryId).to.eql(\"juguetes\")));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products?category=juguetes&search=pelota&sort=menorprecio",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ],
+       "query": [
+        {
+         "key": "category",
+         "value": "juguetes"
+        },
+        {
+         "key": "search",
+         "value": "pelota"
+        },
+        {
+         "key": "sort",
+         "value": "menorprecio"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Detalle de un producto",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"trae ETag\", () => pm.expect(pm.response.headers.get(\"ETag\")).to.be.ok);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p2",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p2"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Detalle de un producto que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 404\", function () { pm.expect([404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/no-existe",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "no-existe"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Listar categorías",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories"
+       ]
+      }
+     }
+    },
+    {
+     "name": "API v1: listar productos",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/productos",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "productos"
+       ]
+      }
+     }
+    },
+    {
+     "name": "API v1: detalle de un producto",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/productos/p2",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "productos",
+        "p2"
+       ]
+      }
+     }
+    },
+    {
+     "name": "API v1: producto que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 404\", function () { pm.expect([404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/productos/no-existe",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "productos",
+        "no-existe"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Variantes de un producto",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p1/variants",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p1",
+        "variants"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Variantes de un producto que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/404\", function () { pm.expect([200, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/no-existe/variants",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "no-existe",
+        "variants"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Reseñas de un producto",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p2/reviews",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p2",
+        "reviews"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Reseñas de un producto que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/404\", function () { pm.expect([200, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/no-existe/reviews",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "no-existe",
+        "reviews"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Preguntas frecuentes",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "const b = pm.response.json();",
+         "pm.collectionVariables.set(\"faqOriginal\", JSON.stringify(b));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/faq",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "faq"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Ajustes del sitio",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"settingsOriginal\", JSON.stringify(pm.response.json()));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/settings",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "settings"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Promociones del carrito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"promosOriginal\", JSON.stringify(pm.response.json()));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/settings/cart-promos",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "settings",
+        "cart-promos"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Zonas de envío",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"zonasOriginal\", JSON.stringify(pm.response.json()));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/shipping/zones",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "shipping",
+        "zones"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cotizar el envío (CABA)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"trae un costo\", () => pm.expect(pm.response.json()).to.have.property(\"cost\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/shipping/quote?postalCode=1425&subtotal=5000",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "shipping",
+        "quote"
+       ],
+       "query": [
+        {
+         "key": "postalCode",
+         "value": "1425"
+        },
+        {
+         "key": "subtotal",
+         "value": "5000"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cotizar con un código postal inválido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/422\", function () { pm.expect([400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/shipping/quote?postalCode=12&subtotal=5000",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "shipping",
+        "quote"
+       ],
+       "query": [
+        {
+         "key": "postalCode",
+         "value": "12"
+        },
+        {
+         "key": "subtotal",
+         "value": "5000"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Salchi Bot responde sobre el envío",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/chat",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "chat"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"message\": \"¿cuánto tarda el envío?\", \"history\": []}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Salchi Bot sin mensaje (pide que escriban algo)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/400/422\", function () { pm.expect([200, 400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/chat",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "chat"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"history\": []}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Ruleta como invitado",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Guest-Id",
+        "value": "newman-invitado"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/roulette",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "roulette"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Ruleta sin identificación",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/roulette",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "roulette"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Descuento de la ruleta en el carrito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Guest-Id",
+        "value": "newman-invitado"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/roulette/cart-discount",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "roulette",
+        "cart-discount"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Descuento de la ruleta sin identificación",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/401\", function () { pm.expect([200, 401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/roulette/cart-discount",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "roulette",
+        "cart-discount"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Webhook de MercadoPago con un tipo que se ignora",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/payments/mercadopago/webhook?type=merchant_order&data.id=1",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "payments",
+        "mercadopago",
+        "webhook"
+       ],
+       "query": [
+        {
+         "key": "type",
+         "value": "merchant_order"
+        },
+        {
+         "key": "data.id",
+         "value": "1"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Webhook de MercadoPago con un pago inexistente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/404/502\", function () { pm.expect([200, 404, 502]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/payments/mercadopago/webhook?type=payment&data.id=999999999",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "payments",
+        "mercadopago",
+        "webhook"
+       ],
+       "query": [
+        {
+         "key": "type",
+         "value": "payment"
+        },
+        {
+         "key": "data.id",
+         "value": "999999999"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cupón: validar un código que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons/validate",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons",
+        "validate"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"NO-EXISTE\", \"subtotal\": 5000}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "02 Administración: catálogo (alta, cambio y baja)",
+   "item": [
+    {
+     "name": "Crear una categoría",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"categoriaId\", pm.response.json().id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Newman\", \"color\": \"#ABCDEF\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear una categoría sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"X\", \"color\": \"#fff\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear una categoría como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"X\", \"color\": \"#fff\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar la categoría",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories/{{categoriaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories",
+        "{{categoriaId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Newman 2\", \"color\": \"#123456\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar una categoría que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories/no-existe",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories",
+        "no-existe"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"X\", \"color\": \"#fff\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un producto",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"productoId\", pm.response.json().id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 1000, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un producto como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 1000, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un producto sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 1000, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un producto con HTML en el nombre",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"<img src=x onerror=alert(1)>\", \"brand\": \"Marca\", \"price\": 1000, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Leer el producto (ETag)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"productoEtag\", pm.response.headers.get(\"ETag\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Actualizar con un ETag desactualizado",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 412\", function () { pm.expect([412]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       },
+       {
+        "key": "If-Match",
+        "value": "\"desactualizado\""
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 1500, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Actualizar con el ETag vigente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       },
+       {
+        "key": "If-Match",
+        "value": "{{productoEtag}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 1500, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Actualizar un producto que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/no-existe",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "no-existe"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 1000, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear una variante",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/201\", function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"varianteId\", pm.response.json().id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}/variants",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}",
+        "variants"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"talle\": \"M\", \"color\": \"rojo\", \"stock\": 3}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear una variante como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}/variants",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}",
+        "variants"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"talle\": \"M\", \"color\": \"rojo\", \"stock\": 3}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Actualizar la variante",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}/variants/{{varianteId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}",
+        "variants",
+        "{{varianteId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"talle\": \"L\", \"color\": \"azul\", \"stock\": 4}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Actualizar una variante que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}/variants/99999999",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}",
+        "variants",
+        "99999999"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"talle\": \"L\", \"color\": \"azul\", \"stock\": 4}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Borrar la variante",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/204\", function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}/variants/{{varianteId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}",
+        "variants",
+        "{{varianteId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar una variante que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}/variants/99999999",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}",
+        "variants",
+        "99999999"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "03 Cupones",
+   "item": [
+    {
+     "name": "Crear un cupón",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"cuponId\", pm.response.json().id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"NEWMAN10\", \"discountType\": \"PERCENTAGE\", \"discountValue\": 10, \"minPurchase\": 0, \"maxUses\": 5, \"active\": true}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un cupón repetido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 409\", function () { pm.expect([409]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"NEWMAN10\", \"discountType\": \"PERCENTAGE\", \"discountValue\": 10, \"minPurchase\": 0, \"maxUses\": 5, \"active\": true}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un cupón inválido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"X2\", \"discountType\": \"PERCENTAGE\", \"discountValue\": -5, \"minPurchase\": 0, \"maxUses\": 5, \"active\": true}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un cupón como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"NEWMAN10\", \"discountType\": \"PERCENTAGE\", \"discountValue\": 10, \"minPurchase\": 0, \"maxUses\": 5, \"active\": true}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Listar los cupones",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Listar los cupones sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cambiar el cupón",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons/{{cuponId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons",
+        "{{cuponId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"NEWMAN10\", \"discountType\": \"PERCENTAGE\", \"discountValue\": 15, \"minPurchase\": 0, \"maxUses\": 5, \"active\": true}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar un cupón que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons/99999999",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons",
+        "99999999"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"NEWMAN10\", \"discountType\": \"PERCENTAGE\", \"discountValue\": 10, \"minPurchase\": 0, \"maxUses\": 5, \"active\": true}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Validar el cupón",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons/validate",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons",
+        "validate"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"NEWMAN10\", \"subtotal\": 5000}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Validar un cupón con una compra mínima que no se alcanza",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404/422\", function () { pm.expect([400, 404, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons/validate",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons",
+        "validate"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"code\": \"NO-EXISTE\", \"subtotal\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Borrar el cupón",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/204\", function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons/{{cuponId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons",
+        "{{cuponId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar un cupón que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/coupons/99999999",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "coupons",
+        "99999999"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "04 Compra: carrito, venta v1, pago y estados",
+   "item": [
+    {
+     "name": "Carrito vacío del cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Carrito sin identificar a nadie",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/401\", function () { pm.expect([200, 401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Agregar un producto al carrito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"el precio lo fija el servidor, no el cliente\", () => { const c = pm.response.json().find(i => i.productId === \"p3\"); pm.expect(c.price).to.be.above(1); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/add",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "add"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p3\", \"name\": \"Collar\", \"variant\": \"accesorios\", \"quantity\": 1, \"price\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Agregar un producto que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/add",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "add"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"no-existe\", \"name\": \"Collar\", \"variant\": \"accesorios\", \"quantity\": 1, \"price\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Agregar más que el stock",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/409\", function () { pm.expect([400, 409]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/add",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "add"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p3\", \"name\": \"Collar\", \"variant\": \"accesorios\", \"quantity\": 99999, \"price\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Un administrador no puede usar el carrito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/add",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "add"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p3\", \"name\": \"Collar\", \"variant\": \"accesorios\", \"quantity\": 1, \"price\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Sumar una unidad",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/items/p3/increment?variant=accesorios",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "items",
+        "p3",
+        "increment"
+       ],
+       "query": [
+        {
+         "key": "variant",
+         "value": "accesorios"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Restar una unidad",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/items/p3/decrement?variant=accesorios",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "items",
+        "p3",
+        "decrement"
+       ],
+       "query": [
+        {
+         "key": "variant",
+         "value": "accesorios"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Sumar en un producto que no está en el carrito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/items/no-esta/increment?variant=x",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "items",
+        "no-esta",
+        "increment"
+       ],
+       "query": [
+        {
+         "key": "variant",
+         "value": "x"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Restar en un producto que no está en el carrito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/items/no-esta/decrement?variant=x",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "items",
+        "no-esta",
+        "decrement"
+       ],
+       "query": [
+        {
+         "key": "variant",
+         "value": "x"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Quitar el producto del carrito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/remove",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "remove"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p3\", \"variant\": \"accesorios\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Quitar un producto que no está",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/400/404\", function () { pm.expect([200, 400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/remove",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "remove"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"no-esta\", \"variant\": \"x\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Agregar de nuevo para comprar",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/add",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "add"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p2\", \"name\": \"Pelota\", \"variant\": \"juguetes\", \"quantity\": 1, \"price\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Comprar sin la clave de idempotencia",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/422\", function () { pm.expect([400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Newman\", \"direccion\": \"Calle 1\", \"ciudad\": \"CABA\", \"codigoPostal\": \"1425\", \"medioPago\": \"tok_aprobado\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Comprar con un código postal inválido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 422\", function () { pm.expect([422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "{{$guid}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Newman\", \"direccion\": \"Calle 1\", \"ciudad\": \"CABA\", \"codigoPostal\": \"12\", \"medioPago\": \"tok_aprobado\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Comprar con la tarjeta de prueba aprobada",
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.collectionVariables.set(\"idemKey\", \"newman-\" + Date.now());",
+         "pm.request.headers.upsert({key: \"Idempotency-Key\", value: pm.collectionVariables.get(\"idemKey\")});"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 201\", function () { pm.expect([201]).to.include(pm.response.code); });",
+         "const b = pm.response.json();",
+         "pm.collectionVariables.set(\"ventaId\", b.id);",
+         "pm.test(\"COMPLETADA\", () => pm.expect(b.estado).to.eql(\"COMPLETADA\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "newman-{{$timestamp}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Newman\", \"direccion\": \"Calle 1\", \"ciudad\": \"CABA\", \"codigoPostal\": \"1425\", \"medioPago\": \"tok_aprobado\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Repetir la misma compra con la misma clave devuelve la misma venta",
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.request.headers.upsert({key: \"Idempotency-Key\", value: pm.collectionVariables.get(\"idemKey\")});"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/201\", function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+         "pm.test(\"misma venta\", () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"ventaId\"))));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Newman\", \"direccion\": \"Calle 1\", \"ciudad\": \"CABA\", \"codigoPostal\": \"1425\", \"medioPago\": \"tok_aprobado\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Comprar con una tarjeta rechazada",
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.sendRequest({url: pm.collectionVariables.get(\"baseUrl\") + \"/api/cart/add\", method: \"POST\", header: {\"Content-Type\": \"application/json\", \"X-Auth-Token\": pm.collectionVariables.get(\"clienteToken\")}, body: {mode: \"raw\", raw: JSON.stringify({productId: \"p2\", name: \"Pelota\", variant: \"juguetes\", quantity: 1, price: 1})}}, function () {});",
+         "pm.request.body.update(JSON.stringify({nombre: \"Newman\", direccion: \"Calle 1\", ciudad: \"CABA\", codigoPostal: \"1425\", medioPago: \"tok_rechazado\"}));"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 402\", function () { pm.expect([402]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "{{$guid}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Newman\", \"direccion\": \"Calle 1\", \"ciudad\": \"CABA\", \"codigoPostal\": \"1425\", \"medioPago\": \"tok_aprobado\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Mis ventas",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"incluye la compra\", () => pm.expect(pm.response.json().map(v => v.id)).to.include(Number(pm.collectionVariables.get(\"ventaId\"))));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Mis ventas sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Ver mi venta (ETag)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"ventaEtag\", pm.response.headers.get(\"ETag\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Ver una venta que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 404\", function () { pm.expect([404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/99999999",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "99999999"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Otro usuario no ve mi venta (BOLA)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 404\", function () { pm.expect([404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{bToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Estado del pago",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}/pago",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}",
+        "pago"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Estado del pago de una venta ajena",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 404\", function () { pm.expect([404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{bToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}/pago",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}",
+        "pago"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Sincronizar el pago",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}/pago/sincronizacion",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}",
+        "pago",
+        "sincronizacion"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Sincronizar el pago de una venta ajena",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 404\", function () { pm.expect([404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{bToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}/pago/sincronizacion",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}",
+        "pago",
+        "sincronizacion"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cambiar el estado con un ETag desactualizado",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 412\", function () { pm.expect([412]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       },
+       {
+        "key": "If-Match",
+        "value": "\"desactualizado\""
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"ENVIADA\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar el estado como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"ENVIADA\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar a un estado que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 422\", function () { pm.expect([422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"BASURA\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Pasar la venta a ENVIADA",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       },
+       {
+        "key": "If-Match",
+        "value": "{{ventaEtag}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"ENVIADA\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cancelar una venta ya enviada (transición inválida)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 409\", function () { pm.expect([409]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId}}/cancelacion",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId}}",
+        "cancelacion"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cancelar una venta que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 404\", function () { pm.expect([404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/99999999/cancelacion",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "99999999",
+        "cancelacion"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Carrito para comprar y cancelar",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/add",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "add"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p2\", \"name\": \"Pelota\", \"variant\": \"juguetes\", \"quantity\": 1, \"price\": 1}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Segunda compra",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 201\", function () { pm.expect([201]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"ventaId2\", pm.response.json().id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "{{$guid}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"nombre\": \"Newman\", \"direccion\": \"Calle 1\", \"ciudad\": \"CABA\", \"codigoPostal\": \"1425\", \"medioPago\": \"tok_aprobado\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cancelar la segunda compra",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"CANCELADA\", () => pm.expect(pm.response.json().estado).to.eql(\"CANCELADA\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/ventas/{{ventaId2}}/cancelacion",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "ventas",
+        "{{ventaId2}}",
+        "cancelacion"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Checkout viejo del carrito (sin datos)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/400/401/422\", function () { pm.expect([200, 400, 401, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/cart/checkout",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "cart",
+        "checkout"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "05 Pedidos, devoluciones, reseñas y favoritos",
+   "item": [
+    {
+     "name": "Mis pedidos (cliente)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders",
+        "me"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Mis pedidos sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders",
+        "me"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Todos los pedidos (administrador)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"pedidoId\", pm.response.json().length ? pm.response.json()[0].id : 1);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Todos los pedidos como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Todos los pedidos sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Estadísticas de ventas",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders/stats",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders",
+        "stats"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Estadísticas como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders/stats",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders",
+        "stats"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cambiar el estado de un pedido (API vieja)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/400/409\", function () { pm.expect([200, 400, 409]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders/{{pedidoId}}/status",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders",
+        "{{pedidoId}}",
+        "status"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"ENVIADA\", \"status\": \"ENVIADA\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar el estado de un pedido como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/orders/{{pedidoId}}/status",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "orders",
+        "{{pedidoId}}",
+        "status"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"ENVIADA\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Pedir una devolución",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/201\", function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"devolucionId\", pm.response.json().id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p2\", \"cantidad\": 1, \"motivo\": \"No era lo que esperaba\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Pedir una devolución de algo no comprado",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 422\", function () { pm.expect([422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p50\", \"cantidad\": 1, \"motivo\": \"X\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Pedir una devolución de más unidades de las compradas",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 422\", function () { pm.expect([422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p2\", \"cantidad\": 50, \"motivo\": \"X\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Mis devoluciones",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns",
+        "me"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Mis devoluciones sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns",
+        "me"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Todas las devoluciones (administrador)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Todas las devoluciones como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Aprobar la devolución",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns/{{devolucionId}}/status",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns",
+        "{{devolucionId}}",
+        "status"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar el estado de una devolución como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/returns/{{devolucionId}}/status",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "returns",
+        "{{devolucionId}}",
+        "status"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"estado\": \"APROBADA\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Reembolsar la devolución aprobada",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/refunds/process/{{devolucionId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "refunds",
+        "process",
+        "{{devolucionId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Reembolsar dos veces la misma devolución",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 409\", function () { pm.expect([409]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/refunds/process/{{devolucionId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "refunds",
+        "process",
+        "{{devolucionId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Reembolsar una devolución que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/refunds/process/99999999",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "refunds",
+        "process",
+        "99999999"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Reembolsar como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/refunds/process/{{devolucionId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "refunds",
+        "process",
+        "{{devolucionId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Dejar una reseña",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/201\", function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+         "pm.collectionVariables.set(\"resenaId\", pm.response.json().id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p2/reviews",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p2",
+        "reviews"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"rating\": 5, \"comment\": \"Muy bueno\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Dejar una reseña con una calificación inválida",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/409\", function () { pm.expect([400, 409]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p2/reviews",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p2",
+        "reviews"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"rating\": 9, \"comment\": \"X\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Dejar una reseña sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p2/reviews",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p2",
+        "reviews"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"rating\": 5, \"comment\": \"X\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Borrar la reseña como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p2/reviews/{{resenaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p2",
+        "reviews",
+        "{{resenaId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar la reseña (administrador)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/204\", function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p2/reviews/{{resenaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p2",
+        "reviews",
+        "{{resenaId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar una reseña que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p2/reviews/99999999",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p2",
+        "reviews",
+        "99999999"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Mis favoritos",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/wishlist",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "wishlist"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Agregar un favorito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/201\", function () { pm.expect([200, 201]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/wishlist",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "wishlist"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"p3\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Agregar un favorito que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/404\", function () { pm.expect([400, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/wishlist",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "wishlist"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"productId\": \"no-existe\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Favoritos sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/wishlist",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "wishlist"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Quitar el favorito",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/204\", function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/wishlist/p3",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "wishlist",
+        "p3"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Quitar un favorito que no está",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/204/404\", function () { pm.expect([200, 204, 404]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/wishlist/p3",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "wishlist",
+        "p3"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Quitar un favorito sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/wishlist/p3",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "wishlist",
+        "p3"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Girar la ruleta (una vez por día)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200/409/429\", function () { pm.expect([200, 409, 429]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/roulette/spin",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "roulette",
+        "spin"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Un administrador no gira la ruleta",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/roulette/spin",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "roulette",
+        "spin"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "06 Administración: usuarios, ajustes, preguntas frecuentes y envíos",
+   "item": [
+    {
+     "name": "Listar usuarios",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"no filtra contraseñas\", () => pm.response.json().forEach(u => { pm.expect(u).to.not.have.property(\"password\"); }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Listar usuarios como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Listar usuarios sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/users",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Dar de baja al usuario de prueba",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users/{{bId}}/status",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users",
+        "{{bId}}",
+        "status"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"active\": false}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Reactivar al usuario de prueba",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users/{{bId}}/status",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users",
+        "{{bId}}",
+        "status"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"active\": true}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar el estado sin el campo active",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users/{{bId}}/status",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users",
+        "{{bId}}",
+        "status"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar el estado como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users/{{bId}}/status",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users",
+        "{{bId}}",
+        "status"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"active\": false}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar el rol del usuario de prueba",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users/{{bId}}/role",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users",
+        "{{bId}}",
+        "role"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"role\": \"CUSTOMER\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar a un rol que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/422\", function () { pm.expect([400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users/{{bId}}/role",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users",
+        "{{bId}}",
+        "role"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"role\": \"SUPERUSUARIO\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Cambiar el rol como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/users/{{bId}}/role",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "users",
+        "{{bId}}",
+        "role"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"role\": \"ADMIN\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Guardar los ajustes del sitio (los mismos)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/settings",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "settings"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{{settingsOriginal}}"
+      }
+     }
+    },
+    {
+     "name": "Ajustes con un modo de anuncio inválido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/422\", function () { pm.expect([400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/settings",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "settings"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"topbarItems\": [], \"announcementMode\": \"INVENTADO\", \"announcementText\": \"\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Ajustes como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/settings",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "settings"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{{settingsOriginal}}"
+      }
+     }
+    },
+    {
+     "name": "Guardar las promociones del carrito (las mismas)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/settings/cart-promos",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "settings",
+        "cart-promos"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{{promosOriginal}}"
+      }
+     }
+    },
+    {
+     "name": "Promociones con un monto negativo",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/422\", function () { pm.expect([400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/settings/cart-promos",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "settings",
+        "cart-promos"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"freeShippingEnabled\": true, \"freeShippingThreshold\": -1, \"giftEnabled\": false, \"giftMinAmount\": 0, \"giftProductId\": null}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Promociones como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/settings/cart-promos",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "settings",
+        "cart-promos"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{{promosOriginal}}"
+      }
+     }
+    },
+    {
+     "name": "Guardar las preguntas frecuentes (las mismas)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/faq",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "faq"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{{faqOriginal}}"
+      }
+     }
+    },
+    {
+     "name": "Preguntas frecuentes con una pregunta vacía",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/422\", function () { pm.expect([400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/faq",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "faq"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "[{\"question\": \"\", \"answer\": \"x\"}]",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Preguntas frecuentes como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/faq",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "faq"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{{faqOriginal}}"
+      }
+     }
+    },
+    {
+     "name": "Guardar las zonas de envío (las mismas)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/shipping/zones",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "shipping",
+        "zones"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{{zonasOriginal}}"
+      }
+     }
+    },
+    {
+     "name": "Zonas con un rango de códigos postales invertido",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/422\", function () { pm.expect([400, 422]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/shipping/zones",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "shipping",
+        "zones"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"defaultCost\": 100, \"defaultEta\": \"1 día\", \"zones\": [{\"name\": \"Mal\", \"postalFrom\": 2000, \"postalTo\": 1000, \"cost\": 1, \"eta\": \"x\"}]}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Zonas como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/shipping/zones",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "shipping",
+        "zones"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{{zonasOriginal}}"
+      }
+     }
+    },
+    {
+     "name": "Cola de mensajes muertos (administrador)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"trae el conteo\", () => pm.expect(pm.response.json()).to.have.property(\"count\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/admin/dlq",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "dlq"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Cola de mensajes muertos como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/admin/dlq",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "dlq"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Reprocesar la cola de mensajes muertos",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/admin/dlq/reprocess",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "dlq",
+        "reprocess"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Reprocesar sin sesión",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 401\", function () { pm.expect([401]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [],
+      "url": {
+       "raw": "{{baseUrl}}/api/admin/dlq/reprocess",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "admin",
+        "dlq",
+        "reprocess"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Subir una imagen",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"devuelve la dirección\", () => pm.expect(pm.response.json().url).to.match(/^\\/uploads\\//));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/uploads",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "uploads"
+       ]
+      },
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "file",
+         "type": "file",
+         "src": "fixtures/pixel.png"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Subir un archivo que no es una imagen",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/uploads",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "uploads"
+       ]
+      },
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "file",
+         "type": "file",
+         "src": "fixtures/nota.txt"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Subir una imagen como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/uploads",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "uploads"
+       ]
+      },
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "file",
+         "type": "file",
+         "src": "fixtures/pixel.png"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "07 Limpieza de lo que creó la colección",
+   "item": [
+    {
+     "name": "Borrar el producto",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/{{productoId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "{{productoId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar un producto que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/no-existe",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "no-existe"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar un producto como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products/p1",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products",
+        "p1"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar la categoría",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories/{{categoriaId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories",
+        "{{categoriaId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar una categoría que no existe",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories/no-existe",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories",
+        "no-existe"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Borrar una categoría como cliente",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 403\", function () { pm.expect([403]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "X-Auth-Token",
+        "value": "{{clienteToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories/perros",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories",
+        "perros"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "08 Pasarela de pagos SOAP",
+   "item": [
+    {
+     "name": "SOAP: autorizar con una tarjeta aprobada",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"APROBADO\", () => pm.expect(pm.response.text()).to.include(\"APROBADO\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "text/xml; charset=utf-8"
+       },
+       {
+        "key": "SOAPAction",
+        "value": "\"\""
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/ws",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "ws"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "<?xml version=\"1.0\"?><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Body><p:AutorizarPagoRequest xmlns:p=\"urn:petshop:pagos\"><p:idTransaccion>newman-soap-{{$timestamp}}</p:idTransaccion><p:monto>100.0</p:monto><p:medioPagoToken>tok_aprobado</p:medioPagoToken></p:AutorizarPagoRequest></soapenv:Body></soapenv:Envelope>"
+      }
+     }
+    },
+    {
+     "name": "SOAP: tarjeta rechazada (respuesta de negocio)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+         "pm.test(\"RECHAZADO con motivo\", () => pm.expect(pm.response.text()).to.include(\"RECHAZADO\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "text/xml; charset=utf-8"
+       },
+       {
+        "key": "SOAPAction",
+        "value": "\"\""
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/ws",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "ws"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "<?xml version=\"1.0\"?><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Body><p:AutorizarPagoRequest xmlns:p=\"urn:petshop:pagos\"><p:idTransaccion>newman-soap-r-{{$timestamp}}</p:idTransaccion><p:monto>100.0</p:monto><p:medioPagoToken>tok_rechazado</p:medioPagoToken></p:AutorizarPagoRequest></soapenv:Body></soapenv:Envelope>"
+      }
+     }
+    },
+    {
+     "name": "SOAP: datos inválidos (Fault de negocio PG-400)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 500\", function () { pm.expect([500]).to.include(pm.response.code); });",
+         "pm.test(\"es un Fault con el código\", () => { pm.expect(pm.response.text()).to.include(\"Fault\"); pm.expect(pm.response.text()).to.include(\"PG-400\"); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "text/xml; charset=utf-8"
+       },
+       {
+        "key": "SOAPAction",
+        "value": "\"\""
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/ws",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "ws"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "<?xml version=\"1.0\"?><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Body><p:AutorizarPagoRequest xmlns:p=\"urn:petshop:pagos\"><p:idTransaccion>newman-soap-i-{{$timestamp}}</p:idTransaccion><p:monto>100.0</p:monto><p:medioPagoToken>tok_invalido</p:medioPagoToken></p:AutorizarPagoRequest></soapenv:Body></soapenv:Envelope>"
+      }
+     }
+    },
+    {
+     "name": "SOAP: una entidad externa XML no se expande (XXE)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400/500\", function () { pm.expect([400, 500]).to.include(pm.response.code); });",
+         "pm.test(\"no filtra archivos\", () => pm.expect(pm.response.text()).to.not.match(/root:|\\[fonts\\]|for 16-bit/));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "text/xml; charset=utf-8"
+       },
+       {
+        "key": "SOAPAction",
+        "value": "\"\""
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/ws",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "ws"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "<?xml version=\"1.0\"?><!DOCTYPE r [<!ENTITY xxe SYSTEM \"file:///etc/hostname\">]><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Body><p:AutorizarPagoRequest xmlns:p=\"urn:petshop:pagos\"><p:idTransaccion>&xxe;</p:idTransaccion><p:monto>100.0</p:monto><p:medioPagoToken>tok_aprobado</p:medioPagoToken></p:AutorizarPagoRequest></soapenv:Body></soapenv:Envelope>"
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "variable": [
+  {
+   "key": "baseUrl",
+   "value": "http://localhost:8080"
+  },
+  {
+   "key": "adminEmail",
+   "value": "admin@petshop.com"
+  },
+  {
+   "key": "adminPassword",
+   "value": "admin123"
+  },
+  {
+   "key": "clienteEmail",
+   "value": "cliente@ejemplo.com"
+  },
+  {
+   "key": "clientePassword",
+   "value": "password"
+  }
+ ]
+}

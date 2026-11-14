@@ -28,6 +28,7 @@ class ReturnControllerTest {
     private ReturnRepository returnRepository;
     private ProductRepository productRepository;
     private ProductVariantRepository variantRepository;
+    private com.petshop.app.repository.OrderRepository orderRepository;
     private JwtUtil jwtUtil;
     private AdminGuard adminGuard;
     private ReturnController controller;
@@ -38,9 +39,10 @@ class ReturnControllerTest {
         returnRepository = mock(ReturnRepository.class);
         productRepository = mock(ProductRepository.class);
         variantRepository = mock(ProductVariantRepository.class);
+        orderRepository = mock(com.petshop.app.repository.OrderRepository.class);
         jwtUtil = new JwtUtil(JWT_SECRET, 60_000);
         adminGuard = new AdminGuard(jwtUtil);
-        controller = new ReturnController(returnRepository, productRepository, variantRepository, jwtUtil, adminGuard);
+        controller = new ReturnController(returnRepository, productRepository, variantRepository, orderRepository, jwtUtil, adminGuard);
         adminToken = jwtUtil.generateToken("admin-1", "admin@example.com", "ADMIN");
 
         when(returnRepository.save(any(Return.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -104,5 +106,123 @@ class ReturnControllerTest {
         ResponseEntity<?> response = controller.updateStatus(customerToken, 1L, Map.of("estado", "APROBADA"));
 
         assertThat(response.getStatusCode().value()).isEqualTo(403);
+    }
+
+    // ---- Pedir una devolución: solo de lo que se compró -----------------------------------------------------------------
+
+    private String customerToken() {
+        return jwtUtil.generateToken("user-1", "cliente@example.com", "CUSTOMER");
+    }
+
+    private com.petshop.app.model.Order order(String estado, double price, int quantity) {
+        com.petshop.app.model.Order order = new com.petshop.app.model.Order("user-1", Instant.now(),
+                java.util.List.of(new com.petshop.app.model.Order.OrderItem("p1", quantity, price)), price * quantity, estado);
+        return order;
+    }
+
+    private void boughtOrders(com.petshop.app.model.Order... orders) {
+        when(productRepository.existsById("p1")).thenReturn(true);
+        when(orderRepository.findByUserIdOrderByFechaDesc("user-1")).thenReturn(java.util.List.of(orders));
+    }
+
+    private ResponseEntity<?> ask(int quantity) {
+        return controller.request(customerToken(), Map.of("productId", "p1", "cantidad", quantity, "motivo", "No me gustó"));
+    }
+
+    @Test
+    void aCustomerCanReturnWhatTheyBoughtAndTheRequestStartsPending() {
+        boughtOrders(order("COMPLETADA", 500, 2));
+
+        ResponseEntity<?> response = ask(2);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        org.mockito.ArgumentCaptor<Return> saved = org.mockito.ArgumentCaptor.forClass(Return.class);
+        org.mockito.Mockito.verify(returnRepository).save(saved.capture());
+        assertThat(saved.getValue().estado).isEqualTo(Return.Status.PENDIENTE);
+        assertThat(saved.getValue().userId).isEqualTo("user-1");
+        assertThat(saved.getValue().cantidad).isEqualTo(2);
+    }
+
+    @Test
+    void aProductTheCustomerNeverBoughtCannotBeReturned() {
+        boughtOrders();
+
+        ResponseEntity<?> response = ask(1);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(422);
+        org.mockito.Mockito.verify(returnRepository, org.mockito.Mockito.never()).save(any(Return.class));
+    }
+
+    @Test
+    void moreUnitsThanBoughtCannotBeReturned() {
+        boughtOrders(order("COMPLETADA", 500, 2));
+
+        ResponseEntity<?> response = ask(3);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(422);
+        assertThat(String.valueOf(response.getBody())).contains("2 unidad");
+        org.mockito.Mockito.verify(returnRepository, org.mockito.Mockito.never()).save(any(Return.class));
+    }
+
+    @Test
+    void onlyOrdersThatWentThroughCountAsBought() {
+        boughtOrders(order("CANCELADA", 500, 2), order("PAGO_PENDIENTE", 500, 2));
+
+        assertThat(ask(1).getStatusCode().value()).isEqualTo(422);
+    }
+
+    @Test
+    void shippedOrdersCountAsBought() {
+        boughtOrders(order("ENVIADA", 500, 1));
+
+        assertThat(ask(1).getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Test
+    void aFreeGiftCannotBeReturnedForMoney() {
+        boughtOrders(order("COMPLETADA", 0, 1));
+
+        assertThat(ask(1).getStatusCode().value()).isEqualTo(422);
+    }
+
+    @Test
+    void unitsFromSeveralOrdersAddUp() {
+        boughtOrders(order("COMPLETADA", 500, 1), order("ENVIADA", 500, 2));
+
+        assertThat(ask(3).getStatusCode().value()).isEqualTo(200);
+        assertThat(ask(4).getStatusCode().value()).isEqualTo(422);
+    }
+
+    @Test
+    void unitsAlreadyRequestedAreDiscountedButRejectedRequestsAreNot() {
+        boughtOrders(order("COMPLETADA", 500, 3));
+        Return pending = new Return("user-1", "p1", 2, "x", Return.Status.PENDIENTE, Instant.now());
+        Return rejected = new Return("user-1", "p1", 1, "x", Return.Status.RECHAZADA, Instant.now());
+        Return otherProduct = new Return("user-1", "p9", 3, "x", Return.Status.PENDIENTE, Instant.now());
+        when(returnRepository.findByUserIdOrderByRequestedAtDesc("user-1")).thenReturn(java.util.List.of(pending, rejected, otherProduct));
+
+        assertThat(ask(1).getStatusCode().value()).as("queda 1 de las 3").isEqualTo(200);
+        assertThat(ask(2).getStatusCode().value()).as("pedir 2 supera lo que queda").isEqualTo(422);
+    }
+
+    @Test
+    void ordersOfAnotherCustomerDoNotCount() {
+        when(productRepository.existsById("p1")).thenReturn(true);
+        when(orderRepository.findByUserIdOrderByFechaDesc("user-1")).thenReturn(java.util.List.of());
+        when(orderRepository.findByUserIdOrderByFechaDesc("otro")).thenReturn(java.util.List.of(order("COMPLETADA", 500, 5)));
+
+        assertThat(ask(1).getStatusCode().value()).isEqualTo(422);
+    }
+
+    @Test
+    void requestingAReturnNeedsASessionAnExistingProductAndAValidQuantity() {
+        assertThat(controller.request(null, Map.of("productId", "p1", "cantidad", 1)).getStatusCode().value()).isEqualTo(401);
+        assertThat(controller.request("token-roto", Map.of("productId", "p1", "cantidad", 1)).getStatusCode().value()).isEqualTo(401);
+        assertThat(controller.request(customerToken(), Map.of("cantidad", 1)).getStatusCode().value()).isEqualTo(400);
+        assertThat(controller.request(customerToken(), Map.of("productId", "no-existe", "cantidad", 1)).getStatusCode().value()).isEqualTo(400);
+        boughtOrders(order("COMPLETADA", 500, 2));
+        assertThat(ask(0).getStatusCode().value()).isEqualTo(400);
+        assertThat(ask(-1).getStatusCode().value()).isEqualTo(400);
+        assertThat(controller.request(customerToken(), Map.of("productId", "p1", "cantidad", "dos")).getStatusCode().value()).isEqualTo(400);
     }
 }
