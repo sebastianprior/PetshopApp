@@ -36,6 +36,9 @@ public class CategoryController {
             return adminGuard.denied(token);
         }
 
+        if (category.name == null || category.name.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El nombre es obligatorio"));
+        }
         if (category.id == null || category.id.isBlank()) {
             category.id = UUID.randomUUID().toString();
         }
@@ -56,6 +59,9 @@ public class CategoryController {
             return ResponseEntity.badRequest().body(Map.of("error", "Categoría no encontrada"));
         }
 
+        if (category.name == null || category.name.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El nombre es obligatorio"));
+        }
         category.id = id;
         categoryRepository.save(category);
         return ResponseEntity.ok(category);

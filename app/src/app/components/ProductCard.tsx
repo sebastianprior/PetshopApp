@@ -29,7 +29,7 @@ export function ProductCard({ product, isAdmin, wishlist, onToggleWishlist, onAd
   return (
     <article className="product-card">
       <div className="product-image-wrap product-clickable" onClick={() => onOpenProduct(product.id)}>
-        <img src={product.imageUrl || PLACEHOLDER_IMAGE} onError={handleImageError} alt={product.name} loading="lazy" />
+        <img src={product.imageUrl || PLACEHOLDER_IMAGE} onError={handleImageError} alt={product.name || "Producto sin nombre"} loading="lazy" />
         <div className="product-tags">
           {product.badge ? <span className="product-badge">{product.badge}</span> : null}
           {discount > 0 ? <span className="discount-tag">-{discount}%</span> : null}

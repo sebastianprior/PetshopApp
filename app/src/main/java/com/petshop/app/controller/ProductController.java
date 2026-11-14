@@ -95,6 +95,25 @@ public class ProductController {
         return ResponseEntity.ok().eTag(etag(product)).body(product);
     }
 
+    /** Un producto sin nombre, sin precio o sin categoría rompe la tienda: se rechaza con 400 antes de guardarlo. */
+    private static ResponseEntity<?> validate(Product p) {
+        String error = null;
+        if (p.name == null || p.name.isBlank()) {
+            error = "El nombre es obligatorio";
+        } else if (p.name.length() > 150) {
+            error = "El nombre no puede superar los 150 caracteres";
+        } else if (!(p.price > 0) || Double.isInfinite(p.price)) {
+            error = "El precio debe ser mayor a 0";
+        } else if (p.stock < 0) {
+            error = "El stock no puede ser negativo";
+        } else if (p.categoryId == null || p.categoryId.isBlank()) {
+            error = "La categoría es obligatoria";
+        } else if (p.rating < 0 || p.rating > 5) {
+            error = "La calificación va de 0 a 5";
+        }
+        return error == null ? null : ResponseEntity.badRequest().body(Map.of("error", error));
+    }
+
     /** Huella de los datos de un producto que el administrador puede editar. */
     private static String etag(Product product) {
         return ETags.of(product.id, product.name, product.brand, product.price, product.oldPrice, product.rating,
@@ -109,6 +128,10 @@ public class ProductController {
             return adminGuard.denied(token);
         }
 
+        ResponseEntity<?> invalid = validate(product);
+        if (invalid != null) {
+            return invalid;
+        }
         if (product.id == null || product.id.isBlank()) {
             product.id = UUID.randomUUID().toString();
         }
@@ -129,6 +152,10 @@ public class ProductController {
         Product current = productRepository.findById(id).orElse(null);
         if (current == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Producto no encontrado"));
+        }
+        ResponseEntity<?> invalid = validate(product);
+        if (invalid != null) {
+            return invalid;
         }
         // Si otra persona lo modificó después de que este administrador lo leyó, no se pisa su cambio (412)
         if (ETags.stale(ifMatch, etag(current))) {

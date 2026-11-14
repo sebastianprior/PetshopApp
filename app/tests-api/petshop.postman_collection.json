@@ -2525,6 +2525,236 @@
      }
     },
     {
+     "name": "Crear un producto sin nombre",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"\", \"brand\": \"Marca\", \"price\": 1000, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un producto con precio 0",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 0, \"stock\": 5, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un producto sin categoría",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 1000, \"stock\": 5, \"categoryId\": \"\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear un producto con stock negativo",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/products",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "products"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"Producto Newman\", \"brand\": \"Marca\", \"price\": 1000, \"stock\": -1, \"categoryId\": \"juguetes\", \"imageUrl\": \"/products/p1.svg\", \"rating\": 4.0}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "Crear una categoría sin nombre",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"estado 400\", function () { pm.expect([400]).to.include(pm.response.code); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "X-Auth-Token",
+        "value": "{{adminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/categories",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "categories"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\"name\": \"\", \"color\": \"#fff\"}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
      "name": "Leer el producto (ETag)",
      "event": [
       {

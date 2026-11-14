@@ -158,6 +158,41 @@ class ProductControllerTest {
     }
 
     @Test
+    void aProductThatWouldBreakTheStoreIsRejectedOnCreateAndUpdateAndNothingIsSaved() {
+        when(products.findById("p1")).thenReturn(Optional.of(product("p1", "Collar", "x", 10, "c")));
+        Product noName = product("n", "x", "x", 10, "c");
+        noName.name = null;
+        Product blankName = product("n", "  ", "x", 10, "c");
+        Product longName = product("n", "a".repeat(151), "x", 10, "c");
+        Product free = product("n", "Gratis", "x", 0, "c");
+        Product negative = product("n", "Negativo", "x", -5, "c");
+        Product nan = product("n", "NaN", "x", Double.NaN, "c");
+        Product noStock = product("n", "Sin stock negativo", "x", 10, "c");
+        noStock.stock = -1;
+        Product noCategory = product("n", "Sin categoría", "x", 10, "");
+        Product nullCategory = product("n", "Sin categoría", "x", 10, "c");
+        nullCategory.categoryId = null;
+        Product badRating = product("n", "Mala nota", "x", 10, "c");
+        badRating.rating = 7;
+
+        for (Product bad : new Product[]{noName, blankName, longName, free, negative, nan, noStock, noCategory, nullCategory, badRating}) {
+            assertThat(controller.create(adminToken, bad).getStatusCode().value()).as("crear " + bad.name).isEqualTo(400);
+            assertThat(controller.update(adminToken, null, "p1", bad).getStatusCode().value()).as("cambiar " + bad.name).isEqualTo(400);
+        }
+        verify(products, never()).save(any());
+    }
+
+    @Test
+    void anInvalidProductExplainsWhatIsWrong() {
+        Product noName = product("n", "x", "x", 10, "c");
+        noName.name = null;
+
+        ResponseEntity<?> response = controller.create(adminToken, noName);
+
+        assertThat(response.getBody()).isEqualTo(Map.of("error", "El nombre es obligatorio"));
+    }
+
+    @Test
     void createGeneratesAnIdWhenNoneIsGivenAndKeepsAGivenOne() {
         Product withoutId = product("", "Nuevo", "x", 10, "c");
         Product withId = product("mi-id", "Otro", "x", 10, "c");

@@ -139,20 +139,23 @@ export function ProductsScreen({
           </button>
         </div>
       ) : (
-        <div className="product-grid">
-          {paginatedProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              isAdmin={isAdmin}
-              wishlist={wishlist}
-              onToggleWishlist={onToggleWishlist}
-              onAddToCart={onAddToCart}
-              onOpenProduct={onOpenProduct}
-              extraTag={rouletteCategoryId && product.categoryId === rouletteCategoryId ? `-${roulettePercent}% hoy` : null}
-            />
-          ))}
-        </div>
+        <>
+          <h2 className="sr-only">Listado de productos</h2>
+          <div className="product-grid">
+            {paginatedProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                isAdmin={isAdmin}
+                wishlist={wishlist}
+                onToggleWishlist={onToggleWishlist}
+                onAddToCart={onAddToCart}
+                onOpenProduct={onOpenProduct}
+                extraTag={rouletteCategoryId && product.categoryId === rouletteCategoryId ? `-${roulettePercent}% hoy` : null}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {!loading && totalPages > 1 ? (

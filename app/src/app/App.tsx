@@ -942,14 +942,14 @@ function App() {
             </div>
           </div>
           <div className="footer-col">
-            <h4>Tienda</h4>
+            <h3>Tienda</h3>
             <button onClick={() => showCatalog()}>Productos</button>
             <button onClick={() => navigateTo("offers")}>Ofertas</button>
             {shopCategories.some((category) => category.id === "perros") ? <button onClick={() => showCatalog("perros")}>Perros</button> : null}
             {shopCategories.some((category) => category.id === "gatos") ? <button onClick={() => showCatalog("gatos")}>Gatos</button> : null}
           </div>
           <div className="footer-col">
-            <h4>Ayuda</h4>
+            <h3>Ayuda</h3>
             <button onClick={() => navigateTo("faq")}>Preguntas frecuentes</button>
             <button onClick={() => navigateTo("contact")}>Contacto</button>
             <button onClick={() => navigateTo("terms")}>Términos y condiciones</button>

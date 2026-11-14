@@ -69,6 +69,19 @@ class CategoryControllerTest {
     }
 
     @Test
+    void aCategoryWithoutANameIsRejectedOnCreateAndUpdate() {
+        when(categories.existsById("perros")).thenReturn(true);
+        Category noName = new Category("x", "x", "#fff");
+        noName.name = null;
+
+        for (Category bad : new Category[]{noName, new Category("x", "", "#fff"), new Category("x", "   ", "#fff")}) {
+            assertThat(controller.create(adminToken, bad).getStatusCode().value()).isEqualTo(400);
+            assertThat(controller.update(adminToken, "perros", bad).getStatusCode().value()).isEqualTo(400);
+        }
+        verify(categories, never()).save(any());
+    }
+
+    @Test
     void createKeepsTheGivenId() {
         Category body = new Category("aves", "Aves", "#fff");
 

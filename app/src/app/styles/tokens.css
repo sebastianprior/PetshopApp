@@ -41,6 +41,7 @@
 
   --danger-100: #ffe5e5;
   --danger-500: #d64545;
+  --danger-700: #b83232; /* texto de error sobre fondo claro: contraste 5,8:1 */
   --danger-700: #a12828;
 
   /* Tipografía */
@@ -96,7 +97,7 @@
   --surface-2: #f7f4ee;
   --surface-tint: var(--sky-50);
   --text: var(--navy-900);
-  --text-muted: var(--navy-500);
+  --text-muted: #566a7e; /* con --navy-500 el contraste sobre fondos celestes era 4,45:1 (WCAG AA pide 4,5:1) */
   --border: #e6e1d6;
   --border-strong: #d6cfbf;
 

@@ -658,11 +658,11 @@
 }
 
 .stock-note.low {
-  color: var(--coral-700);
+  color: var(--coral-800);
 }
 
 .stock-note.out {
-  color: var(--danger);
+  color: var(--danger-700);
 }
 
 .theme-dark .stock-note.low {
