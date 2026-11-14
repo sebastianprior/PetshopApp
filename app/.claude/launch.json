@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "petshop-backend",
+      "runtimeExecutable": ".\\mvnw.cmd",
+      "runtimeArgs": ["spring-boot:run", "-Dspring-boot.run.arguments=--server.port=8081"],
+      "port": 8081
+    },
+    {
+      "name": "petshop-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "src/app"],
+      "port": 5173
+    }
+  ]
+}

@@ -1,10 +1,62 @@
-import type { CartItem, Category, Product, User } from "./types";
+import type { CartItem, CartPromos, PaymentConfig, Category, Faq, ShippingConfig, ShippingQuote, CheckoutResult, Coupon, OrderRecord, OrderStats, Product, ProductVariant, ReturnRecord, Review, RouletteCartDiscount, RouletteState, ShippingInfo, SiteSettings, User } from "./types";
 
-const API_BASE_URL = "http://localhost:8080/api";
+/** Quita las barras del final ("https://x.com/api//" -> "https://x.com/api") sin expresión regular (evita el backtracking). */
+function stripTrailingSlashes(text: string): string {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === "/") end--;
+  return text.slice(0, end);
+}
+
+/** Dirección del backend. En producción se define con VITE_API_URL al compilar (ver .env.example); en desarrollo usa el backend local. */
+export const API_BASE_URL = stripTrailingSlashes(import.meta.env.VITE_API_URL ?? "http://localhost:8080/api");
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 export const AUTH_TOKEN_KEY = "petshop_auth_token";
 export const AUTH_USER_KEY = "petshop_auth_user";
+export const GUEST_ID_KEY = "petshop_guest_id";
+export const AUTH_REFRESH_KEY = "petshop_refresh_token";
+export const UNAUTHORIZED_EVENT = "petshop:unauthorized";
+export const TOKEN_REFRESHED_EVENT = "petshop:token-refreshed";
 
-async function request<T>(input: string, init?: RequestInit): Promise<T> {
+type SessionResponse = { token: string; refreshToken: string; user: User };
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+/**
+ * Renueva el access token (que dura 15 minutos) con el refresh token guardado. Si varias peticiones fallan a la vez,
+ * comparten una sola renovación. Devuelve el token nuevo o null si la sesión ya no se puede renovar.
+ */
+async function refreshSession(): Promise<string | null> {
+  const refreshToken = localStorage.getItem(AUTH_REFRESH_KEY);
+  if (!refreshToken) return null;
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+        if (!response.ok) {
+          localStorage.removeItem(AUTH_REFRESH_KEY);
+          return null;
+        }
+        const session = (await response.json()) as SessionResponse;
+        localStorage.setItem(AUTH_TOKEN_KEY, session.token);
+        localStorage.setItem(AUTH_REFRESH_KEY, session.refreshToken);
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(session.user));
+        window.dispatchEvent(new CustomEvent(TOKEN_REFRESHED_EVENT, { detail: session }));
+        return session.token;
+      } catch {
+        return null;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
+async function request<T>(input: string, init?: (RequestInit & { skipAuthRedirect?: boolean }), retried = false): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
   if (!headers.has("Content-Type") && !(init?.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
@@ -16,11 +68,44 @@ async function request<T>(input: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && !init?.skipAuthRedirect && !retried && headers.has("X-Auth-Token")) {
+      const renewed = await refreshSession();
+      if (renewed) {
+        const retryHeaders = new Headers(init?.headers ?? {});
+        retryHeaders.set("X-Auth-Token", renewed);
+        return request<T>(input, { ...init, headers: retryHeaders }, true);
+      }
+    }
+
     const text = await response.text();
-    throw new Error(text || "Request failed");
+    let message = text || "Request failed";
+    try {
+      const parsed = JSON.parse(text) as { error?: string; detail?: string };
+      if (parsed.error) message = parsed.error;
+      else if (parsed.detail) message = parsed.detail;
+    } catch {
+      // not JSON, keep raw text
+    }
+    if (response.status === 401 && !init?.skipAuthRedirect) {
+      window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
+    }
+    throw new Error(message);
   }
 
   return (await response.json()) as T;
+}
+
+export function getGuestId(): string {
+  try {
+    let id = localStorage.getItem(GUEST_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(GUEST_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return "unknown";
+  }
 }
 
 export function getAuthToken(): string | null {
@@ -36,10 +121,34 @@ export async function fetchCategories(): Promise<Category[]> {
   return request<Category[]>("/categories");
 }
 
-export async function fetchProducts(category?: string, sort?: string): Promise<Product[]> {
+export async function createCategory(token: string, category: Partial<Category>): Promise<Category> {
+  return request<Category>("/categories", {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(category),
+  });
+}
+
+export async function updateCategory(token: string, id: string, category: Partial<Category>): Promise<Category> {
+  return request<Category>(`/categories/${id}`, {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(category),
+  });
+}
+
+export async function deleteCategory(token: string, id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/categories/${id}`, {
+    method: "DELETE",
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchProducts(category?: string, sort?: string, search?: string): Promise<Product[]> {
   const params = new URLSearchParams();
   if (category && category !== "all") params.set("category", category);
   if (sort) params.set("sort", sort);
+  if (search && search.trim()) params.set("search", search.trim());
   const query = params.toString();
   return request<Product[]>(`/products${query ? `?${query}` : ""}`);
 }
@@ -48,17 +157,122 @@ export async function fetchProduct(id: string): Promise<Product> {
   return request<Product>(`/products/${id}`);
 }
 
-export async function login(email: string, password: string): Promise<{ token: string; user: User }> {
-  return request<{ token: string; user: User }>("/auth/login", {
+export async function fetchProductReviews(productId: string): Promise<Review[]> {
+  return request<Review[]>(`/products/${productId}/reviews`);
+}
+
+export async function fetchProductVariants(productId: string): Promise<ProductVariant[]> {
+  return request<ProductVariant[]>(`/products/${productId}/variants`);
+}
+
+export async function createProductVariant(
+  token: string,
+  productId: string,
+  variant: Partial<ProductVariant>,
+): Promise<ProductVariant> {
+  return request<ProductVariant>(`/products/${productId}/variants`, {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(variant),
   });
 }
 
-export async function register(email: string, password: string, name: string): Promise<{ token: string; user: User }> {
-  return request<{ token: string; user: User }>("/auth/register", {
+export async function updateProductVariant(
+  token: string,
+  productId: string,
+  variantId: number,
+  variant: Partial<ProductVariant>,
+): Promise<ProductVariant> {
+  return request<ProductVariant>(`/products/${productId}/variants/${variantId}`, {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(variant),
+  });
+}
+
+export async function deleteProductVariant(token: string, productId: string, variantId: number): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/products/${productId}/variants/${variantId}`, {
+    method: "DELETE",
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function submitReview(token: string, productId: string, rating: number, comment: string): Promise<Review> {
+  return request<Review>(`/products/${productId}/reviews`, {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ rating, comment }),
+  });
+}
+
+export async function deleteReview(token: string, productId: string, reviewId: number): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/products/${productId}/reviews/${reviewId}`, {
+    method: "DELETE",
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchWishlist(token: string): Promise<string[]> {
+  return request<string[]>("/wishlist", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function addToWishlist(token: string, productId: string): Promise<string[]> {
+  return request<string[]>("/wishlist", {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ productId }),
+  });
+}
+
+export async function removeFromWishlist(token: string, productId: string): Promise<string[]> {
+  return request<string[]>(`/wishlist/${productId}`, {
+    method: "DELETE",
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function login(email: string, password: string): Promise<SessionResponse> {
+  return request<SessionResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+    skipAuthRedirect: true,
+  });
+}
+
+/** Qué métodos de ingreso ofrece la tienda: el Client ID de Google (público) o null si no está configurado. */
+export async function fetchAuthConfig(): Promise<{ googleClientId: string | null }> {
+  return request<{ googleClientId: string | null }>("/auth/config");
+}
+
+/** Ingreso con Google: se manda el token que firmó Google y el servidor lo verifica antes de abrir la sesión. */
+export async function loginWithGoogle(credential: string): Promise<SessionResponse> {
+  return request<SessionResponse>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ credential }),
+    skipAuthRedirect: true,
+  });
+}
+
+export async function register(email: string, password: string, name: string): Promise<SessionResponse> {
+  return request<SessionResponse>("/auth/register", {
     method: "POST",
     body: JSON.stringify({ email, password, name }),
+  });
+}
+
+export async function recoverPassword(email: string): Promise<{ ok: boolean; message: string; expiresInMinutes: number }> {
+  return request<{ ok: boolean; message: string; expiresInMinutes: number }>("/auth/recover", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token: string, password: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/auth/reset", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
   });
 }
 
@@ -70,39 +284,396 @@ export async function fetchCurrentUser(token: string): Promise<User> {
   });
 }
 
-export async function fetchCart(token?: string | null): Promise<CartItem[]> {
-  const headers: Record<string, string> = {};
+export async function updateMyProfile(token: string, name: string): Promise<User> {
+  return request<User>("/auth/me", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function changePassword(token: string, currentPassword: string, newPassword: string): Promise<{ ok: boolean }> {
+  const result = await request<{ ok: boolean; refreshToken?: string }>("/auth/change-password", {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ currentPassword, newPassword }),
+    skipAuthRedirect: true,
+  });
+  // Al cambiar la contraseña se cierran las demás sesiones; esta sigue con un refresh token nuevo.
+  if (result.refreshToken) localStorage.setItem(AUTH_REFRESH_KEY, result.refreshToken);
+  return { ok: result.ok };
+}
+
+/** Cierra la sesión en el servidor (revoca el refresh token); si falla no importa, el cliente igual se desloguea. */
+export async function logoutSession(): Promise<void> {
+  const refreshToken = localStorage.getItem(AUTH_REFRESH_KEY);
+  if (!refreshToken) return;
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    // sin red: el refresh token vence solo
+  }
+}
+
+function cartHeaders(token?: string | null): Record<string, string> {
+  const headers: Record<string, string> = { "X-Guest-Id": getGuestId() };
   if (token) headers["X-Auth-Token"] = token;
+  return headers;
+}
+
+export async function fetchCart(token?: string | null): Promise<CartItem[]> {
   return request<CartItem[]>("/cart", {
-    headers,
+    headers: cartHeaders(token),
   });
 }
 
 export async function addToCart(token: string | null, item: CartItem): Promise<CartItem[]> {
-  const headers: Record<string, string> = {};
-  if (token) headers["X-Auth-Token"] = token;
   return request<CartItem[]>("/cart/add", {
     method: "POST",
-    headers,
+    headers: cartHeaders(token),
     body: JSON.stringify(item),
   });
 }
 
 export async function removeFromCart(token: string | null, item: CartItem): Promise<CartItem[]> {
-  const headers: Record<string, string> = {};
-  if (token) headers["X-Auth-Token"] = token;
   return request<CartItem[]>("/cart/remove", {
     method: "POST",
-    headers,
+    headers: cartHeaders(token),
     body: JSON.stringify(item),
   });
 }
 
-export async function checkoutCart(token?: string | null): Promise<{ ok: boolean; items: CartItem[] }> {
-  const headers: Record<string, string> = {};
-  if (token) headers["X-Auth-Token"] = token;
-  return request<{ ok: boolean; items: CartItem[] }>("/cart/checkout", {
-    method: "POST",
-    headers,
+export async function incrementCartItem(token: string | null, productId: string, variantId?: number | null): Promise<CartItem[]> {
+  const query = variantId != null ? `?variantId=${variantId}` : "";
+  return request<CartItem[]>(`/cart/items/${productId}/increment${query}`, {
+    method: "PUT",
+    headers: cartHeaders(token),
   });
+}
+
+export async function decrementCartItem(token: string | null, productId: string, variantId?: number | null): Promise<CartItem[]> {
+  const query = variantId != null ? `?variantId=${variantId}` : "";
+  return request<CartItem[]>(`/cart/items/${productId}/decrement${query}`, {
+    method: "PUT",
+    headers: cartHeaders(token),
+  });
+}
+
+type VentaResponse = {
+  id: number;
+  estado: string;
+  estadoPago: string;
+  items: { productId: string; name: string; variant: string; variantId: number | null; quantity: number; price: number }[];
+  subtotal: number;
+  shippingCost: number;
+  discountAmount: number;
+  ruletaDescuento?: number;
+  couponCode: string | null;
+  total: number;
+  paymentUrl?: string | null;
+};
+
+function toCheckoutResult(venta: VentaResponse): CheckoutResult {
+  return {
+    ok: true,
+    items: venta.items.map((item) => ({
+      productId: item.productId,
+      name: item.name,
+      variant: item.variant,
+      variantId: item.variantId,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+    subtotal: venta.subtotal,
+    shippingCost: venta.shippingCost,
+    discountAmount: venta.discountAmount,
+    ruletaDescuento: venta.ruletaDescuento ?? 0,
+    couponCode: venta.couponCode,
+    total: venta.total,
+    orderId: venta.id,
+    estado: venta.estado,
+    estadoPago: venta.estadoPago,
+    paymentUrl: venta.paymentUrl ?? null,
+  };
+}
+
+/** Medios de pago de la tienda (MercadoPago y/o los de prueba). */
+export async function fetchPaymentConfig(): Promise<PaymentConfig> {
+  return request<PaymentConfig>("/payments/config");
+}
+
+/** Al volver de MercadoPago: el servidor le pregunta por los pagos del pedido y devuelve la venta actualizada. */
+export async function syncVentaPayment(orderId: number): Promise<CheckoutResult> {
+  const venta = await request<VentaResponse>(`/v1/ventas/${orderId}/pago/sincronizacion`, {
+    method: "POST",
+    headers: cartHeaders(getAuthToken()),
+  });
+  return toCheckoutResult(venta);
+}
+
+export async function createVenta(
+  token: string | null,
+  shipping: Partial<ShippingInfo>,
+  couponCode: string | null | undefined,
+  medioPago: string,
+  idempotencyKey: string,
+): Promise<CheckoutResult> {
+  const venta = await request<VentaResponse>("/v1/ventas", {
+    method: "POST",
+    headers: { ...cartHeaders(token), "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify({ ...shipping, ...(couponCode ? { cupon: couponCode } : {}), medioPago }),
+  });
+
+  return toCheckoutResult(venta);
+}
+
+export async function validateCoupon(code: string, subtotal: number): Promise<{ code: string; discountAmount: number }> {
+  return request<{ code: string; discountAmount: number }>("/coupons/validate", {
+    method: "POST",
+    body: JSON.stringify({ code, subtotal }),
+  });
+}
+
+export async function fetchCoupons(token: string): Promise<Coupon[]> {
+  return request<Coupon[]>("/coupons", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function createCoupon(token: string, coupon: Partial<Coupon>): Promise<Coupon> {
+  return request<Coupon>("/coupons", {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(coupon),
+  });
+}
+
+export async function updateCoupon(token: string, id: number, coupon: Partial<Coupon>): Promise<Coupon> {
+  return request<Coupon>(`/coupons/${id}`, {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(coupon),
+  });
+}
+
+export async function deleteCoupon(token: string, id: number): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/coupons/${id}`, {
+    method: "DELETE",
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchAllUsers(token: string): Promise<User[]> {
+  return request<User[]>("/users", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function updateUserRole(token: string, userId: string, role: "ADMIN" | "CUSTOMER"): Promise<User> {
+  return request<User>(`/users/${userId}/role`, {
+    method: "PATCH",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function updateUserStatus(token: string, userId: string, active: boolean): Promise<User> {
+  return request<User>(`/users/${userId}/status`, {
+    method: "PATCH",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ active }),
+  });
+}
+
+export async function fetchAllOrders(token: string): Promise<OrderRecord[]> {
+  return request<OrderRecord[]>("/orders", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchMyOrders(token: string): Promise<OrderRecord[]> {
+  return request<OrderRecord[]>("/orders/me", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchOrderStats(token: string): Promise<OrderStats> {
+  return request<OrderStats>("/orders/stats", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function updateOrderStatus(token: string, orderId: number, estado: string): Promise<OrderRecord> {
+  return request<OrderRecord>(`/orders/${orderId}/status`, {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ estado }),
+  });
+}
+
+export async function uploadImage(token: string, file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const result = await request<{ url: string }>("/uploads", {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: formData,
+  });
+  return `${API_ORIGIN}${result.url}`;
+}
+
+export async function createProduct(token: string, product: Partial<Product>): Promise<Product> {
+  return request<Product>("/products", {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(product),
+  });
+}
+
+export async function updateProduct(token: string, id: string, product: Partial<Product>): Promise<Product> {
+  return request<Product>(`/products/${id}`, {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(product),
+  });
+}
+
+export async function deleteProduct(token: string, id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/products/${id}`, {
+    method: "DELETE",
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchAllReturns(token: string): Promise<ReturnRecord[]> {
+  return request<ReturnRecord[]>("/returns", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchMyReturns(token: string): Promise<ReturnRecord[]> {
+  return request<ReturnRecord[]>("/returns/me", {
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function requestReturn(
+  token: string,
+  productId: string,
+  cantidad: number,
+  motivo: string,
+  variantId?: number | null,
+  variant?: string | null,
+): Promise<ReturnRecord> {
+  return request<ReturnRecord>("/returns", {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ productId, cantidad, motivo, variantId, variant }),
+  });
+}
+
+export async function updateReturnStatus(
+  token: string,
+  returnId: number,
+  estado: "APROBADA" | "RECHAZADA",
+): Promise<ReturnRecord> {
+  return request<ReturnRecord>(`/returns/${returnId}/status`, {
+    method: "PATCH",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify({ estado }),
+  });
+}
+
+export async function processRefund(token: string, returnId: number): Promise<{ id: number; returnId: number; monto: number; estado: string }> {
+  return request(`/refunds/process/${returnId}`, {
+    method: "POST",
+    headers: { "X-Auth-Token": token },
+  });
+}
+
+export async function fetchSiteSettings(): Promise<SiteSettings> {
+  return request<SiteSettings>("/settings");
+}
+
+export async function updateSiteSettings(token: string, settings: SiteSettings): Promise<SiteSettings> {
+  return request<SiteSettings>("/settings", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(settings),
+  });
+}
+
+/** Costo y plazo del envío a un código postal (público). */
+export async function fetchShippingQuote(postalCode: string): Promise<ShippingQuote> {
+  return request<ShippingQuote>(`/shipping/quote?postalCode=${encodeURIComponent(postalCode.trim())}`);
+}
+
+export async function fetchShippingConfig(): Promise<ShippingConfig> {
+  return request<ShippingConfig>("/shipping/zones");
+}
+
+/** Reemplaza todas las zonas de envío y el costo del resto del país (solo administradores). */
+export async function updateShippingConfig(token: string, config: ShippingConfig): Promise<ShippingConfig> {
+  return request<ShippingConfig>("/shipping/zones", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(config),
+  });
+}
+
+export async function fetchFaq(): Promise<Faq[]> {
+  return request<Faq[]>("/faq");
+}
+
+/** Reemplaza todas las preguntas frecuentes (solo administradores), en el orden indicado. */
+export async function updateFaq(token: string, items: Pick<Faq, "question" | "answer">[]): Promise<Faq[]> {
+  return request<Faq[]>("/faq", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(items),
+  });
+}
+
+export async function fetchCartPromos(): Promise<CartPromos> {
+  return request<CartPromos>("/settings/cart-promos");
+}
+
+export async function updateCartPromos(
+  token: string,
+  promos: Pick<CartPromos, "freeShippingEnabled" | "freeShippingThreshold" | "giftEnabled" | "giftMinAmount" | "giftProductId">,
+): Promise<CartPromos> {
+  return request<CartPromos>("/settings/cart-promos", {
+    method: "PUT",
+    headers: { "X-Auth-Token": token },
+    body: JSON.stringify(promos),
+  });
+}
+
+export type SalchiBotAnswer = { reply: string; products: Product[]; suggestions: string[] };
+
+/** Le escribe a Salchi Bot (público): devuelve su respuesta y los productos que recomienda. */
+export async function askSalchiBot(message: string, history: string[]): Promise<SalchiBotAnswer> {
+  return request<SalchiBotAnswer>("/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, history }),
+  });
+}
+
+/** Estado de la ruleta del día: los gajos y, si ya giró hoy, la categoría que le tocó. */
+export async function fetchRoulette(token?: string | null): Promise<RouletteState> {
+  return request<RouletteState>("/roulette", { headers: cartHeaders(token) });
+}
+
+/** Gira la ruleta (el sorteo lo hace el servidor; solo se puede una vez por día). */
+export async function spinRoulette(token?: string | null): Promise<RouletteState> {
+  return request<RouletteState>("/roulette/spin", { method: "POST", headers: cartHeaders(token) });
+}
+
+/** Cuánto descuenta la ruleta sobre el carrito actual. */
+export async function fetchRouletteCartDiscount(token?: string | null): Promise<RouletteCartDiscount> {
+  return request<RouletteCartDiscount>("/roulette/cart-discount", { headers: cartHeaders(token) });
 }

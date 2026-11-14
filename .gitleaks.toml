@@ -1,0 +1,28 @@
+# Configuración del escaneo de secretos (gitleaks). Usa las reglas por defecto y solo declara como falsos positivos
+# los valores de DESARROLLO que están a propósito en el repositorio, para que el reporte muestre solo hallazgos reales.
+title = "Petshop"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Valores ficticios o de desarrollo local que están a propósito en el repositorio"
+regexTarget = "match"
+regexes = [
+  # Contraseñas de desarrollo documentadas en el README (no se usan en producción)
+  '''petshop123''',
+  '''admin123''',
+  # Contraseña descartable que usaba la primera versión de la sonda de seguridad (hoy se genera al azar)
+  '''Clave-Segura-123''',
+  # Contraseñas descartables de la primera versión de la colección de Postman (hoy se inventan en cada corrida)
+  '''Clave-Segura-9999''',
+  '''Clave-Nueva-12345''',
+  '''Otra-Clave-Newman-''',
+  '''Clave-Newman-''',
+  # Texto de ejemplo de un comentario del docker-compose (no es un secreto)
+  '''una-clave-larga-de-32-caracteres-o-mas''',
+]
+paths = [
+  # Prueba que verifica que la API no filtre datos sensibles: usa una clave y contraseñas inventadas
+  '''app/src/test/java/com/petshop/app/security/SensitiveDataTest\.java''',
+]

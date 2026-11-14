@@ -1,0 +1,19 @@
+server {
+    listen 8080;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # La tienda usa direcciones reales (/productos/p1, /carrito...): cualquier ruta devuelve index.html
+    location / {
+        try_files $uri /index.html;
+    }
+
+    # Los archivos con hash en el nombre no cambian nunca: se pueden cachear
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        include /etc/nginx/conf.d/security-headers.inc;
+        try_files $uri =404;
+    }
+
+    include /etc/nginx/conf.d/security-headers.inc;
+}

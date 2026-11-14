@@ -11,7 +11,6 @@ public class InMemoryStore {
     public final List<Category> categories = Collections.synchronizedList(new ArrayList<>());
     public final List<Product> products = Collections.synchronizedList(new ArrayList<>());
     public final Map<String, List<CartItem>> carts = new ConcurrentHashMap<>();
-    public final Map<String, User> sessions = new ConcurrentHashMap<>();
     public final Map<String, User> users = new ConcurrentHashMap<>();
     public final Map<String, com.petshop.app.model.ResetToken> resetTokens = new ConcurrentHashMap<>(); // token -> ResetToken
 

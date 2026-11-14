@@ -1,0 +1,301 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+    tags: ["v*"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (compilar y probar)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # SonarCloud necesita el historial completo para atribuir el código nuevo
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Compilar, correr todas las pruebas y controlar la cobertura (JaCoCo)
+        run: ./mvnw -B verify
+      # Análisis estático (Java, TypeScript, Python, Docker, workflows) con la cobertura de JaCoCo. Configuración en
+      # sonar-project.properties. Sin el secreto SONAR_TOKEN (por ejemplo en un fork ajeno) el paso se omite.
+      - name: Análisis de calidad (SonarCloud) y Quality Gate
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1
+      - name: Guardar los reportes de pruebas y de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reportes-backend
+          path: |
+            app/target/surefire-reports
+            app/target/site/jacoco
+          if-no-files-found: ignore
+
+  estabilidad:
+    name: Estabilidad (la suite 3 veces seguidas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Correr todas las pruebas 3 veces y comparar los resultados
+        run: |
+          for i in 1 2 3; do
+            ./mvnw -B -q test > "corrida-$i.log" 2>&1 || { echo "::error::La corrida $i falló"; tail -60 "corrida-$i.log"; exit 1; }
+            python3 - "$i" <<'PY' | tee -a resumen.txt
+          import glob, re, sys
+          total = fail = err = skip = 0
+          for f in glob.glob("target/surefire-reports/*.txt"):
+              m = re.search(r"Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)", open(f, encoding="utf-8", errors="ignore").read())
+              if m:
+                  a, b, c, d = map(int, m.groups()); total += a; fail += b; err += c; skip += d
+          print(f"corrida {sys.argv[1]}: {total} pruebas, {fail} fallos, {err} errores, {skip} omitidas")
+          PY
+          done
+          # Las 3 corridas tienen que dar exactamente el mismo resultado
+          test "$(cut -d: -f2 resumen.txt | sort -u | wc -l)" = "1" || { echo "::error::Las corridas dieron resultados distintos (pruebas inestables)"; cat resumen.txt; exit 1; }
+          grep -q " 0 fallos, 0 errores" resumen.txt || { echo "::error::Hay pruebas fallando"; exit 1; }
+          echo "::notice title=Estabilidad::$(head -1 resumen.txt | cut -d: -f2) en las 3 corridas"
+
+  carga:
+    name: Carga (k6, 50 usuarios, 5 minutos)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levantar el sistema completo
+        run: docker compose up --build --detach --wait --wait-timeout 300
+      - name: Prueba de carga sobre catálogo, login y checkout (p95 < 500 ms y errores < 1 %)
+        run: |
+          mkdir -p resultados
+          docker run --rm --user "$(id -u):$(id -g)" --network host -v "$PWD/app/tests-api:/scripts:ro" -v "$PWD/resultados:/out" \
+            grafana/k6:0.54.0 run --summary-export=/out/carga.json /scripts/carga.k6.js || echo "K6_FALLO=1" >> "$GITHUB_ENV"
+      - name: Resultados de la carga
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          path = "resultados/carga.json"
+          if not os.path.exists(path):
+              print("::error::k6 no produjo resultados"); raise SystemExit(0)
+          m = json.load(open(path))["metrics"]
+          for name in ("catalogo", "login", "checkout"):
+              d, f = m.get(f"http_req_duration{{endpoint:{name}}}", {}), m.get(f"http_req_failed{{endpoint:{name}}}", {})
+              print(f"::notice title=Carga {name}::p95={d.get('p(95)', 0):.0f} ms, mediana={d.get('med', 0):.0f} ms, errores={100 * f.get('value', 0):.2f}%")
+          it = m.get("iterations", {})
+          print(f"::notice title=Carga total::{it.get('count', 0)} iteraciones, {m.get('http_reqs', {}).get('count', 0)} pedidos")
+          PY
+          test -z "$K6_FALLO" || { echo "::error::No se cumplieron los umbrales de carga"; exit 1; }
+      - name: Guardar los resultados de la carga
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-carga
+          path: resultados
+          if-no-files-found: ignore
+      - name: Mostrar los logs si algo falló
+        if: failure()
+        run: docker compose logs --no-color --tail 100 backend
+      - name: Apagar
+        if: always()
+        run: docker compose down --volumes
+
+  mutacion:
+    name: Pruebas de mutación (PIT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Mutar la capa de negocio (falla si el puntaje baja de 60%)
+        run: ./mvnw -B test-compile org.pitest:pitest-maven:mutationCoverage
+      - name: Guardar el informe de mutación
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-mutacion
+          path: app/target/pit-reports
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend (tipos, pruebas y build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: app/src/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/src/app/package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Revisar tipos
+        run: ./node_modules/.bin/tsc --noEmit
+      - name: "Pruebas (3 corridas seguidas; ninguna puede fallar ni dar un resultado distinto)"
+        run: |
+          status=0
+          for i in 1 2 3; do
+            npx vitest run --reporter=default --reporter=json --outputFile="vitest-$i.json" || status=$?
+          done
+          # Cada prueba que falle queda como anotación (corrida, archivo, nombre y mensaje)
+          python3 - <<'PY'
+          import json, os
+          totales = set()
+          for i in (1, 2, 3):
+              p = f"vitest-{i}.json"
+              if not os.path.exists(p):
+                  print(f"::error title=Frontend::la corrida {i} no produjo resultados"); continue
+              r = json.load(open(p))
+              totales.add((r["numTotalTests"], r["numFailedTests"]))
+              for f in r["testResults"]:
+                  for a in f["assertionResults"]:
+                      if a["status"] == "failed":
+                          msg = (a.get("failureMessages") or [""])[0].splitlines()[0][:200]
+                          print(f"::error title=Frontend corrida {i}::{os.path.basename(f['name'])} > {a['fullName']} | {msg}")
+          print(f"::notice title=Frontend::resultados por corrida (pruebas, fallos): {sorted(totales)}")
+          PY
+          exit $status
+      - name: Compilar
+        run: npm run build
+
+  secretos:
+    name: Escaneo de secretos (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # todo el historial, no solo el último commit
+      - name: Buscar secretos en todo el historial
+        run: |
+          status=0
+          # safe.directory: dentro del contenedor el repo pertenece a otro usuario y git se niega a leerlo
+          docker run --rm -v "$PWD:/repo" \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            zricethezav/gitleaks:v8.18.4 \
+            detect --source /repo --config /repo/.gitleaks.toml --redact \
+            --report-format json --report-path /repo/gitleaks-report.json || status=$?
+          # Cada hallazgo queda como anotación (regla, archivo y commit; nunca el valor del secreto)
+          python3 - <<'PY'
+          import json, os
+          path = "gitleaks-report.json"
+          for f in (json.load(open(path)) if os.path.exists(path) else []) or []:
+              print(f"::error title=Secreto ({f['RuleID']})::{f['File']}:{f['StartLine']} en el commit {f['Commit'][:7]}")
+          PY
+          exit $status
+
+  sistema-completo:
+    name: Sistema completo (docker compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levantar MySQL, backend y frontend con un solo comando
+        run: docker compose up --build --detach --wait --wait-timeout 300
+      - name: La API responde y trae el catálogo
+        run: |
+          curl --fail --silent --retry 10 --retry-delay 3 --retry-connrefused http://localhost:8080/api/products | head -c 300
+      - name: La tienda se sirve y las rutas internas vuelven a index.html
+        run: |
+          curl --fail --silent http://localhost:5173/ | grep -q '<div id="root">'
+          curl --fail --silent http://localhost:5173/productos/p1 | grep -q '<div id="root">'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/src/app/package-lock.json
+      - name: Instalar Playwright y su navegador
+        working-directory: app/src/app
+        run: |
+          npm ci --ignore-scripts
+          ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Pruebas de punta a punta con un navegador real (compra, login, administración, ayuda, responsive, accesibilidad)
+        working-directory: app/src/app
+        run: ./node_modules/.bin/playwright test
+      - name: Guardar el reporte de las pruebas de punta a punta
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-e2e
+          path: app/src/app/playwright-report
+          if-no-files-found: ignore
+      - name: La colección de Postman está al día y cubre todas las operaciones (éxito y error)
+        run: |
+          python3 app/tests-api/generar_coleccion.py
+          git diff --exit-code app/tests-api/petshop.postman_collection.json || { echo "::error::La colección versionada no coincide con la generada: corré python tests-api/generar_coleccion.py y subí el resultado"; exit 1; }
+      - name: Instalar Newman (versión fija, sin scripts de instalación)
+        run: npm install --global --ignore-scripts newman@6.2.1
+      - name: Pruebas de API con Newman (colección de Postman, éxito y error de cada endpoint)
+        run: |
+          status=0
+          newman runapp/tests-api/petshop.postman_collection.json --working-dir app/tests-api \
+            --reporters cli,junit,json --reporter-junit-export newman-resultado.xml --reporter-json-export newman-resultado.json || status=$?
+          # Cada aserción fallida queda como anotación (solicitud, qué se esperaba y qué código respondió)
+          python3 - <<'PY'
+          import json, os
+          if os.path.exists("newman-resultado.json"):
+              run = json.load(open("newman-resultado.json"))["run"]
+              codes = {e["item"]["name"]: e.get("response", {}).get("code") for e in run["executions"]}
+              for f in run["failures"]:
+                  n = f["source"]["name"]
+                  print(f"::error title=Newman::{n} | esperado: {f['error'].get('test') or f['error'].get('message')} | código real: {codes.get(n)}")
+              s = run["stats"]
+              print(f"::notice title=Newman::{s['requests']['total']} solicitudes, {s['assertions']['total']} aserciones, {s['assertions']['failed']} fallidas")
+          PY
+          exit $status
+      - name: Guardar el resultado de Newman
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-newman
+          path: newman-resultado.xml
+          if-no-files-found: ignore
+      - name: Concurrencia - 12 compradores simultáneos del último producto (no se puede vender de más)
+        run: python3 app/tests-api/concurrencia_stock.py
+      - name: Sonda de seguridad y resiliencia contra la API real (BOLA, BFLA, JWT, XXE, headers, ETag, DLQ...)
+        run: python3 app/tests-api/sonda_seguridad.py sonda-resultado.json
+      - name: Guardar el resultado de la sonda
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-sonda-seguridad
+          path: sonda-resultado.json
+          if-no-files-found: ignore
+      - name: Mostrar los logs si algo falló
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Apagar
+        if: always()
+        run: docker compose down --volumes

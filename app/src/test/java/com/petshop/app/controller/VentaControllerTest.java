@@ -1,0 +1,214 @@
+package com.petshop.app.controller;
+
+import com.petshop.app.dto.VentaDTO;
+import com.petshop.app.dto.VentaRequest;
+import com.petshop.app.model.Order;
+import com.petshop.app.repository.OrderRepository;
+import com.petshop.app.service.AdminGuard;
+import com.petshop.app.service.JwtUtil;
+import com.petshop.app.service.VentaService;
+import com.petshop.app.service.VentaService.VentaOutcome;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class VentaControllerTest {
+
+    private static final String JWT_SECRET = "test-secret-test-secret-test-secret-test-secret";
+
+    private VentaService ventaService;
+    private OrderRepository orderRepository;
+    private VentaController controller;
+    private String customerToken;
+    private String adminToken;
+
+    @BeforeEach
+    void setUp() {
+        ventaService = mock(VentaService.class);
+        orderRepository = mock(OrderRepository.class);
+        JwtUtil jwtUtil = new JwtUtil(JWT_SECRET, 60_000);
+        controller = new VentaController(ventaService, orderRepository, jwtUtil, new AdminGuard(jwtUtil));
+        customerToken = jwtUtil.generateToken("user-1", "cliente@example.com", "CUSTOMER");
+        adminToken = jwtUtil.generateToken("admin-1", "admin@example.com", "ADMIN");
+    }
+
+    private Order order(Long id, String userId, String estado) {
+        Order order = new Order(userId, Instant.now(), List.of(), 100.0, estado);
+        order.id = id;
+        return order;
+    }
+
+    private void assertProblem(ResponseEntity<?> response, int status, String slug) {
+        assertThat(response.getStatusCode().value()).isEqualTo(status);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON);
+        ProblemDetail body = (ProblemDetail) response.getBody();
+        assertThat(body.getStatus()).isEqualTo(status);
+        assertThat(body.getType().toString()).endsWith(slug);
+        assertThat(body.getTitle()).isNotBlank();
+        assertThat(body.getDetail()).isNotBlank();
+    }
+
+    @Test
+    void requiresAValidToken() {
+        assertProblem(controller.crear(null, null, "key", new VentaRequest()), 401, "no-autorizado");
+        assertProblem(controller.listar("basura"), 401, "no-autorizado");
+    }
+
+    @Test
+    void adminsCannotCreateSales() {
+        assertProblem(controller.crear(adminToken, null, "key", new VentaRequest()), 403, "prohibido");
+    }
+
+    @Test
+    void createRequiresTheIdempotencyKeyHeader() {
+        assertProblem(controller.crear(customerToken, null, null, new VentaRequest()), 400, "idempotency-key-requerida");
+        assertProblem(controller.crear(customerToken, null, "  ", new VentaRequest()), 400, "idempotency-key-requerida");
+    }
+
+    @Test
+    void approvedSaleReturns201WithLocation() {
+        Order order = order(7L, "user-1", "COMPLETADA");
+        when(ventaService.crear(anyString(), anyString(), any())).thenReturn(new VentaOutcome(201, order, null, null, null));
+        when(ventaService.toDto(order)).thenReturn(new VentaDTO());
+
+        ResponseEntity<?> response = controller.crear(customerToken, null, "key", new VentaRequest());
+
+        assertThat(response.getStatusCode().value()).isEqualTo(201);
+        assertThat(response.getHeaders().getLocation().toString()).isEqualTo("/api/v1/ventas/7");
+    }
+
+    @Test
+    void pendingSaleReturns202() {
+        Order order = order(8L, "user-1", "PAGO_PENDIENTE");
+        when(ventaService.crear(anyString(), anyString(), any())).thenReturn(new VentaOutcome(202, order, null, null, null));
+        when(ventaService.toDto(order)).thenReturn(new VentaDTO());
+
+        ResponseEntity<?> response = controller.crear(customerToken, null, "key", new VentaRequest());
+
+        assertThat(response.getStatusCode().value()).isEqualTo(202);
+        assertThat(response.getHeaders().getLocation().toString()).isEqualTo("/api/v1/ventas/8");
+    }
+
+    @Test
+    void rejectedPaymentIsReturnedAsProblemDetails() {
+        when(ventaService.crear(anyString(), anyString(), any()))
+                .thenReturn(new VentaOutcome(402, null, "pago-rechazado", "Pago rechazado", "Fondos insuficientes"));
+
+        assertProblem(controller.crear(customerToken, null, "key", new VentaRequest()), 402, "pago-rechazado");
+    }
+
+    @Test
+    void aCustomerCannotSeeSomeoneElsesSale() {
+        when(orderRepository.findById(5L)).thenReturn(Optional.of(order(5L, "otro-usuario", "COMPLETADA")));
+
+        assertProblem(controller.obtener(customerToken, null, 5L), 404, "no-encontrado");
+        assertProblem(controller.pago(customerToken, null, 5L), 404, "no-encontrado");
+        assertProblem(controller.cancelar(customerToken, null, 5L), 404, "no-encontrado");
+    }
+
+    @Test
+    void aGuestCanCheckOutAndSeeOnlyItsOwnSale() {
+        Order own = order(7L, "guest:abc", "COMPLETADA");
+        when(ventaService.crear(eq("guest:abc"), anyString(), any())).thenReturn(new VentaOutcome(201, own, null, null, null));
+        when(ventaService.toDto(own)).thenReturn(new VentaDTO());
+        when(orderRepository.findById(7L)).thenReturn(Optional.of(own));
+        when(orderRepository.findById(8L)).thenReturn(Optional.of(order(8L, "guest:otro", "COMPLETADA")));
+
+        assertThat(controller.crear(null, "abc", "key", new VentaRequest()).getStatusCode().value()).isEqualTo(201);
+        assertThat(controller.obtener(null, "abc", 7L).getStatusCode().value()).isEqualTo(200);
+        assertProblem(controller.obtener(null, "abc", 8L), 404, "no-encontrado");
+    }
+
+    @Test
+    void anAdminCanSeeAnySale() {
+        Order order = order(5L, "otro-usuario", "COMPLETADA");
+        when(orderRepository.findById(5L)).thenReturn(Optional.of(order));
+        when(ventaService.toDto(order)).thenReturn(new VentaDTO());
+
+        assertThat(controller.obtener(adminToken, null, 5L).getStatusCode().value()).isEqualTo(200);
+    }
+
+    // ---- ETag / If-Match: no pisar el cambio de otra persona --------------------------------------------------------
+
+    private Order storedOrder(Long id, String estado) {
+        Order order = order(id, "user-1", estado);
+        when(orderRepository.findById(id)).thenReturn(Optional.of(order));
+        when(ventaService.toDto(order)).thenReturn(new VentaDTO());
+        return order;
+    }
+
+    @Test
+    void readingASaleGivesItsETag() {
+        storedOrder(5L, "COMPLETADA");
+
+        String etag = controller.obtener(customerToken, null, 5L).getHeaders().getETag();
+
+        assertThat(etag).isNotBlank().startsWith("\"").endsWith("\"");
+    }
+
+    @Test
+    void theETagChangesWhenTheSaleChangesAndStaysTheSameOtherwise() {
+        Order order = storedOrder(5L, "COMPLETADA");
+        String before = controller.obtener(customerToken, null, 5L).getHeaders().getETag();
+        assertThat(controller.obtener(customerToken, null, 5L).getHeaders().getETag()).isEqualTo(before);
+
+        order.estado = "ENVIADA";
+
+        assertThat(controller.obtener(customerToken, null, 5L).getHeaders().getETag()).isNotEqualTo(before);
+    }
+
+    @Test
+    void aStaleETagMakesThePatchFailWith412AndNothingChanges() {
+        Order order = storedOrder(5L, "COMPLETADA");
+        String stale = controller.obtener(customerToken, null, 5L).getHeaders().getETag();
+        order.estado = "ENVIADA"; // otra persona la cambió mientras tanto
+
+        ResponseEntity<?> response = controller.cambiarEstado(adminToken, stale, 5L, Map.of("estado", "CANCELADA"));
+
+        assertProblem(response, 412, "precondicion-fallida");
+        verify(ventaService, never()).cambiarEstado(any(), anyString());
+    }
+
+    @Test
+    void aCurrentETagLetsThePatchThrough() {
+        Order order = storedOrder(5L, "COMPLETADA");
+        String current = controller.obtener(customerToken, null, 5L).getHeaders().getETag();
+        when(ventaService.cambiarEstado(order, "ENVIADA")).thenReturn(new VentaOutcome(200, order, null, null, null));
+
+        ResponseEntity<?> response = controller.cambiarEstado(adminToken, current, 5L, Map.of("estado", "ENVIADA"));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getETag()).isNotBlank();
+        verify(ventaService).cambiarEstado(order, "ENVIADA");
+    }
+
+    @Test
+    void withoutIfMatchOrWithAStarThePatchIsNotBlocked() {
+        Order order = storedOrder(5L, "COMPLETADA");
+        when(ventaService.cambiarEstado(order, "ENVIADA")).thenReturn(new VentaOutcome(200, order, null, null, null));
+
+        assertThat(controller.cambiarEstado(adminToken, null, 5L, Map.of("estado", "ENVIADA")).getStatusCode().value()).isEqualTo(200);
+        assertThat(controller.cambiarEstado(adminToken, "*", 5L, Map.of("estado", "ENVIADA")).getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Test
+    void onlyAdminsCanPatchTheState() {
+        assertProblem(controller.cambiarEstado(customerToken, null, 1L, Map.of("estado", "ENVIADA")), 403, "prohibido");
+    }
+}

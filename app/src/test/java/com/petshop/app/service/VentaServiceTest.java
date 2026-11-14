@@ -1,0 +1,984 @@
+package com.petshop.app.service;
+
+import com.petshop.app.dto.VentaRequest;
+import com.petshop.app.model.CartItem;
+import com.petshop.app.model.IdempotencyRecord;
+import com.petshop.app.model.Order;
+import com.petshop.app.model.Product;
+import com.petshop.app.model.ProductVariant;
+import com.petshop.app.model.SiteSettings;
+import com.petshop.app.payment.AuthResult;
+import com.petshop.app.payment.GatewayFaultException;
+import com.petshop.app.payment.PaymentGateway;
+import com.petshop.app.payment.PaymentStatus;
+import com.petshop.app.payment.mercadopago.MercadoPagoClient;
+import com.petshop.app.payment.mercadopago.MercadoPagoSettings;
+import org.mockito.ArgumentCaptor;
+import com.petshop.app.repository.CartItemRepository;
+import com.petshop.app.repository.CouponRepository;
+import com.petshop.app.repository.IdempotencyRecordRepository;
+import com.petshop.app.repository.OrderRepository;
+import com.petshop.app.repository.ProductRepository;
+import com.petshop.app.repository.ProductVariantRepository;
+import com.petshop.app.repository.ShippingZoneRepository;
+import com.petshop.app.repository.SiteSettingsRepository;
+import com.petshop.app.service.VentaService.VentaOutcome;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class VentaServiceTest {
+
+    private OrderRepository orderRepository;
+    private CartItemRepository cartItemRepository;
+    private ProductRepository productRepository;
+    private PaymentGateway gateway;
+    private ApplicationEventPublisher publisher;
+    private ExecutorService executor;
+    private InMemoryStore store;
+    private RouletteService rouletteService;
+    private VentaService service;
+    private SiteSettingsRepository settingsRepository;
+    private ShopRules shopRules;
+    private com.petshop.app.payment.mercadopago.MercadoPagoClient mercadoPago;
+    private com.petshop.app.payment.mercadopago.MercadoPagoSettings paymentSettings;
+    private ShippingZoneRepository zoneRepository;
+
+    private Product product;
+    private final Map<String, IdempotencyRecord> idempotencyStore = new HashMap<>();
+    private final Map<Long, Order> orders = new HashMap<>();
+    private final AtomicLong ids = new AtomicLong(1);
+    private final List<CartItem> cart = new ArrayList<>();
+
+    @BeforeEach
+    void setUp() {
+        store = new InMemoryStore();
+        rouletteService = mock(RouletteService.class);
+        orderRepository = mock(OrderRepository.class);
+        cartItemRepository = mock(CartItemRepository.class);
+        productRepository = mock(ProductRepository.class);
+        ProductVariantRepository variantRepository = mock(ProductVariantRepository.class);
+        CouponRepository couponRepository = mock(CouponRepository.class);
+        IdempotencyRecordRepository idempotencyRepository = mock(IdempotencyRecordRepository.class);
+        gateway = mock(PaymentGateway.class);
+        publisher = mock(ApplicationEventPublisher.class);
+        executor = Executors.newCachedThreadPool();
+
+        product = new Product("p1", "Collar", "Marca", 1000.0, null, 4.5, "/img.jpg", null, "accesorios", 10);
+        when(productRepository.findById("p1")).thenReturn(Optional.of(product));
+        // La reserva de stock es atómica en la base (UPDATE ... WHERE stock >= cantidad). Estos repositorios simulados replican
+        // esa regla sobre las mismas entidades que usan las pruebas.
+        when(productRepository.reservar(anyString(), anyInt())).thenAnswer(inv -> {
+            Product p = productRepository.findById(inv.<String>getArgument(0)).orElse(null);
+            int cantidad = inv.getArgument(1);
+            if (p == null || p.stock < cantidad) {
+                return 0;
+            }
+            p.stock -= cantidad;
+            return 1;
+        });
+        when(productRepository.liberar(anyString(), anyInt())).thenAnswer(inv -> {
+            Product p = productRepository.findById(inv.<String>getArgument(0)).orElse(null);
+            if (p == null) {
+                return 0;
+            }
+            p.stock += (int) inv.getArgument(1);
+            return 1;
+        });
+        when(variantRepository.reservar(anyLong(), anyInt())).thenAnswer(inv -> {
+            ProductVariant v = variantRepository.findById(inv.<Long>getArgument(0)).orElse(null);
+            int cantidad = inv.getArgument(1);
+            if (v == null || v.stock < cantidad) {
+                return 0;
+            }
+            v.stock -= cantidad;
+            return 1;
+        });
+        when(variantRepository.liberar(anyLong(), anyInt())).thenAnswer(inv -> {
+            ProductVariant v = variantRepository.findById(inv.<Long>getArgument(0)).orElse(null);
+            if (v == null) {
+                return 0;
+            }
+            v.stock += (int) inv.getArgument(1);
+            return 1;
+        });
+
+        cart.clear();
+        cart.add(new CartItem("p1", "Collar", "accesorios", 2, 1000.0));
+        when(cartItemRepository.findByUserId("user-1")).thenAnswer(inv -> new ArrayList<>(cart));
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order saved = inv.getArgument(0);
+            if (saved.id == null) {
+                saved.id = ids.getAndIncrement();
+            }
+            orders.put(saved.id, saved);
+            return saved;
+        });
+        when(orderRepository.findById(any(Long.class))).thenAnswer(inv -> Optional.ofNullable(orders.get(inv.<Long>getArgument(0))));
+        when(orderRepository.findByEstado(anyString())).thenAnswer(inv ->
+                orders.values().stream().filter(o -> inv.getArgument(0).equals(o.estado)).toList());
+
+        when(idempotencyRepository.findById(anyString())).thenAnswer(inv ->
+                Optional.ofNullable(idempotencyStore.get(inv.<String>getArgument(0))));
+        when(idempotencyRepository.save(any(IdempotencyRecord.class))).thenAnswer(inv -> {
+            IdempotencyRecord record = inv.getArgument(0);
+            idempotencyStore.put(record.idemKey, record);
+            return record;
+        });
+
+        settingsRepository = mock(SiteSettingsRepository.class);
+        when(settingsRepository.findById(SiteSettings.SINGLETON_ID)).thenReturn(Optional.empty());
+        when(variantRepository.findByProductId(anyString())).thenReturn(List.of());
+        zoneRepository = mock(ShippingZoneRepository.class);
+        shopRules = new ShopRules(settingsRepository, productRepository, variantRepository, zoneRepository);
+        mercadoPago = mock(com.petshop.app.payment.mercadopago.MercadoPagoClient.class);
+        paymentSettings = new com.petshop.app.payment.mercadopago.MercadoPagoSettings("", "https://api.mercadopago.com", 30, "http://localhost:5173", "", true);
+        service = new VentaService(orderRepository, cartItemRepository, store, productRepository, variantRepository,
+                couponRepository, idempotencyRepository, gateway, executor, publisher, rouletteService, shopRules, mercadoPago, paymentSettings, 200, 3, 0);
+    }
+
+    @AfterEach
+    void tearDown() {
+        executor.shutdownNow();
+    }
+
+    private VentaRequest request() {
+        VentaRequest req = new VentaRequest();
+        req.nombre = "Cliente";
+        req.direccion = "Calle 1";
+        req.ciudad = "CABA";
+        req.codigoPostal = "1425";
+        req.medioPago = "tok_aprobado";
+        return req;
+    }
+
+    private void gatewayApproves() {
+        when(gateway.autorizar(anyString(), anyDouble(), any())).thenReturn(new AuthResult(PaymentStatus.APROBADO, null));
+    }
+
+    private void gatewayTimesOut() {
+        when(gateway.autorizar(anyString(), anyDouble(), any())).thenAnswer(inv -> {
+            Thread.sleep(1500);
+            return new AuthResult(PaymentStatus.APROBADO, null);
+        });
+    }
+
+    @Test
+    void aGuestCanCheckOutFromTheInMemoryCart() {
+        gatewayApproves();
+        store.carts.put("guest:abc", new ArrayList<>(List.of(new CartItem("p1", "Collar", "accesorios", 1, 1000.0))));
+
+        VentaOutcome outcome = service.crear("guest:abc", "key-guest", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().userId).isEqualTo("guest:abc");
+        assertThat(outcome.order().total).isEqualTo(2500.0);
+        assertThat(product.stock).isEqualTo(9);
+        assertThat(store.carts).doesNotContainKey("guest:abc");
+        verify(cartItemRepository, never()).deleteAll(any());
+    }
+
+    @Test
+    void aGuestWithoutCartGetsAnEmptyCartProblem() {
+        VentaOutcome outcome = service.crear("guest:vacio", "key-vacio", request());
+
+        assertThat(outcome.status()).isEqualTo(422);
+        assertThat(outcome.problemSlug()).isEqualTo("carrito-vacio");
+    }
+
+    @Test
+    void theDailyRouletteDiscountIsChargedAndRecordedOnTheSale() {
+        gatewayApproves();
+        when(rouletteService.discountFor("user-1", cart)).thenReturn(new RouletteService.Applied("accesorios", "Accesorios", 200.0));
+
+        VentaOutcome outcome = service.crear("user-1", "key-ruleta", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().total).isEqualTo(3300.0); // 2 x 1000 + 1500 de envío - 200 de la ruleta
+        assertThat(outcome.order().ruletaDescuento).isEqualTo(200.0);
+        assertThat(outcome.order().ruletaCategoria).isEqualTo("accesorios");
+        assertThat(outcome.order().discountAmount).isEqualTo(200.0);
+    }
+
+    @Test
+    void theRouletteDiscountNeverExceedsTheSubtotal() {
+        gatewayApproves();
+        when(rouletteService.discountFor("user-1", cart)).thenReturn(new RouletteService.Applied("accesorios", "Accesorios", 9999.0));
+
+        VentaOutcome outcome = service.crear("user-1", "key-ruleta-tope", request());
+
+        assertThat(outcome.order().ruletaDescuento).isEqualTo(2000.0);
+        assertThat(outcome.order().total).isEqualTo(1500.0); // solo queda el envío
+    }
+
+    @Test
+    void theCheckoutChargesThePromotionalPrice() {
+        gatewayApproves();
+        product.precioPromocional = 800.0; // el producto de los tests cuesta 1000
+
+        VentaOutcome outcome = service.crear("user-1", "key-promo", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().subtotal).isEqualTo(1600.0); // 2 x 800
+        assertThat(outcome.order().total).isEqualTo(3100.0);    // + 1500 de envío
+        assertThat(outcome.order().items.get(0).price).isEqualTo(800.0);
+    }
+
+    @Test
+    void aStalePriceStoredInTheCartIsReplacedByTheCurrentOne() {
+        gatewayApproves();
+        cart.get(0).price = 1.0;      // lo que quedó guardado al agregarlo
+        product.price = 1200.0;       // el precio subió después
+
+        VentaOutcome outcome = service.crear("user-1", "key-precio-viejo", request());
+
+        assertThat(outcome.order().subtotal).isEqualTo(2400.0);
+    }
+
+    @Test
+    void thePromotionalPriceAddsUpWithTheDailyRouletteDiscount() {
+        gatewayApproves();
+        product.precioPromocional = 800.0;
+        when(rouletteService.discountFor("user-1", cart)).thenReturn(new RouletteService.Applied("accesorios", "Accesorios", 160.0));
+
+        VentaOutcome outcome = service.crear("user-1", "key-promo-ruleta", request());
+
+        assertThat(outcome.order().subtotal).isEqualTo(1600.0);
+        assertThat(outcome.order().ruletaDescuento).isEqualTo(160.0);
+        assertThat(outcome.order().total).isEqualTo(2940.0); // 1600 + 1500 - 160
+    }
+
+    @Test
+    void approvedPaymentConfirmsTheSale() {
+        gatewayApproves();
+
+        VentaOutcome outcome = service.crear("user-1", "key-1", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().estado).isEqualTo("COMPLETADA");
+        assertThat(outcome.order().estadoPago).isEqualTo("APROBADO");
+        assertThat(outcome.order().total).isEqualTo(3500.0);
+        assertThat(product.stock).isEqualTo(8);
+        verify(cartItemRepository).deleteAll(any());
+        verify(publisher).publishEvent(any(VentaEvents.VentaConfirmada.class));
+    }
+
+    @Test
+    void rejectedPaymentReturns402AndReleasesStock() {
+        when(gateway.autorizar(anyString(), anyDouble(), any()))
+                .thenReturn(new AuthResult(PaymentStatus.RECHAZADO, "Fondos insuficientes"));
+
+        VentaOutcome outcome = service.crear("user-1", "key-2", request());
+
+        assertThat(outcome.status()).isEqualTo(402);
+        assertThat(outcome.problemSlug()).isEqualTo("pago-rechazado");
+        assertThat(product.stock).isEqualTo(10);
+        verify(orderRepository).delete(any(Order.class));
+    }
+
+    @Test
+    void gatewayFaultPg400Returns422AndReleasesStock() {
+        when(gateway.autorizar(anyString(), anyDouble(), any()))
+                .thenThrow(new GatewayFaultException(GatewayFaultException.INVALID_DATA, "Datos de pago inválidos"));
+
+        VentaOutcome outcome = service.crear("user-1", "key-3", request());
+
+        assertThat(outcome.status()).isEqualTo(422);
+        assertThat(outcome.problemSlug()).isEqualTo("pago-datos-invalidos");
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    @Test
+    void gatewayTimeoutReturns202AndKeepsStockReserved() {
+        gatewayTimesOut();
+
+        VentaOutcome outcome = service.crear("user-1", "key-4", request());
+
+        assertThat(outcome.status()).isEqualTo(202);
+        assertThat(outcome.order().estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(outcome.order().idTransaccion).isNotBlank();
+        assertThat(product.stock).isEqualTo(8);
+        verify(cartItemRepository).deleteAll(any());
+    }
+
+    @Test
+    void whenTheGatewayTimesOutTheCallIsInterruptedSoNoThreadStaysHanging() throws Exception {
+        java.util.concurrent.atomic.AtomicBoolean interrupted = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.CountDownLatch finished = new java.util.concurrent.CountDownLatch(1);
+        when(gateway.autorizar(anyString(), anyDouble(), any())).thenAnswer(inv -> {
+            try {
+                Thread.sleep(10_000);
+            } catch (InterruptedException e) {
+                interrupted.set(true);
+            } finally {
+                finished.countDown();
+            }
+            return new AuthResult(PaymentStatus.APROBADO, null);
+        });
+
+        VentaOutcome outcome = service.crear("user-1", "key-hang", request());
+
+        assertThat(outcome.status()).isEqualTo(202);
+        assertThat(finished.await(3, java.util.concurrent.TimeUnit.SECONDS)).as("la llamada terminó poco después del timeout").isTrue();
+        assertThat(interrupted.get()).as("fue interrumpida, no esperó a que la pasarela contestara").isTrue();
+    }
+
+    @Test
+    void whenTheGatewayPoolIsFullTheSaleStaysPendingInsteadOfFailing() {
+        ExecutorService full = mock(ExecutorService.class);
+        when(full.submit(any(java.util.concurrent.Callable.class))).thenThrow(new java.util.concurrent.RejectedExecutionException("lleno"));
+        VentaService saturated = new VentaService(orderRepository, cartItemRepository, store, productRepository, mock(ProductVariantRepository.class),
+                mock(CouponRepository.class), mock(IdempotencyRecordRepository.class), gateway, full, publisher, rouletteService,
+                shopRules, mercadoPago, paymentSettings, 200, 3, 0);
+
+        VentaOutcome outcome = saturated.crear("user-1", "key-full", request());
+
+        assertThat(outcome.status()).isEqualTo(202);
+        assertThat(outcome.order().estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(product.stock).as("el stock sigue reservado").isEqualTo(8);
+        verify(gateway, never()).autorizar(anyString(), anyDouble(), any());
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Máquina de estados de la venta: toda transición inválida da 409 (o 422 si el destino no existe) y no guarda nada
+    // ---------------------------------------------------------------------------------------------------------------
+
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> transiciones() {
+        return java.util.stream.Stream.of(
+                // desde             hacia           status  estado final
+                args("PAGO_PENDIENTE", "ENVIADA",      409, "PAGO_PENDIENTE"),
+                args("PAGO_PENDIENTE", "CANCELADA",    200, "CANCELADA"),
+                args("COMPLETADA",     "ENVIADA",      200, "ENVIADA"),
+                args("COMPLETADA",     "CANCELADA",    200, "CANCELADA"),
+                args("ENVIADA",        "ENVIADA",      409, "ENVIADA"),
+                args("ENVIADA",        "CANCELADA",    409, "ENVIADA"),
+                args("CANCELADA",      "ENVIADA",      409, "CANCELADA"),
+                args("CANCELADA",      "CANCELADA",    409, "CANCELADA"));
+    }
+
+    private static org.junit.jupiter.params.provider.Arguments args(String desde, String hacia, int status, String finalState) {
+        return org.junit.jupiter.params.provider.Arguments.of(desde, hacia, status, finalState);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0} -> {1} = {2}")
+    @org.junit.jupiter.params.provider.MethodSource("transiciones")
+    void everyStateTransitionIsAllowedOrRejectedAsTheStateMachineSays(String desde, String hacia, int status, String estadoFinal) {
+        Order order = new Order("user-1", java.time.Instant.now(), List.of(), 100.0, desde);
+        order.id = 99L;
+
+        VentaOutcome outcome = service.cambiarEstado(order, hacia);
+
+        assertThat(outcome.status()).isEqualTo(status);
+        assertThat(order.estado).isEqualTo(estadoFinal);
+        if (status == 409) {
+            assertThat(outcome.problemSlug()).isEqualTo("transicion-invalida");
+            verify(orderRepository, never()).save(any(Order.class));
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0} -> destino inexistente ({1})")
+    @org.junit.jupiter.params.provider.CsvSource(value = {
+            "PAGO_PENDIENTE,BASURA", "COMPLETADA,BASURA", "ENVIADA,BASURA", "CANCELADA,BASURA",
+            "COMPLETADA,COMPLETADA", "COMPLETADA,PAGO_PENDIENTE", "COMPLETADA,enviada", "COMPLETADA,'  '"})
+    void aTargetStateThatDoesNotExistIsRejectedWith422AndNothingChanges(String desde, String hacia) {
+        Order order = new Order("user-1", java.time.Instant.now(), List.of(), 100.0, desde);
+        order.id = 99L;
+
+        VentaOutcome outcome = service.cambiarEstado(order, hacia);
+
+        assertThat(outcome.status()).isEqualTo(422);
+        assertThat(outcome.problemSlug()).isEqualTo("estado-invalido");
+        assertThat(order.estado).isEqualTo(desde);
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void aMissingTargetStateIsRejectedWith422() {
+        Order order = new Order("user-1", java.time.Instant.now(), List.of(), 100.0, "COMPLETADA");
+
+        assertThat(service.cambiarEstado(order, null).status()).isEqualTo(422);
+        assertThat(order.estado).isEqualTo("COMPLETADA");
+    }
+
+    @Test
+    void sameIdempotencyKeyAndBodyReplaysTheOriginalResult() {
+        gatewayApproves();
+
+        VentaOutcome first = service.crear("user-1", "key-5", request());
+        VentaOutcome second = service.crear("user-1", "key-5", request());
+
+        assertThat(second.status()).isEqualTo(201);
+        assertThat(second.order().id).isEqualTo(first.order().id);
+        verify(gateway, times(1)).autorizar(anyString(), anyDouble(), any());
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void sameIdempotencyKeyWithDifferentBodyReturns409() {
+        gatewayApproves();
+        service.crear("user-1", "key-6", request());
+
+        VentaRequest other = request();
+        other.direccion = "Otra calle 99";
+        VentaOutcome outcome = service.crear("user-1", "key-6", other);
+
+        assertThat(outcome.status()).isEqualTo(409);
+        assertThat(outcome.problemSlug()).isEqualTo("idempotency-key-reutilizada");
+    }
+
+    @Test
+    void workerConfirmsAPendingSaleWhenTheGatewayAlreadyHasTheTransaction() {
+        gatewayTimesOut();
+        VentaOutcome pending = service.crear("user-1", "key-7", request());
+        when(gateway.consultarPago(pending.order().idTransaccion))
+                .thenReturn(Optional.of(new AuthResult(PaymentStatus.APROBADO, null)));
+
+        service.procesarPendientes();
+
+        assertThat(pending.order().estado).isEqualTo("COMPLETADA");
+        assertThat(pending.order().estadoPago).isEqualTo("APROBADO");
+        verify(gateway, times(1)).autorizar(anyString(), anyDouble(), any());
+        verify(publisher).publishEvent(any(VentaEvents.VentaConfirmada.class));
+    }
+
+    @Test
+    void workerCancelsTheSaleAndReleasesStockAfterThreeFailedAttempts() {
+        gatewayTimesOut();
+        when(gateway.consultarPago(anyString())).thenReturn(Optional.empty());
+        VentaOutcome pending = service.crear("user-1", "key-8", request());
+
+        service.procesarPendientes();
+        assertThat(pending.order().estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(pending.order().intentosPago).isEqualTo(2);
+
+        service.procesarPendientes();
+
+        assertThat(pending.order().estado).isEqualTo("CANCELADA");
+        assertThat(pending.order().intentosPago).isEqualTo(3);
+        assertThat(product.stock).isEqualTo(10);
+        verify(publisher).publishEvent(any(VentaEvents.PagoFallido.class));
+        verify(publisher).publishEvent(any(VentaEvents.VentaCancelada.class));
+    }
+
+    @Test
+    void cancellingACompletedSaleReleasesStockAndMarksTheRefund() {
+        gatewayApproves();
+        Order order = service.crear("user-1", "key-9", request()).order();
+
+        VentaOutcome outcome = service.cancelarPorSolicitud(order);
+
+        assertThat(outcome.status()).isEqualTo(200);
+        assertThat(order.estado).isEqualTo("CANCELADA");
+        assertThat(order.estadoPago).isEqualTo("REEMBOLSADO");
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    @Test
+    void aShippedSaleCannotBeCancelled() {
+        gatewayApproves();
+        Order order = service.crear("user-1", "key-10", request()).order();
+        order.estado = "ENVIADA";
+
+        VentaOutcome outcome = service.cancelarPorSolicitud(order);
+
+        assertThat(outcome.status()).isEqualTo(409);
+        assertThat(outcome.problemSlug()).isEqualTo("transicion-invalida");
+    }
+
+    @Test
+    void validatesPaymentTokenAndShippingBeforeTouchingStock() {
+        VentaRequest noToken = request();
+        noToken.medioPago = " ";
+        VentaRequest noAddress = request();
+        noAddress.direccion = null;
+
+        assertThat(service.crear("user-1", "key-11", noToken).problemSlug()).isEqualTo("medio-pago-requerido");
+        assertThat(service.crear("user-1", "key-12", noAddress).problemSlug()).isEqualTo("datos-envio-incompletos");
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    private SiteSettings promos(boolean freeShipping, double threshold, boolean gift, String giftId, double giftMin) {
+        SiteSettings settings = new SiteSettings();
+        settings.freeShippingEnabled = freeShipping;
+        settings.freeShippingThreshold = threshold;
+        settings.giftEnabled = gift;
+        settings.giftProductId = giftId;
+        settings.giftMinAmount = giftMin;
+        when(settingsRepository.findById(SiteSettings.SINGLETON_ID)).thenReturn(Optional.of(settings));
+        return settings;
+    }
+
+    private Product giftProduct(int stock) {
+        Product gift = new Product("g1", "Llavero", "Marca", 300.0, null, 4.0, "/g.jpg", null, "accesorios", stock);
+        when(productRepository.findById("g1")).thenReturn(Optional.of(gift));
+        return gift;
+    }
+
+    @Test
+    void shippingIsFreeOnceTheCartReachesTheConfiguredAmount() {
+        gatewayApproves();
+        promos(true, 2000.0, false, null, 0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-envio-gratis", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().shippingCost).isEqualTo(0.0);
+        assertThat(outcome.order().total).isEqualTo(2000.0);
+    }
+
+    @Test
+    void shippingIsChargedWhenTheCartDoesNotReachTheConfiguredAmount() {
+        gatewayApproves();
+        promos(true, 2001.0, false, null, 0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-envio-pago", request());
+
+        assertThat(outcome.order().shippingCost).isEqualTo(1500.0);
+        assertThat(outcome.order().total).isEqualTo(3500.0);
+    }
+
+    @Test
+    void theGiftIsAddedToTheOrderAtNoCostAndItsStockIsReserved() {
+        gatewayApproves();
+        Product gift = giftProduct(5);
+        promos(false, 0, true, "g1", 2000.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-regalo", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().items).hasSize(2);
+        Order.OrderItem giftLine = outcome.order().items.get(1);
+        assertThat(giftLine.productId).isEqualTo("g1");
+        assertThat(giftLine.quantity).isEqualTo(1);
+        assertThat(giftLine.price).isEqualTo(0.0);
+        assertThat(giftLine.variant).isEqualTo("Regalo");
+        assertThat(outcome.order().total).isEqualTo(3500.0); // el regalo no suma al total
+        assertThat(gift.stock).isEqualTo(4);
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void noGiftBelowTheMinimumAmount() {
+        gatewayApproves();
+        Product gift = giftProduct(5);
+        promos(false, 0, true, "g1", 2500.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-sin-regalo", request());
+
+        assertThat(outcome.order().items).hasSize(1);
+        assertThat(gift.stock).isEqualTo(5);
+    }
+
+    @Test
+    void noGiftWhenItIsOutOfStock() {
+        gatewayApproves();
+        giftProduct(0);
+        promos(false, 0, true, "g1", 1000.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-regalo-agotado", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().items).hasSize(1);
+    }
+
+    @Test
+    void noGiftWhenTheGiftProductIsAlreadyInTheCartAndWouldRunOutOfStock() {
+        gatewayApproves();
+        Product gift = giftProduct(2);
+        cart.add(new CartItem("g1", "Llavero", "accesorios", 2, 300.0));
+        promos(false, 0, true, "g1", 1000.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-regalo-mismo", request());
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().items).hasSize(2);
+        assertThat(gift.stock).isEqualTo(0); // solo las 2 unidades que compró, sin regalo extra
+    }
+
+    @Test
+    void theGiftStockIsReleasedWhenThePaymentIsRejected() {
+        when(gateway.autorizar(anyString(), anyDouble(), any())).thenReturn(new AuthResult(PaymentStatus.RECHAZADO, "sin fondos"));
+        Product gift = giftProduct(5);
+        promos(false, 0, true, "g1", 1000.0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-regalo-rechazo", request());
+
+        assertThat(outcome.status()).isEqualTo(402);
+        assertThat(gift.stock).isEqualTo(5);
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    private void zones(com.petshop.app.model.ShippingZone... zones) {
+        when(zoneRepository.findAllByOrderByPostalFromAsc()).thenReturn(List.of(zones));
+    }
+
+    @Test
+    void theShippingCostDependsOnThePostalCodeZone() {
+        gatewayApproves();
+        zones(new com.petshop.app.model.ShippingZone("CABA", 1000, 1499, 1200.0, "24 a 48 hs"));
+
+        VentaOutcome inZone = service.crear("user-1", "key-zona", request());
+
+        assertThat(inZone.status()).isEqualTo(201);
+        assertThat(inZone.order().shippingCost).isEqualTo(1200.0);
+        assertThat(inZone.order().total).isEqualTo(3200.0);
+    }
+
+    @Test
+    void aPostalCodeOutsideEveryZoneGetsTheRestOfTheCountryCost() {
+        gatewayApproves();
+        zones(new com.petshop.app.model.ShippingZone("CABA", 1000, 1499, 1200.0, "24 a 48 hs"));
+        com.petshop.app.model.SiteSettings settings = promos(false, 0, false, null, 0);
+        settings.shippingDefaultCost = 2500.0;
+        VentaRequest req = request();
+        req.codigoPostal = "5000";
+
+        VentaOutcome outcome = service.crear("user-1", "key-resto", req);
+
+        assertThat(outcome.order().shippingCost).isEqualTo(2500.0);
+    }
+
+    @Test
+    void freeShippingWinsOverTheZoneCost() {
+        gatewayApproves();
+        zones(new com.petshop.app.model.ShippingZone("CABA", 1000, 1499, 1200.0, "24 a 48 hs"));
+        promos(true, 2000.0, false, null, 0);
+
+        VentaOutcome outcome = service.crear("user-1", "key-gratis-zona", request());
+
+        assertThat(outcome.order().shippingCost).isEqualTo(0.0);
+        assertThat(outcome.order().total).isEqualTo(2000.0);
+    }
+
+    @Test
+    void anInvalidOrMissingPostalCodeIsRejectedBeforeReservingStock() {
+        for (String bad : new String[] {null, "", "abc", "123", "12345", "1425 Buenos Aires"}) {
+            VentaRequest req = request();
+            req.codigoPostal = bad;
+
+            VentaOutcome outcome = service.crear("user-1", "key-cp-" + bad, req);
+
+            assertThat(outcome.status()).as("cp=" + bad).isEqualTo(422);
+            assertThat(outcome.problemSlug()).isEqualTo("codigo-postal-invalido");
+        }
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    @Test
+    void theFullArgentineFormatOfThePostalCodeIsAccepted() {
+        gatewayApproves();
+        zones(new com.petshop.app.model.ShippingZone("CABA", 1000, 1499, 1200.0, "24 a 48 hs"));
+        VentaRequest req = request();
+        req.codigoPostal = "C1425ABC";
+
+        VentaOutcome outcome = service.crear("user-1", "key-cpa", req);
+
+        assertThat(outcome.status()).isEqualTo(201);
+        assertThat(outcome.order().shippingCost).isEqualTo(1200.0);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // MercadoPago
+    // ---------------------------------------------------------------------------------------------------------------
+
+    private VentaRequest mercadoPagoRequest() {
+        VentaRequest req = request();
+        req.medioPago = "mercadopago";
+        return req;
+    }
+
+    private void mercadoPagoEnabled() throws Exception {
+        when(mercadoPago.isEnabled()).thenReturn(true);
+        when(mercadoPago.createPreference(any())).thenReturn(new MercadoPagoClient.Preference("pref-1", "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=pref-1"));
+    }
+
+    private VentaService serviceWith(MercadoPagoSettings settings) {
+        return new VentaService(orderRepository, cartItemRepository, store, productRepository, mock(ProductVariantRepository.class),
+                mock(CouponRepository.class), mock(IdempotencyRecordRepository.class), gateway, executor, publisher, rouletteService,
+                shopRules, mercadoPago, settings, 200, 3, 0);
+    }
+
+    private Order pendingMercadoPagoOrder() throws Exception {
+        mercadoPagoEnabled();
+        VentaOutcome outcome = service.crear("user-1", "key-mp-" + System.nanoTime(), mercadoPagoRequest());
+        assertThat(outcome.status()).isEqualTo(202);
+        return outcome.order();
+    }
+
+    private MercadoPagoClient.Payment payment(String id, String status, double amount) {
+        return new MercadoPagoClient.Payment(id, status, amount, "1");
+    }
+
+    @Test
+    void payingWithMercadoPagoLeavesAPendingSaleWithTheLinkAndReservesTheStock() throws Exception {
+        mercadoPagoEnabled();
+
+        VentaOutcome outcome = service.crear("user-1", "key-mp", mercadoPagoRequest());
+
+        assertThat(outcome.status()).isEqualTo(202);
+        Order order = outcome.order();
+        assertThat(order.estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(order.estadoPago).isEqualTo("PENDIENTE");
+        assertThat(order.medioPagoToken).isEqualTo("mercadopago");
+        assertThat(order.paymentUrl).contains("pref_id=pref-1");
+        assertThat(order.idTransaccion).isEqualTo("pref-1");
+        assertThat(order.total).isEqualTo(3500.0);
+        assertThat(product.stock).isEqualTo(8);
+        verify(cartItemRepository).deleteAll(any());
+        verify(gateway, never()).autorizar(anyString(), anyDouble(), any());
+
+        ArgumentCaptor<MercadoPagoClient.PreferenceRequest> sent = ArgumentCaptor.forClass(MercadoPagoClient.PreferenceRequest.class);
+        verify(mercadoPago).createPreference(sent.capture());
+        assertThat(sent.getValue().externalReference()).isEqualTo(String.valueOf(order.id));
+        assertThat(sent.getValue().amount()).isEqualTo(3500.0);
+        assertThat(sent.getValue().backUrl()).isEqualTo("http://localhost:5173/pago/resultado?orden=" + order.id);
+        assertThat(sent.getValue().autoReturn()).isFalse();
+        assertThat(sent.getValue().notificationUrl()).isNull();
+        assertThat(sent.getValue().expiresAt()).isAfter(java.time.Instant.now().plusSeconds(25 * 60));
+    }
+
+    @Test
+    void withAPublicHttpsSiteTheCustomerIsSentBackAutomaticallyAndMercadoPagoCanNotify() throws Exception {
+        mercadoPagoEnabled();
+        VentaService prod = serviceWith(new MercadoPagoSettings("TEST-x", "https://api.mercadopago.com", 30, "https://mi-tienda.vercel.app", "https://mi-api.onrender.com/", true));
+
+        prod.crear("user-1", "key-mp-https", mercadoPagoRequest());
+
+        ArgumentCaptor<MercadoPagoClient.PreferenceRequest> sent = ArgumentCaptor.forClass(MercadoPagoClient.PreferenceRequest.class);
+        verify(mercadoPago).createPreference(sent.capture());
+        assertThat(sent.getValue().autoReturn()).isTrue();
+        assertThat(sent.getValue().backUrl()).startsWith("https://mi-tienda.vercel.app/pago/resultado?orden=");
+        assertThat(sent.getValue().notificationUrl()).isEqualTo("https://mi-api.onrender.com/api/payments/mercadopago/webhook");
+    }
+
+    @Test
+    void ifMercadoPagoCannotCreateTheLinkNothingStaysReservedAndTheCustomerCanRetryWithTheSameKey() throws Exception {
+        when(mercadoPago.isEnabled()).thenReturn(true);
+        when(mercadoPago.createPreference(any()))
+                .thenThrow(new MercadoPagoClient.MercadoPagoException("caído"))
+                .thenReturn(new MercadoPagoClient.Preference("pref-2", "https://mp/pay"));
+
+        VentaOutcome failed = service.crear("user-1", "key-reintento", mercadoPagoRequest());
+
+        assertThat(failed.status()).isEqualTo(502);
+        assertThat(failed.problemSlug()).isEqualTo("mercadopago-no-disponible");
+        assertThat(product.stock).isEqualTo(10);
+        verify(cartItemRepository, never()).deleteAll(any());
+
+        VentaOutcome retry = service.crear("user-1", "key-reintento", mercadoPagoRequest());
+        assertThat(retry.status()).isEqualTo(202);
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void mercadoPagoIsRejectedWhenItIsNotConfigured() {
+        when(mercadoPago.isEnabled()).thenReturn(false);
+
+        VentaOutcome outcome = service.crear("user-1", "key-mp-off", mercadoPagoRequest());
+
+        assertThat(outcome.status()).isEqualTo(422);
+        assertThat(outcome.problemSlug()).isEqualTo("medio-pago-no-disponible");
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    @Test
+    void theTestPaymentMethodsCanBeTurnedOffForProduction() throws Exception {
+        mercadoPagoEnabled();
+        VentaService prod = serviceWith(new MercadoPagoSettings("TEST-x", "https://api.mercadopago.com", 30, "https://mi-tienda.vercel.app", "", false));
+
+        VentaOutcome simulated = prod.crear("user-1", "key-sim", request()); // tok_aprobado
+
+        assertThat(simulated.status()).isEqualTo(422);
+        assertThat(simulated.problemSlug()).isEqualTo("medio-pago-no-disponible");
+        verify(gateway, never()).autorizar(anyString(), anyDouble(), any());
+        assertThat(product.stock).isEqualTo(10);
+        assertThat(prod.crear("user-1", "key-mp-prod", mercadoPagoRequest()).status()).isEqualTo(202);
+    }
+
+    @Test
+    void anApprovedPaymentForTheExactAmountConfirmsTheSale() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("COMPLETADA");
+        assertThat(result.estadoPago).isEqualTo("APROBADO");
+        assertThat(result.mpPaymentId).isEqualTo("999");
+        verify(publisher).publishEvent(any(VentaEvents.VentaConfirmada.class));
+    }
+
+    @Test
+    void anApprovedPaymentForAnotherAmountDoesNotConfirmTheSale() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 1.0)));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(result.mpPaymentId).isNull();
+    }
+
+    @Test
+    void aRejectedOrPendingPaymentKeepsWaitingAndKeepsTheStockReserved() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("1", "rejected", 3500.0), payment("2", "pending", 3500.0)));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("PAGO_PENDIENTE");
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void anUnpaidSaleIsCancelledAndItsStockReleasedWhenTheTimeRunsOut() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        order.fecha = java.time.Instant.now().minusSeconds(31 * 60);
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("1", "rejected", 3500.0)));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("CANCELADA");
+        assertThat(result.estadoPago).isEqualTo("CANCELADO");
+        assertThat(product.stock).isEqualTo(10);
+        verify(publisher).publishEvent(any(VentaEvents.VentaCancelada.class));
+    }
+
+    @Test
+    void ifMercadoPagoCannotBeReachedTheSaleSimplyKeepsWaiting() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        order.fecha = java.time.Instant.now().minusSeconds(31 * 60);
+        when(mercadoPago.paymentsOf("1")).thenThrow(new MercadoPagoClient.MercadoPagoException("sin conexión"));
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("PAGO_PENDIENTE"); // sin información no se cancela nada
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void syncingAnAlreadyConfirmedSaleChangesNothing() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+        service.sincronizarPago(order);
+
+        service.sincronizarPago(order);
+        service.sincronizarPago(order);
+
+        verify(publisher, times(1)).publishEvent(any(VentaEvents.VentaConfirmada.class));
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void thePaymentSyncDoesNotTouchSalesPaidWithTheSimulatedGateway() {
+        gatewayApproves();
+        Order order = service.crear("user-1", "key-sim-sync", request()).order();
+
+        Order result = service.sincronizarPago(order);
+
+        assertThat(result.estado).isEqualTo("COMPLETADA");
+        org.mockito.Mockito.verifyNoInteractions(mercadoPago);
+    }
+
+    @Test
+    void cancellingAPaidMercadoPagoSaleRefundsTheMoneyFirst() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+        service.sincronizarPago(order);
+
+        VentaOutcome cancel = service.cancelarPorSolicitud(order);
+
+        assertThat(cancel.status()).isEqualTo(200);
+        verify(mercadoPago).refund("999");
+        assertThat(order.estado).isEqualTo("CANCELADA");
+        assertThat(order.estadoPago).isEqualTo("REEMBOLSADO");
+        assertThat(product.stock).isEqualTo(10);
+    }
+
+    @Test
+    void ifTheRefundFailsTheSaleIsNotCancelled() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+        service.sincronizarPago(order);
+        org.mockito.Mockito.doThrow(new MercadoPagoClient.MercadoPagoException("no se pudo")).when(mercadoPago).refund("999");
+
+        VentaOutcome cancel = service.cancelarPorSolicitud(order);
+
+        assertThat(cancel.status()).isEqualTo(502);
+        assertThat(cancel.problemSlug()).isEqualTo("reembolso-fallido");
+        assertThat(order.estado).isEqualTo("COMPLETADA");
+        assertThat(product.stock).isEqualTo(8);
+    }
+
+    @Test
+    void aPaymentThatArrivesAfterTheSaleWasCancelledIsRefunded() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        service.cancelarPorSolicitud(order);
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("777", "approved", 3500.0)));
+
+        service.sincronizarPago(order);
+
+        verify(mercadoPago).refund("777");
+        assertThat(order.estado).isEqualTo("CANCELADA");
+        assertThat(order.estadoPago).isEqualTo("REEMBOLSADO");
+        assertThat(order.mpPaymentId).isEqualTo("777");
+    }
+
+    @Test
+    void theWorkerFinishesMercadoPagoSalesTheCustomerNeverCameBackForAndIgnoresTheSimulatedGateway() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+
+        service.procesarPendientes();
+
+        assertThat(order.estado).isEqualTo("COMPLETADA");
+        verify(gateway, never()).consultarPago(anyString());
+    }
+
+    @Test
+    void aMercadoPagoNoticeIsResolvedByAskingMercadoPagoWhichSaleItBelongsTo() throws Exception {
+        Order order = pendingMercadoPagoOrder();
+        when(mercadoPago.payment("999")).thenReturn(Optional.of(payment("999", "approved", 3500.0)));
+        when(mercadoPago.paymentsOf("1")).thenReturn(List.of(payment("999", "approved", 3500.0)));
+
+        service.procesarAvisoMercadoPago("999");
+
+        assertThat(order.estado).isEqualTo("COMPLETADA");
+    }
+
+    @Test
+    void aNoticeForAPaymentThatIsNotFromAnOrderOfTheShopIsIgnored() throws Exception {
+        when(mercadoPago.payment("5")).thenReturn(Optional.of(new MercadoPagoClient.Payment("5", "approved", 10.0, "factura-abc")));
+        when(mercadoPago.payment("6")).thenReturn(Optional.of(new MercadoPagoClient.Payment("6", "approved", 10.0, "")));
+        when(mercadoPago.payment("7")).thenReturn(Optional.empty());
+
+        service.procesarAvisoMercadoPago("5");
+        service.procesarAvisoMercadoPago("6");
+        service.procesarAvisoMercadoPago("7");
+
+        verify(publisher, never()).publishEvent(any(VentaEvents.VentaConfirmada.class));
+    }
+}

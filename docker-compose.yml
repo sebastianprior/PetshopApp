@@ -1,0 +1,72 @@
+# Todo el sistema con un solo comando:   docker compose up --build
+#
+#   Tienda:   http://localhost:5173
+#   API:      http://localhost:8080/api   (documentación: http://localhost:8080/swagger-ui.html)
+#
+# Servicios: MySQL, backend (Spring Boot; trae adentro el broker de mensajes Artemis y la pasarela SOAP simulada) y
+# frontend (la tienda compilada, servida por nginx). Los usuarios, productos y zonas de ejemplo los carga el backend
+# al arrancar. Los valores de abajo son de DESARROLLO: no se usan en un entorno real.
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: petshopdb
+      MYSQL_USER: petshop
+      MYSQL_PASSWORD: ${DB_PASSWORD:-petshop123}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      # Por TCP: mientras MySQL se inicializa solo escucha por socket, y recién después abre el puerto
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u petshop -p\"$$MYSQL_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  backend:
+    build: ./app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/petshopdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8
+      DB_USERNAME: petshop
+      DB_PASSWORD: ${DB_PASSWORD:-petshop123}
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      FRONTEND_URL: http://localhost:5173
+      # JWT_SECRET sin definir: el backend genera una al azar en cada arranque (las sesiones no sobreviven a un reinicio).
+      # Para fijarla, definí la variable JWT_SECRET (32 caracteres o más) al ejecutar docker compose up.
+      JWT_SECRET: ${JWT_SECRET:-}
+      ARTEMIS_PERSISTENT: "true"
+    volumes:
+      # Los mensajes del broker en cola sobreviven a un reinicio del backend
+      - artemis-data:/app/artemis-data
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /api/products HTTP/1.0\\r\\n\\r\\n\" >&3 && head -n1 <&3 | grep -q \" 200 \"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./app/src/app
+      args:
+        # La API se llama desde el navegador, por eso es la dirección pública y no el nombre interno del servicio
+        VITE_API_URL: http://localhost:8080/api
+    environment:
+      # Dirección del backend que el navegador puede usar (nginx la pone en la política de contenido)
+      API_ORIGIN: http://localhost:8080
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:8080"
+
+volumes:
+  mysql-data:
+  artemis-data:

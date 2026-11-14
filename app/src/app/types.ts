@@ -15,12 +15,25 @@ export type Product = {
   badge?: string;
   categoryId: string;
   stock: number;
+  precioPromocional?: number | null;
+  tipoPromocion?: string | null;
+  hasVariants?: boolean;
+};
+
+export type ProductVariant = {
+  id: number;
+  productId: string;
+  talle?: string | null;
+  color?: string | null;
+  stock: number;
+  imageUrl?: string | null;
 };
 
 export type CartItem = {
   productId: string;
   name: string;
   variant: string;
+  variantId?: number | null;
   quantity: number;
   price: number;
 };
@@ -30,6 +43,203 @@ export type User = {
   email: string;
   name: string;
   password?: string;
+  role?: "CUSTOMER" | "ADMIN";
+  /** "GOOGLE" si entra con Google (no tiene contraseña propia); "LOCAL" si entra con email y contraseña. */
+  authProvider?: "GOOGLE" | "LOCAL";
+  active?: boolean;
 };
 
-export type View = "home" | "products" | "offers" | "categories" | "cart" | "login";
+export type OrderItem = {
+  productId: string;
+  quantity: number;
+  price: number;
+  variant?: string | null;
+  variantId?: number | null;
+};
+
+export type OrderRecord = {
+  id: number;
+  userId: string;
+  fecha: string;
+  items: OrderItem[];
+  subtotal?: number;
+  shippingCost?: number;
+  discountAmount?: number;
+  couponCode?: string | null;
+  total: number;
+  estado: string;
+  /** Link de MercadoPago para pagar o reintentar: solo mientras el pedido espera el pago. */
+  paymentUrl?: string | null;
+};
+
+export type TopProductStat = {
+  productId: string;
+  name: string;
+  totalQuantity: number;
+};
+
+export type OrderStats = {
+  totalOrders: number;
+  totalRevenue: number;
+  ordersToday: number;
+  topProducts: TopProductStat[];
+};
+
+export type ReturnRecord = {
+  id: number;
+  userId: string;
+  productId: string;
+  variantId?: number | null;
+  variant?: string | null;
+  cantidad: number;
+  motivo: string;
+  estado: "PENDIENTE" | "APROBADA" | "RECHAZADA" | "PROCESADO";
+  requestedAt: string;
+};
+
+export type Review = {
+  id: number;
+  productId: string;
+  authorName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+};
+
+export type ShippingInfo = {
+  nombre: string;
+  direccion: string;
+  ciudad: string;
+  codigoPostal: string;
+  telefono: string;
+};
+
+export type CheckoutResult = {
+  ok: boolean;
+  items: CartItem[];
+  subtotal: number;
+  shippingCost: number;
+  discountAmount: number;
+  couponCode: string | null;
+  total: number;
+  orderId: number | null;
+  estado?: string;
+  estadoPago?: string;
+  ruletaDescuento?: number;
+  /** Link de MercadoPago para pagar: solo mientras el pedido espera el pago. */
+  paymentUrl?: string | null;
+};
+
+/** Medios de pago que ofrece la tienda. */
+export type PaymentConfig = {
+  mercadoPago: boolean;
+  /** Medios de prueba (tarjeta aprobada/rechazada…): solo en desarrollo y demos. */
+  simulated: boolean;
+};
+
+export type Coupon = {
+  id: number;
+  code: string;
+  discountType: "PERCENTAGE" | "FIXED";
+  discountValue: number;
+  active: boolean;
+  minPurchase: number;
+  maxUses: number | null;
+  usesCount: number;
+  expiresAt: string | null;
+};
+
+export type SiteSettings = {
+  topbarItems: string[];
+  announcementMode: "AUTO" | "CUSTOM" | "OFF";
+  announcementText: string;
+  /** Desplazar el texto de la barra de derecha a izquierda (marquesina). */
+  topbarMarquee?: boolean;
+  announcementMarquee?: boolean;
+};
+
+/** Cuánto cuesta y cuánto tarda el envío a un código postal (el envío gratis se resuelve aparte, según el carrito). */
+export type ShippingQuote = {
+  postalCode: number;
+  zoneName: string;
+  cost: number;
+  eta: string;
+  matchedZone: boolean;
+};
+
+export type ShippingZone = {
+  id?: number;
+  name: string;
+  postalFrom: number;
+  postalTo: number;
+  cost: number;
+  eta: string;
+};
+
+/** Zonas de envío por código postal y lo que se cobra al resto del país. */
+export type ShippingConfig = {
+  defaultCost: number;
+  defaultEta: string;
+  zones: ShippingZone[];
+};
+
+/** Pregunta frecuente de la tienda (editable desde el panel de administración). */
+export type Faq = {
+  id?: number;
+  question: string;
+  answer: string;
+};
+
+/** Envío gratis y regalo del carrito, configurables desde el panel de administración. */
+export type CartPromos = {
+  freeShippingEnabled: boolean;
+  freeShippingThreshold: number;
+  giftEnabled: boolean;
+  giftMinAmount: number;
+  giftProductId: string | null;
+  giftProductName?: string | null;
+  giftProductImageUrl?: string | null;
+  /** El producto de regalo existe, no tiene variantes y tiene stock: si no, no se ofrece. */
+  giftAvailable: boolean;
+};
+
+export const NO_CART_PROMOS: CartPromos = {
+  freeShippingEnabled: false,
+  freeShippingThreshold: 0,
+  giftEnabled: false,
+  giftMinAmount: 0,
+  giftProductId: null,
+  giftAvailable: false,
+};
+
+export type RouletteCategory = { id: string; name: string; color: string };
+
+export type RouletteState = {
+  percent: number;
+  categories: RouletteCategory[];
+  spun: boolean;
+  categoryId: string | null;
+  categoryName: string | null;
+  validUntil: string | null;
+  alreadySpun?: boolean;
+};
+
+export type RouletteCartDiscount = { percent: number; amount: number; categoryId: string | null; categoryName: string | null };
+
+export type View =
+  | "home"
+  | "products"
+  | "offers"
+  | "categories"
+  | "cart"
+  | "login"
+  | "admin"
+  | "orders"
+  | "wishlist"
+  | "account"
+  | "confirmation"
+  | "terms"
+  | "privacy"
+  | "contact"
+  | "faq"
+  | "paymentResult";
