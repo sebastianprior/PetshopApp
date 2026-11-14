@@ -70,6 +70,49 @@ jobs:
           grep -q " 0 fallos, 0 errores" resumen.txt || { echo "::error::Hay pruebas fallando"; exit 1; }
           echo "::notice title=Estabilidad::$(head -1 resumen.txt | cut -d: -f2) en las 3 corridas"
 
+  carga:
+    name: Carga (k6, 50 usuarios, 5 minutos)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levantar el sistema completo
+        run: docker compose up --build --detach --wait --wait-timeout 300
+      - name: Prueba de carga sobre catálogo, login y checkout (p95 < 500 ms y errores < 1 %)
+        run: |
+          mkdir -p resultados
+          docker run --rm --network host -v "$PWD/app/tests-api:/scripts:ro" -v "$PWD/resultados:/out" \
+            grafana/k6:0.54.0 run --summary-export=/out/carga.json /scripts/carga.k6.js || echo "K6_FALLO=1" >> "$GITHUB_ENV"
+      - name: Resultados de la carga
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          path = "resultados/carga.json"
+          if not os.path.exists(path):
+              print("::error::k6 no produjo resultados"); raise SystemExit(0)
+          m = json.load(open(path))["metrics"]
+          for name in ("catalogo", "login", "checkout"):
+              d, f = m.get(f"http_req_duration{{endpoint:{name}}}", {}), m.get(f"http_req_failed{{endpoint:{name}}}", {})
+              print(f"::notice title=Carga {name}::p95={d.get('p(95)', 0):.0f} ms, mediana={d.get('med', 0):.0f} ms, errores={100 * f.get('value', 0):.2f}%")
+          it = m.get("iterations", {})
+          print(f"::notice title=Carga total::{it.get('count', 0)} iteraciones, {m.get('http_reqs', {}).get('count', 0)} pedidos")
+          PY
+          test -z "$K6_FALLO" || { echo "::error::No se cumplieron los umbrales de carga"; exit 1; }
+      - name: Guardar los resultados de la carga
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-carga
+          path: resultados
+          if-no-files-found: ignore
+      - name: Mostrar los logs si algo falló
+        if: failure()
+        run: docker compose logs --no-color --tail 100 backend
+      - name: Apagar
+        if: always()
+        run: docker compose down --volumes
+
   mutacion:
     name: Pruebas de mutación (PIT)
     runs-on: ubuntu-latest
