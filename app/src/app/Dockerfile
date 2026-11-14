@@ -4,7 +4,7 @@
 FROM node:22-alpine AS build
 WORKDIR /build
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY . .
 # La dirección de la API se incorpora al compilar (Vite la lee en tiempo de build)
 ARG VITE_API_URL=http://localhost:8080/api

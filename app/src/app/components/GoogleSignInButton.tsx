@@ -81,7 +81,7 @@ export function GoogleSignInButton({ onCredential, disabled = false }: Props) {
       } catch {
         // Sin Google la tienda sigue funcionando con email y contraseña
       }
-    })();
+    })().catch(() => undefined);
     return () => {
       active = false;
     };

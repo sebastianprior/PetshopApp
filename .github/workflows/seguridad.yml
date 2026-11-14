@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Trivy sobre el backend (pom.xml) y la tienda (package-lock.json)
         run: |
-          mkdir -p resultados && chmod 777 resultados
+          mkdir -p resultados
           docker run --rm -v "$PWD:/repo" -v "$PWD/resultados:/out" aquasec/trivy:0.58.1 \
             fs --scanners vuln --severity HIGH,CRITICAL --format json --output /out/trivy.json /repo/app || true
       - uses: actions/setup-node@v4
@@ -76,7 +76,7 @@ jobs:
         run: |
           mkdir -p resultados && chmod 777 resultados
           TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' \
-            -d '{"email":"admin@petshop.com","password":"admin123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+            -d '{"email":"admin@petshop.com","password":"admin123"}' | jq -r .token)
           echo "::add-mask::$TOKEN"
           echo "ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
@@ -140,7 +140,7 @@ jobs:
 
       - name: Contrato contra el OpenAPI publicado (Schemathesis)
         run: |
-          pip install --quiet schemathesis==3.39.16
+          pip install --quiet --only-binary :all: schemathesis==3.39.16
           schemathesis run http://localhost:8080/v3/api-docs --base-url http://localhost:8080 \
             --checks not_a_server_error,response_schema_conformance,content_type_conformance \
             --hypothesis-max-examples=15 --workers=2 --header "X-Auth-Token: $ADMIN_TOKEN" \

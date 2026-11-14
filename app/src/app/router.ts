@@ -37,8 +37,9 @@ export type Route = {
 
 /** Quita la barra final ("/carrito/" -> "/carrito") y deja la raíz como "/". */
 const clean = (pathname: string) => {
-  const trimmed = pathname.replace(/\/+$/, "");
-  return trimmed === "" ? "/" : trimmed;
+  let end = pathname.length;
+  while (end > 0 && pathname[end - 1] === "/") end--;
+  return end === 0 ? "/" : pathname.slice(0, end);
 };
 
 export function parsePath(pathname: string): Route {

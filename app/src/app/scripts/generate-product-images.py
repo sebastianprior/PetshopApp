@@ -662,6 +662,10 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, "placeholder.svg"), "w", encoding="utf-8", newline=chr(10)) as f:
         f.write(render_placeholder())
+    # Solo ids de productos conocidos: el argumento nunca llega a formar una ruta de archivo
+    unknown = [pid for pid in sys.argv[1:] if pid not in PRODUCTS]
+    if unknown:
+        sys.exit(f"Productos desconocidos: {', '.join(unknown)}")
     only = sys.argv[1:] or list(PRODUCTS)
     for pid in only:
         with open(os.path.join(OUT, pid + ".svg"), "w", encoding="utf-8", newline="\n") as f:

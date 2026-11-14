@@ -77,7 +77,7 @@ f += [
                setvar("adminToken", "b.token")]),
     req("Login del cliente", "POST", "/api/auth/login", 200, body={"email": "{{clienteEmail}}", "password": "{{clientePassword}}"},
         tests=[f"const b = {J};", setvar("clienteToken", "b.token"), setvar("clienteRefresh", "b.refreshToken"), setvar("clienteId", "b.user ? b.user.id : ''")]),
-    req("Login con contraseña incorrecta", "POST", "/api/auth/login", 401, body={"email": "{{clienteEmail}}", "password": "incorrecta"}),
+    req("Login con contraseña incorrecta", "POST", "/api/auth/login", 401, body={"email": "{{clienteEmail}}", "password": "incorrecta"}),  # NOSONAR (dato de prueba, no es un secreto)
     req("Login con cuerpo vacío", "POST", "/api/auth/login", [400, 401], body={}),
     req("Registro de un usuario nuevo", "POST", "/api/auth/register", [200, 201], body={"email": "newman-{{$timestamp}}@ejemplo.com", "password": "{{pw1}}", "name": "Usuario Newman"},
         pre=['pm.collectionVariables.set("bEmail", "newman-" + Date.now() + "@ejemplo.com");', 'pm.collectionVariables.set("bPassword", "Aa1-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10));',
@@ -98,11 +98,11 @@ f += [
         tests=[f"const b = {J};", setvar("bToken", "b.token"), setvar("bRefresh", "b.refreshToken")]),
     req("Renovar con un token inválido", "POST", "/api/auth/refresh", 401, body={"refreshToken": "no-existe"}),
     req("Cambiar la contraseña", "POST", "/api/auth/change-password", 200, who="b", body={"currentPassword": "{{bPassword}}", "newPassword": "{{pw2}}"}),
-    req("Cambiar la contraseña con la actual incorrecta", "POST", "/api/auth/change-password", [400, 401, 403], who="b", body={"currentPassword": "incorrecta", "newPassword": "{{pw2}}"}),
+    req("Cambiar la contraseña con la actual incorrecta", "POST", "/api/auth/change-password", [400, 401, 403], who="b", body={"currentPassword": "incorrecta", "newPassword": "{{pw2}}"}),  # NOSONAR (dato de prueba, no es un secreto)
     req("Recuperar la contraseña (siempre responde igual)", "POST", "/api/auth/recover", 200, body={"email": "{{clienteEmail}}"}),
     req("Recuperar sin email (responde igual: no revela qué emails existen)", "POST", "/api/auth/recover", [200, 400, 422], body={}, kind="error"),
     req("Restablecer con un código inválido", "POST", "/api/auth/reset", [400, 404, 410], body={"token": "codigo-invalido", "newPassword": "{{pw1}}"}),
-    req("Ingreso con Google y una credencial inválida", "POST", "/api/auth/google", [400, 401, 503], body={"credential": "no-es-un-token-de-google"}),
+    req("Ingreso con Google y una credencial inválida", "POST", "/api/auth/google", [400, 401, 503], body={"credential": "no-es-un-token-de-google"}),  # NOSONAR (dato de prueba, no es un secreto)
     req("Cerrar sesión", "POST", "/api/auth/logout", 200, body={"refreshToken": "{{bRefresh}}"}),
     req("Cerrar sesión sin indicar la sesión", "POST", "/api/auth/logout", [200, 400, 422], body={}, kind="error"),
     req("Renovar con el token ya cerrado", "POST", "/api/auth/refresh", 401, body={"refreshToken": "{{bRefresh}}"}),

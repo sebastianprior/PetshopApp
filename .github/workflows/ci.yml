@@ -15,11 +15,15 @@ jobs:
     name: Backend (compilar y probar)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     defaults:
       run:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # SonarCloud necesita el historial completo para atribuir el código nuevo
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,6 +31,11 @@ jobs:
           cache: maven
       - name: Compilar, correr todas las pruebas y controlar la cobertura (JaCoCo)
         run: ./mvnw -B verify
+      # Análisis estático (Java, TypeScript, Python, Docker, workflows) con la cobertura de JaCoCo. Configuración en
+      # sonar-project.properties. Sin el secreto SONAR_TOKEN (por ejemplo en un fork ajeno) el paso se omite.
+      - name: Análisis de calidad (SonarCloud) y Quality Gate
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v7.2.1
       - name: Guardar los reportes de pruebas y de cobertura
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,8 +89,8 @@ jobs:
         run: docker compose up --build --detach --wait --wait-timeout 300
       - name: Prueba de carga sobre catálogo, login y checkout (p95 < 500 ms y errores < 1 %)
         run: |
-          mkdir -p resultados && chmod 777 resultados   # k6 corre con otro usuario dentro del contenedor
-          docker run --rm --network host -v "$PWD/app/tests-api:/scripts:ro" -v "$PWD/resultados:/out" \
+          mkdir -p resultados
+          docker run --rm --user "$(id -u):$(id -g)" --network host -v "$PWD/app/tests-api:/scripts:ro" -v "$PWD/resultados:/out" \
             grafana/k6:0.54.0 run --summary-export=/out/carga.json /scripts/carga.k6.js || echo "K6_FALLO=1" >> "$GITHUB_ENV"
       - name: Resultados de la carga
         if: always()
@@ -151,9 +160,9 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: app/src/app/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Revisar tipos
-        run: npx tsc --noEmit
+        run: ./node_modules/.bin/tsc --noEmit
       - name: "Pruebas (3 corridas seguidas; ninguna puede fallar ni dar un resultado distinto)"
         run: |
           status=0
@@ -230,11 +239,11 @@ jobs:
       - name: Instalar Playwright y su navegador
         working-directory: app/src/app
         run: |
-          npm ci
-          npx playwright install --with-deps chromium
+          npm ci --ignore-scripts
+          ./node_modules/.bin/playwright install --with-deps chromium
       - name: Pruebas de punta a punta con un navegador real (compra, login, administración, ayuda, responsive, accesibilidad)
         working-directory: app/src/app
-        run: npx playwright test
+        run: ./node_modules/.bin/playwright test
       - name: Guardar el reporte de las pruebas de punta a punta
         if: always()
         uses: actions/upload-artifact@v4
@@ -246,10 +255,12 @@ jobs:
         run: |
           python3 app/tests-api/generar_coleccion.py
           git diff --exit-code app/tests-api/petshop.postman_collection.json || { echo "::error::La colección versionada no coincide con la generada: corré python tests-api/generar_coleccion.py y subí el resultado"; exit 1; }
+      - name: Instalar Newman (versión fija, sin scripts de instalación)
+        run: npm install --global --ignore-scripts newman@6.2.1
       - name: Pruebas de API con Newman (colección de Postman, éxito y error de cada endpoint)
         run: |
           status=0
-          npx --yes newman@6.2.1 run app/tests-api/petshop.postman_collection.json --working-dir app/tests-api \
+          newman runapp/tests-api/petshop.postman_collection.json --working-dir app/tests-api \
             --reporters cli,junit,json --reporter-junit-export newman-resultado.xml --reporter-json-export newman-resultado.json || status=$?
           # Cada aserción fallida queda como anotación (solicitud, qué se esperaba y qué código respondió)
           python3 - <<'PY'

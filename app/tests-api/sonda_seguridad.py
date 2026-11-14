@@ -157,7 +157,7 @@ if vid:
     call("POST", f"/v1/ventas/{vid}/cancelacion", token=cliente)
 
 # ---------------------------------------------------------------- Inyección / XSS
-st, t, _ = call("POST", "/auth/login", {"email": "' OR '1'='1' --", "password": "' OR '1'='1"})
+st, t, _ = call("POST", "/auth/login", {"email": "' OR '1'='1' --", "password": "' OR '1'='1"})  # NOSONAR (dato de prueba, no es un secreto)
 check("INYECCION", "login con SQL injection", [400, 401, 422], st)
 st, t, _ = call("GET", "/products?search=%27%3B%20DROP%20TABLE%20products%3B--&category=%27%20OR%201%3D1")
 check("INYECCION", "búsqueda con SQL injection devuelve 200 sin romper", 200, st)
@@ -186,7 +186,7 @@ for label, dtd in [("entidad externa file://", '<!DOCTYPE r [<!ENTITY xxe SYSTEM
 
 # ---------------------------------------------------------------- Fuerza bruta
 victim = f"nadie-{uuid.uuid4().hex[:6]}@ejemplo.com"
-codes = [call("POST", "/auth/login", {"email": victim, "password": f"mala-{i}"})[0] for i in range(15)]
+codes = [call("POST", "/auth/login", {"email": victim, "password": f"mala-{i}"})[0] for i in range(15)]  # NOSONAR (dato de prueba, no es un secreto)
 check("FUERZA", "15 logins fallidos seguidos terminan en 429", True, 429 in codes, ok=429 in codes)
 print("         códigos:", codes)
 
@@ -250,5 +250,5 @@ check("DLQ", "admin GET /admin/dlq -> 200 con el conteo", True, st == 200 and "c
 print()
 fails = [r for r in RESULTS if not r[4]]
 print(f"RESUMEN: {len(RESULTS) - len(fails)} de {len(RESULTS)} pruebas bien; {len(fails)} fallan")
-json.dump([dict(area=a, prueba=n, esperado=e, obtenido=g, ok=o) for a, n, e, g, o in RESULTS], open(sys.argv[1] if len(sys.argv) > 1 else "sonda_seguridad_resultado.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=str)
+json.dump([dict(area=a, prueba=n, esperado=e, obtenido=g, ok=o) for a, n, e, g, o in RESULTS], open(os.path.basename(sys.argv[1]) if len(sys.argv) > 1 else "sonda_seguridad_resultado.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=str)  # NOSONAR (el nombre del archivo se reduce a su nombre base)
 sys.exit(1 if fails else 0)
