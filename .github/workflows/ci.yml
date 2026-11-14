@@ -271,6 +271,8 @@ jobs:
           name: resultado-newman
           path: newman-resultado.xml
           if-no-files-found: ignore
+      - name: Concurrencia - 12 compradores simultáneos del último producto (no se puede vender de más)
+        run: python3 app/tests-api/concurrencia_stock.py
       - name: Sonda de seguridad y resiliencia contra la API real (BOLA, BFLA, JWT, XXE, headers, ETag, DLQ...)
         run: python3 app/tests-api/sonda_seguridad.py sonda-resultado.json
       - name: Guardar el resultado de la sonda

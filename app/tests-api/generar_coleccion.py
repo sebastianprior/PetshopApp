@@ -235,7 +235,6 @@ f += [
     req("Carrito para comprar y cancelar", "POST", "/api/cart/add", 200, who="cliente", body={**item, "productId": "p2", "name": "Pelota", "variant": "juguetes"}),
     req("Segunda compra", "POST", "/api/v1/ventas", 201, who="cliente", body=venta, headers={"Idempotency-Key": "{{$guid}}"}, tests=[setvar("ventaId2", f"{J}.id")]),
     req("Cancelar la segunda compra", "POST", "/api/v1/ventas/{{ventaId2}}/cancelacion", 200, who="cliente", tests=[f'pm.test("CANCELADA", () => pm.expect({J}.estado).to.eql("CANCELADA"));']),
-    req("Checkout viejo del carrito (sin datos)", "POST", "/api/cart/checkout", [200, 400, 401, 422], who="cliente", body={}, kind="error"),
 ]
 
 # ============================================================================================================== 05
@@ -359,7 +358,7 @@ SIN_ERROR_POSIBLE = {("GET", "/api/auth/config"), ("GET", "/api/payments/config"
 # Necesitan algo que la colección no puede producir sola (un token de Google, un código enviado por email)
 SIN_EXITO_POSIBLE = {("POST", "/api/auth/google"): "requiere un token firmado por Google",
                      ("POST", "/api/auth/reset"): "requiere el código que llega por email (queda en la carpeta outbox del servidor)",
-                     ("POST", "/api/cart/checkout"): "API vieja, reemplazada por /api/v1/ventas"}
+                     }
 
 
 def coverage():

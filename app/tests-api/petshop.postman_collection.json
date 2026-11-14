@@ -5266,53 +5266,6 @@
        ]
       }
      }
-    },
-    {
-     "name": "Checkout viejo del carrito (sin datos)",
-     "event": [
-      {
-       "listen": "test",
-       "script": {
-        "type": "text/javascript",
-        "exec": [
-         "pm.test(\"estado 200/400/401/422\", function () { pm.expect([200, 400, 401, 422]).to.include(pm.response.code); });"
-        ]
-       }
-      }
-     ],
-     "request": {
-      "method": "POST",
-      "header": [
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       },
-       {
-        "key": "X-Auth-Token",
-        "value": "{{clienteToken}}"
-       }
-      ],
-      "url": {
-       "raw": "{{baseUrl}}/api/cart/checkout",
-       "host": [
-        "{{baseUrl}}"
-       ],
-       "path": [
-        "api",
-        "cart",
-        "checkout"
-       ]
-      },
-      "body": {
-       "mode": "raw",
-       "raw": "{}",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      }
-     }
     }
    ]
   },

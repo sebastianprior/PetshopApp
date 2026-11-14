@@ -179,4 +179,58 @@ class RepositoriosMySqlTest {
         assertThat(processed.existsById("evt-procesado")).isTrue();
         assertThat(processed.existsById("evt-nuevo")).isFalse();
     }
+
+    // ---- Stock: la reserva es atómica ---------------------------------------------------------------------------------
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void thirtyBuyersCompetingForFiveUnitsNeverSellMoreThanTheStock() throws Exception {
+        products.saveAndFlush(new Product("t-ultimas", "Ultimas unidades", "Marca", 100.0, null, 4.0, "/img.svg", null, "c", 5));
+        int compradores = 30;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(compradores);
+        java.util.concurrent.CountDownLatch largada = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicInteger conseguidos = new java.util.concurrent.atomic.AtomicInteger();
+        List<java.util.concurrent.Future<?>> futuros = new ArrayList<>();
+        try {
+            for (int i = 0; i < compradores; i++) {
+                futuros.add(pool.submit(() -> {
+                    largada.await();
+                    if (products.reservar("t-ultimas", 1) == 1) {
+                        conseguidos.incrementAndGet();
+                    }
+                    return null;
+                }));
+            }
+            largada.countDown(); // todos disparan a la vez
+            for (java.util.concurrent.Future<?> f : futuros) {
+                f.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(conseguidos.get()).as("compras que consiguieron una unidad").isEqualTo(5);
+        assertThat(products.findById("t-ultimas").orElseThrow().stock).as("stock final").isZero();
+        products.deleteById("t-ultimas");
+    }
+
+    @Test
+    void aReservationLargerThanTheStockChangesNothing() {
+        products.saveAndFlush(new Product("t-poco", "Poco stock", "Marca", 100.0, null, 4.0, "/img.svg", null, "c", 2));
+
+        assertThat(products.reservar("t-poco", 3)).isZero();
+        assertThat(products.findById("t-poco").orElseThrow().stock).isEqualTo(2);
+        assertThat(products.reservar("t-poco", 2)).isEqualTo(1);
+        assertThat(products.findById("t-poco").orElseThrow().stock).isZero();
+        assertThat(products.reservar("t-poco", 1)).as("ya no queda nada").isZero();
+    }
+
+    @Test
+    void releasingAddsStockBackAndIgnoresAProductThatDoesNotExist() {
+        products.saveAndFlush(new Product("t-libera", "Libera", "Marca", 100.0, null, 4.0, "/img.svg", null, "c", 1));
+
+        assertThat(products.liberar("t-libera", 4)).isEqualTo(1);
+        assertThat(products.findById("t-libera").orElseThrow().stock).isEqualTo(5);
+        assertThat(products.liberar("no-existe", 4)).isZero();
+    }
 }

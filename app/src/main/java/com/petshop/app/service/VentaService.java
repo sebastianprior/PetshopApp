@@ -176,9 +176,14 @@ public class VentaService {
         double shippingCost = shopRules.shippingCost(subtotal, postalCode);
         Product gift = shopRules.giftFor(subtotal, cart).orElse(null);
 
-        reservarStock(cart);
-        if (gift != null) {
-            adjustStock(gift.id, null, -1);
+        // La reserva atómica es la que decide: la comprobación de arriba solo sirve para responder rápido, porque entre la
+        // comprobación y el descuento otra persona puede haberse llevado la última unidad.
+        String sinStock = reservarStock(cart);
+        if (sinStock != null) {
+            return problem(409, "stock-insuficiente", "Stock insuficiente", "Stock insuficiente para " + sinStock);
+        }
+        if (gift != null && !reservarUno(gift.id, null, 1)) {
+            gift = null; // el regalo se agotó mientras tanto: se vende igual, sin regalo
         }
 
         List<Order.OrderItem> orderItems = new ArrayList<>(
@@ -564,28 +569,44 @@ public class VentaService {
         return variantRepository.findById(variantId).map(v -> v.stock).orElse(0);
     }
 
-    private void reservarStock(List<CartItem> cart) {
+    /**
+     * Reserva todo el carrito o nada: si algún producto no alcanza, devuelve lo que ya había reservado y responde el nombre
+     * de ese producto; si se reservó todo, null.
+     */
+    private String reservarStock(List<CartItem> cart) {
+        List<CartItem> reservados = new ArrayList<>();
         for (CartItem item : cart) {
-            adjustStock(item.productId, item.variantId, -item.quantity);
+            if (!reservarUno(item.productId, item.variantId, item.quantity)) {
+                reservados.forEach(r -> liberarUno(r.productId, r.variantId, r.quantity));
+                return productRepository.findById(item.productId).map(p -> p.name).orElse(item.productId);
+            }
+            reservados.add(item);
         }
+        return null;
     }
 
     private void liberarStock(Order order) {
         for (Order.OrderItem item : order.items) {
-            adjustStock(item.productId, item.variantId, item.quantity);
+            liberarUno(item.productId, item.variantId, item.quantity);
         }
     }
 
-    private void adjustStock(String productId, Long variantId, int delta) {
-        productRepository.findById(productId).ifPresent(product -> {
-            product.stock += delta;
-            productRepository.save(product);
-        });
+    /** Descuenta del producto (y de su variante, si tiene) con sentencias atómicas; false si no alcanzaba el stock. */
+    private boolean reservarUno(String productId, Long variantId, int cantidad) {
+        if (productRepository.reservar(productId, cantidad) == 0) {
+            return false;
+        }
+        if (variantId != null && variantRepository.reservar(variantId, cantidad) == 0) {
+            productRepository.liberar(productId, cantidad);
+            return false;
+        }
+        return true;
+    }
+
+    private void liberarUno(String productId, Long variantId, int cantidad) {
+        productRepository.liberar(productId, cantidad);
         if (variantId != null) {
-            variantRepository.findById(variantId).ifPresent((ProductVariant variant) -> {
-                variant.stock += delta;
-                variantRepository.save(variant);
-            });
+            variantRepository.liberar(variantId, cantidad);
         }
     }
 

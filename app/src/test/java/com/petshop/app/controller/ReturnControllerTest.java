@@ -62,11 +62,15 @@ class ReturnControllerTest {
         devolucion.variantId = 10L;
         when(returnRepository.findById(1L)).thenReturn(Optional.of(devolucion));
 
+        when(productRepository.liberar("p1", 2)).thenReturn(1);
+
         ResponseEntity<?> response = controller.updateStatus(adminToken, 1L, Map.of("estado", "APROBADA"));
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(product.stock).isEqualTo(5);
-        assertThat(variant.stock).isEqualTo(3);
+        // El stock se devuelve con sentencias atómicas (no leyendo y reescribiendo), para no pisar las compras simultáneas
+        org.mockito.Mockito.verify(productRepository).liberar("p1", 2);
+        org.mockito.Mockito.verify(variantRepository).liberar(10L, 2);
+        org.mockito.Mockito.verify(productRepository, org.mockito.Mockito.never()).save(any(Product.class));
     }
 
     @Test
@@ -82,6 +86,7 @@ class ReturnControllerTest {
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(product.stock).isEqualTo(5);
+        org.mockito.Mockito.verify(productRepository, org.mockito.Mockito.never()).liberar(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test

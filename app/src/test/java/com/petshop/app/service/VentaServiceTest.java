@@ -5,6 +5,7 @@ import com.petshop.app.model.CartItem;
 import com.petshop.app.model.IdempotencyRecord;
 import com.petshop.app.model.Order;
 import com.petshop.app.model.Product;
+import com.petshop.app.model.ProductVariant;
 import com.petshop.app.model.SiteSettings;
 import com.petshop.app.payment.AuthResult;
 import com.petshop.app.payment.GatewayFaultException;
@@ -40,6 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -85,6 +88,42 @@ class VentaServiceTest {
 
         product = new Product("p1", "Collar", "Marca", 1000.0, null, 4.5, "/img.jpg", null, "accesorios", 10);
         when(productRepository.findById("p1")).thenReturn(Optional.of(product));
+        // La reserva de stock es atómica en la base (UPDATE ... WHERE stock >= cantidad). Estos repositorios simulados replican
+        // esa regla sobre las mismas entidades que usan las pruebas.
+        when(productRepository.reservar(anyString(), anyInt())).thenAnswer(inv -> {
+            Product p = productRepository.findById(inv.<String>getArgument(0)).orElse(null);
+            int cantidad = inv.getArgument(1);
+            if (p == null || p.stock < cantidad) {
+                return 0;
+            }
+            p.stock -= cantidad;
+            return 1;
+        });
+        when(productRepository.liberar(anyString(), anyInt())).thenAnswer(inv -> {
+            Product p = productRepository.findById(inv.<String>getArgument(0)).orElse(null);
+            if (p == null) {
+                return 0;
+            }
+            p.stock += (int) inv.getArgument(1);
+            return 1;
+        });
+        when(variantRepository.reservar(anyLong(), anyInt())).thenAnswer(inv -> {
+            ProductVariant v = variantRepository.findById(inv.<Long>getArgument(0)).orElse(null);
+            int cantidad = inv.getArgument(1);
+            if (v == null || v.stock < cantidad) {
+                return 0;
+            }
+            v.stock -= cantidad;
+            return 1;
+        });
+        when(variantRepository.liberar(anyLong(), anyInt())).thenAnswer(inv -> {
+            ProductVariant v = variantRepository.findById(inv.<Long>getArgument(0)).orElse(null);
+            if (v == null) {
+                return 0;
+            }
+            v.stock += (int) inv.getArgument(1);
+            return 1;
+        });
 
         cart.clear();
         cart.add(new CartItem("p1", "Collar", "accesorios", 2, 1000.0));

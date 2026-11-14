@@ -162,19 +162,12 @@ public class ReturnController {
     }
 
     private void restockReturnedItem(Return devolucion) {
-        Product product = productRepository.findById(devolucion.productId).orElse(null);
-        if (product == null) {
+        // Atómico: leer, sumar y reescribir pisaba las compras que ocurrían al mismo tiempo
+        if (productRepository.liberar(devolucion.productId, devolucion.cantidad) == 0) {
             return;
         }
-        product.stock += devolucion.cantidad;
-        productRepository.save(product);
-
         if (devolucion.variantId != null) {
-            ProductVariant variant = variantRepository.findById(devolucion.variantId).orElse(null);
-            if (variant != null) {
-                variant.stock += devolucion.cantidad;
-                variantRepository.save(variant);
-            }
+            variantRepository.liberar(devolucion.variantId, devolucion.cantidad);
         }
     }
 }
