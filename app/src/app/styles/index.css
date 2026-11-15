@@ -1,0 +1,8 @@
+/* Sistema de diseño Petshop: el orden importa (tokens → base → componentes → estructura → pantallas → admin → funciones) */
+@import "./tokens.css";
+@import "./base.css";
+@import "./components.css";
+@import "./layout.css";
+@import "./screens.css";
+@import "./admin.css";
+@import "./features.css";

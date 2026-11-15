@@ -1,8 +1,10 @@
 package com.petshop.app.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name = "products")
@@ -12,13 +14,24 @@ public class Product {
     public String name;
     public String brand;
     public double price;
+    @io.swagger.v3.oas.annotations.media.Schema(nullable = true)
     public Double oldPrice;
     public double rating;
+    @io.swagger.v3.oas.annotations.media.Schema(nullable = true)
     public String imageUrl;
+    @io.swagger.v3.oas.annotations.media.Schema(nullable = true)
     public String badge;
     public String categoryId;
     public int stock;
+    @io.swagger.v3.oas.annotations.media.Schema(nullable = true)
+    public Double precioPromocional;
+    @io.swagger.v3.oas.annotations.media.Schema(nullable = true)
+    public String tipoPromocion;
 
+    @Transient
+    public boolean hasVariants;
+
+    @JsonCreator
     public Product() {}
 
     public Product(String id, String name, String brand, double price, Double oldPrice, double rating, String imageUrl, String badge, String categoryId, int stock) {

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Contrato de la pasarela bancaria (SOAP 1.1, document/literal). -->
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="urn:petshop:pagos"
+                  targetNamespace="urn:petshop:pagos"
+                  name="Pagos">
+
+  <wsdl:types>
+    <xsd:schema targetNamespace="urn:petshop:pagos" elementFormDefault="qualified">
+      <xsd:element name="AutorizarPagoRequest">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="idTransaccion" type="xsd:string"/>
+            <xsd:element name="monto" type="xsd:double"/>
+            <xsd:element name="medioPagoToken" type="xsd:string"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="AutorizarPagoResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="estado" type="xsd:string"/>
+            <xsd:element name="motivo" type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="ConsultarPagoRequest">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="idTransaccion" type="xsd:string"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="ConsultarPagoResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="encontrada" type="xsd:boolean"/>
+            <xsd:element name="estado" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="motivo" type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </wsdl:types>
+
+  <wsdl:message name="AutorizarPagoRequest"><wsdl:part name="parameters" element="tns:AutorizarPagoRequest"/></wsdl:message>
+  <wsdl:message name="AutorizarPagoResponse"><wsdl:part name="parameters" element="tns:AutorizarPagoResponse"/></wsdl:message>
+  <wsdl:message name="ConsultarPagoRequest"><wsdl:part name="parameters" element="tns:ConsultarPagoRequest"/></wsdl:message>
+  <wsdl:message name="ConsultarPagoResponse"><wsdl:part name="parameters" element="tns:ConsultarPagoResponse"/></wsdl:message>
+
+  <wsdl:portType name="PagosPort">
+    <wsdl:operation name="AutorizarPago">
+      <wsdl:documentation>Autoriza un pago. Es idempotente por idTransaccion. Faults: PG-400 (datos inválidos), PG-503 (no disponible).</wsdl:documentation>
+      <wsdl:input message="tns:AutorizarPagoRequest"/>
+      <wsdl:output message="tns:AutorizarPagoResponse"/>
+    </wsdl:operation>
+    <wsdl:operation name="ConsultarPago">
+      <wsdl:documentation>Consulta el resultado de una transacción ya enviada, sin volver a cobrar.</wsdl:documentation>
+      <wsdl:input message="tns:ConsultarPagoRequest"/>
+      <wsdl:output message="tns:ConsultarPagoResponse"/>
+    </wsdl:operation>
+  </wsdl:portType>
+
+  <wsdl:binding name="PagosBinding" type="tns:PagosPort">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="AutorizarPago">
+      <soap:operation soapAction=""/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ConsultarPago">
+      <soap:operation soapAction=""/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+
+  <wsdl:service name="PagosService">
+    <wsdl:port name="PagosPort" binding="tns:PagosBinding">
+      <soap:address location="http://localhost:8080/ws"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

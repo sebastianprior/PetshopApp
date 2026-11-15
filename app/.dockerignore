@@ -1,0 +1,11 @@
+# Todo esto no hace falta para compilar el backend (y el frontend, con sus node_modules, pesa mucho)
+src/app
+src/test
+target
+uploads
+outbox
+logs
+docs
+.git
+*.log
+artemis-data
