@@ -51,15 +51,24 @@ def mostrar(titulo, esperado, status, content_type="", detalle=""):
     return status == esperado
 
 
+MODO = sys.argv[1] if len(sys.argv) > 1 else "todo"
+if MODO not in ("todo", "seguridad", "state"):
+    sys.exit("Uso: python tests-api/demo_entrega2.py [seguridad | state]   (sin argumento corre las dos partes)")
+
 admin = login(os.environ.get("ADMIN_EMAIL", "admin@petshop.com"), os.environ.get("ADMIN_PASSWORD", "admin123"))
 cliente = login(os.environ.get("CUSTOMER_EMAIL", "cliente@ejemplo.com"), os.environ.get("CUSTOMER_PASSWORD", "password"))
 resultados = []
 
-print("\n1) Seguridad: JWT y control de acceso por rol (ADR 0011)")
-resultados.append(mostrar("GET /api/orders sin sesión", 401, call("GET", "/api/orders")[0]))
-resultados.append(mostrar("GET /api/orders con la sesión de un cliente", 403, call("GET", "/api/orders", token=cliente)[0]))
-resultados.append(mostrar("GET /api/orders con la sesión de un administrador", 200, call("GET", "/api/orders", token=admin)[0]))
-resultados.append(mostrar("GET /api/orders con un token alterado", 401, call("GET", "/api/orders", token=admin[:-3] + "xyz")[0]))
+if MODO in ("todo", "seguridad"):
+    print("\n1) Seguridad: JWT y control de acceso por rol (ADR 0011)")
+    resultados.append(mostrar("GET /api/orders sin sesión", 401, call("GET", "/api/orders")[0]))
+    resultados.append(mostrar("GET /api/orders con la sesión de un cliente", 403, call("GET", "/api/orders", token=cliente)[0]))
+    resultados.append(mostrar("GET /api/orders con la sesión de un administrador", 200, call("GET", "/api/orders", token=admin)[0]))
+    resultados.append(mostrar("GET /api/orders con un token alterado", 401, call("GET", "/api/orders", token=admin[:-3] + "xyz")[0]))
+
+if MODO == "seguridad":
+    print(f"\nRESUMEN: {sum(resultados)} de {len(resultados)} comprobaciones bien")
+    sys.exit(0 if all(resultados) else 1)
 
 print("\n2) Patrón State: transiciones de una venta (ADR 0003)")
 _, _, texto = call("GET", "/api/orders", token=admin)

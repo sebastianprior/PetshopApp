@@ -4,7 +4,18 @@ Cada punto de la consigna, qué mostrar y dónde está en el código. Todo se mu
 
 ## Antes de empezar (10 minutos antes del turno)
 
-### Opción A: sin Docker (la que se usa en la demo de esta entrega)
+### Opción P: sistema publicado (la principal para esta entrega)
+- Tienda (Vercel): <https://petshop-app-five.vercel.app/> · API (Render): <https://petshopapp-i4kn.onrender.com> · Swagger: <https://petshopapp-i4kn.onrender.com/swagger-ui.html>
+- La API gratuita de Render se duerme a los 15 minutos sin uso y la primera llamada tarda ~50 segundos: **abrir la tienda 10 minutos antes** y navegar un poco.
+- Hacer **dos compras** con la tarjeta de prueba aprobada antes de empezar (el script de la sección 2 y 3 consume un pedido `COMPLETADA` cada vez que corre).
+- Para el script contra lo publicado, en PowerShell desde `app`:
+  ```powershell
+  $env:PETSHOP_URL="https://petshopapp-i4kn.onrender.com"; $env:ADMIN_PASSWORD="<la ADMIN_PASSWORD cargada en Render>"; python tests-api\demo_entrega2.py
+  ```
+- La cola de mensajes se ve en los logs de Render (servicio PetshopApp → Logs, buscar `COLA`).
+- Si algo falla en vivo, plan B: la Opción A (local), ya probada.
+
+### Opción A: sin Docker (plan B local)
 Requisitos: Java 21 o superior, Node 22 o superior y MySQL en `localhost:3306` (el servicio `MySQL80` arranca solo con Windows;
 la base y el usuario de desarrollo los crea `setup-petshop-db.sql` la primera vez).
 
@@ -43,7 +54,9 @@ Requiere [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-
 ## 2 y 3. Patrón State (409) y seguridad por rol (401/403) — [ADR 0003](../adr/0003-patron-state-en-la-venta.md) y [ADR 0011](../adr/0011-jwt-y-control-de-acceso-por-rol.md) (5 min)
 En la Terminal 3, desde la carpeta `app`:
 ```powershell
-python tests-api\demo_entrega2.py
+python tests-api\demo_entrega2.py              # las dos partes (10 comprobaciones)
+python tests-api\demo_entrega2.py seguridad    # solo 401 / 403 / 200 (no consume pedidos)
+python tests-api\demo_entrega2.py state        # solo State y 409 (consume un pedido COMPLETADA)
 ```
 Hace las 10 comprobaciones y muestra cada una con su código HTTP (necesita al menos un pedido `COMPLETADA`: si no hay, hacer una compra en la tienda con la tarjeta de prueba aprobada):
 
