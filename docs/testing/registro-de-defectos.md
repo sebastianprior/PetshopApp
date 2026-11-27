@@ -1,6 +1,6 @@
 # Registro de defectos
 
-Todos los defectos de esta tabla los encontraron las propias pruebas (no la cátedra) y están **cerrados** con una prueba que los cubre. Falta vincular el ID de Jira y la HU de cada uno. Severidad según la sección 9 de la rúbrica.
+Todos los defectos de esta tabla los encontraron las propias pruebas o la revisión del equipo (no la cátedra) y están **cerrados** con una prueba que los cubre. Los defectos D-18 y D-19 indican su HU (ver la [matriz](matriz-de-trazabilidad.md)); falta vincular el ID de Jira y la HU de los anteriores. Severidad según la sección 9 de la rúbrica.
 
 | ID | Sev. | Defecto y cómo se reprodujo | Causa raíz | Cierre |
 | --- | --- | --- | --- | --- |
@@ -21,16 +21,22 @@ Todos los defectos de esta tabla los encontraron las propias pruebas (no la cát
 | D-15 | Menor | OpenAPI inexacto: 11 endpoints de lista documentados como `object`; campos nulos como `string` | `ResponseEntity<?>` sin esquema | Esquemas declarados; Schemathesis 902/902 |
 | D-16 | Menor | Orden de títulos saltado (h1→h4) y producto sin nombre dejaba la imagen sin `alt` | Estructura del pie y de la grilla | Título oculto de nivel 2, pie en h3, `alt` de reemplazo |
 | D-17 | Mayor | **Cualquier cambio de estado en el panel de administrador**: `PUT /api/orders/{id}/status` aceptaba cualquier transición (reactivar una venta cancelada, enviar una que nunca se pagó) sin liberar stock ni reembolsar | Ruta histórica que asignaba el texto del estado sin validar; las reglas de transición estaban en `if` sueltos | Patrón State (`EstadoVenta`): toda transición pasa por la máquina y responde 409 si no se permite; el panel solo ofrece las válidas ([ADR 0003](../adr/0003-patron-state-en-la-venta.md)) |
+| D-18 | Menor | **El formulario de compra no validaba el formato** de los datos de envío: aceptaba nombres con números o símbolos, teléfonos como `abc` y direcciones de un carácter; la API solo comprobaba que no estuvieran vacíos (HU-08) | Solo se validaba «campo no vacío» y el código postal | `checkoutValidation.ts` (mensaje bajo cada campo) y `DatosEnvioValidator` en la API (422 `datos-envio-invalidos` antes de tocar el stock); 55 pruebas de frontend, 27 del validador y una de la venta |
+| D-19 | Menor | **El panel de administración mostraba el identificador interno** (un UUID) como «Usuario» en pedidos y devoluciones, que no dice quién compró (HU-20) | La tabla mostraba `userId` | Se muestra el email del comprador (también en el CSV); «Usuario eliminado» si ya no existe |
 
 ## Defectos abiertos
 | Sev. | Descripción | Mitigación |
 | --- | --- | --- |
-| Menor | La contraseña por defecto del administrador de desarrollo (`admin123`) | Se define con `ADMIN_PASSWORD`; el usuario de ejemplo con contraseña débil se eliminó. Falta usarla al publicar |
+| Mayor | **Cuentas de demostración con contraseña conocida.** El sistema crea `cliente@ejemplo.com` (contraseña `password`) y `admin@petshop.com`, cuya contraseña es `ADMIN_PASSWORD` o `admin123` si no se define. La tienda publicada es pública | Workaround: no hay datos personales reales; la cuenta de administrador de lo publicado usa `ADMIN_PASSWORD` distinta de la de desarrollo (verificar el día de la entrega); cambiar la del cliente de demostración es posible pero rompería los E2E y Newman, que la usan |
+| Menor | **Medios de pago de prueba activos en lo publicado** (`SIMULATED_PAYMENTS=true`): cualquiera puede generar un pedido «pagado» sin pagar | Aceptado mientras MercadoPago esté en modo prueba y no haya dinero real; sirven de plan B en la demo. Se apagan con `SIMULATED_PAYMENTS=false` |
+| Menor | **Las imágenes que sube el administrador se pierden** al reiniciar o redeployar en Render (disco efímero) | Documentado; el catálogo usa imágenes incluidas en la tienda. Falta almacenamiento persistente |
+| Menor | **Arranque lento o trabado en Render** (plan gratis): duerme a los 15 min (~50 s al despertar) y una vez se trabó en la conexión a la base al cambiar variables | Se resolvió con *Manual Deploy* y limpiando la caché; abrir la tienda unos minutos antes de una demo |
 | Menor | Los emails son simulados (archivos en `outbox/`) | Documentado; falta SMTP real |
 | Menor | `style-src 'unsafe-inline'` en la CSP de la tienda (estilos en línea de React) | ZAP lo marca Medium; aceptado, no ejecuta scripts |
 | Menor | Vulnerabilidades solo de desarrollo en Vite y vitest (`npm audit`: 5; en producción 0) | No llegan al paquete publicado; migrar Vite/vitest a una versión mayor |
+| Menor | Las contraseñas `admin123` y `petshop123` figuran en el historial de Git y en el README como valores de desarrollo, y gitleaks las tiene declaradas como excepción | Son valores de desarrollo documentados, no secretos de producción |
 
-Máximo admitido: 0 bloqueantes, 0 críticos, 3 mayores con workaround. **No hay mayores abiertos.**
+Máximo admitido: 0 bloqueantes, 0 críticos, 3 mayores con workaround. **Hay 1 mayor abierto, con workaround (cuentas de demostración), y 0 bloqueantes y 0 críticos.**
 
 ## Lecciones aprendidas (3 defectos que llegaron tarde)
 1. **D-01, sobreventa.** Llegó tarde porque las pruebas unitarias usaban repositorios simulados que mutaban el objeto en memoria, y un simulacro no tiene carreras. Lo habría atrapado una prueba con compradores simultáneos contra la base real, que ahora existe (`concurrencia_stock.py` y la de 30 hilos en MySQL).

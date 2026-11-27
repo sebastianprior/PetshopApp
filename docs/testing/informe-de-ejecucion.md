@@ -2,7 +2,15 @@
 
 Fuente: corridas del CI del commit `dc96132` (rama `feature/ci-y-compose`) y mediciones locales del 13/11/2026. Pipeline principal: **6 min 33 s** (límite 15 min).
 
-## Totales por nivel
+## Medición local del 27/11/2026 (después de los validadores del checkout)
+| Nivel | Ejecutadas | Pasadas | Falladas | Omitidas |
+| --- | --- | --- | --- | --- |
+| Backend (`.\mvnw.cmd test`, Java 26, sin Docker) | 533 | 518 | 0 | 15 (Testcontainers necesita Docker; corren en el CI) |
+| Frontend (`npx vitest run`) | 217 | 217 | 0 | 0 |
+
+Las cifras de la tabla siguiente son las del CI del commit `dc96132` (13/11); la próxima corrida del CI las actualiza.
+
+## Totales por nivel (CI, 13/11)
 | Nivel | Ejecutadas | Pasadas | Falladas | Omitidas |
 | --- | --- | --- | --- | --- |
 | Backend (unitario, componente, broker real, MySQL real) | 463 | 463 | 0 | 0 en el CI (12 en una máquina sin Docker y con Java 26) |

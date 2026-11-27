@@ -38,4 +38,4 @@ Local con Docker Compose (MySQL, backend, nginx). El CI levanta el mismo sistema
 | Pruebas inestables | Media | Medio | 3 corridas seguidas (backend y frontend) |
 
 ## Brechas conocidas
-Matriz de trazabilidad por HU y casos en Gherkin (faltan las HU); SonarCloud; envío de emails real; pruebas de concurrencia con MercadoPago real.
+SonarCloud (falta el Quality Gate); IDs de HU provisorios hasta alinearlos con la lista del 03/11 y con Jira; envío de emails real; pruebas de concurrencia con MercadoPago real; casos manuales listados en la [matriz](matriz-de-trazabilidad.md).

@@ -6,6 +6,8 @@
 | Claude Code (modelo Claude Sonnet 5.5, `claude-sonnet-5-5`), aplicación de escritorio | Escribir y ejecutar pruebas (unitarias, E2E, API, carga, seguridad), configurar el CI, diagnosticar fallas y corregir defectos, con revisión del equipo | Toda prueba se ejecutó localmente y en el CI; el build exige cobertura y mutación; los fallos del CI se leyeron en las anotaciones |
 | Playwright, axe, Lighthouse, ZAP, Schemathesis, Trivy, gitleaks, k6, PIT | Herramientas de prueba (no son IA generativa) | Sus resultados son los de este informe |
 
+**Documentos redactados con IA (27/11):** la matriz de trazabilidad, los escenarios en Gherkin, el manual de usuario y la actualización del registro de defectos. Claude Code los redactó leyendo el código, los tests y las pantallas reales; después se verificó con un script que las 64 pruebas citadas en la matriz existen en el repositorio y que los 98 casos coinciden entre los dos documentos. Lo que no se pudo verificar (IDs de HU contra la lista del 03/11 y Jira) está marcado como provisorio.
+
 **Prompt representativo (resumido):** "Revisá la rúbrica de aprobación y verificá qué cumple el proyecto; seguí con el punto 3 (headers, 401/403, timeouts, DLQ, ETag, BOLA, XXE)".
 
 **Qué se aceptó:** pruebas con comportamiento verificable (acceso, límites, estados, concurrencia), la sonda de seguridad, la colección de Postman generada desde una tabla, el CI.
