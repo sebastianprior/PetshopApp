@@ -1,2 +1,0 @@
-# Los PDF son binarios: sin esto, Git en Windows les convierte los saltos de línea y los daña al clonar
-*.pdf binary
