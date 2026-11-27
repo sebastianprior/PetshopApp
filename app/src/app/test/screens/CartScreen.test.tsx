@@ -191,6 +191,64 @@ describe("CartScreen", () => {
     );
   });
 
+  it("blocks the checkout and shows an error under each invalid field", async () => {
+    const user = userEvent.setup();
+    const onCheckout = vi.fn();
+
+    render(
+      <CartScreen items={[ITEM]} productImages={{}} authToken={null} onRemove={vi.fn()} onCheckout={onCheckout} onIncrement={vi.fn()} onDecrement={vi.fn()} />,
+    );
+
+    await user.type(screen.getByLabelText("Nombre y apellido"), "Juan123");
+    await user.type(screen.getByLabelText("Dirección"), "<b>");
+    await user.type(screen.getByLabelText("Ciudad"), "CABA");
+    await enterPostalCode(user);
+    await user.click(screen.getByText("Finalizar compra"));
+
+    expect(onCheckout).not.toHaveBeenCalled();
+    expect(screen.getByText("Usá solo letras, espacios, puntos, apóstrofes y guiones.")).toBeInTheDocument();
+    expect(screen.getByText(/dirección es demasiado corta|caracteres no permitidos/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Nombre y apellido")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Nombre y apellido")).toHaveFocus();
+  });
+
+  it("rejects a malformed phone number but accepts it empty", async () => {
+    const user = userEvent.setup();
+    const onCheckout = vi.fn();
+
+    render(
+      <CartScreen items={[ITEM]} productImages={{}} authToken={null} onRemove={vi.fn()} onCheckout={onCheckout} onIncrement={vi.fn()} onDecrement={vi.fn()} />,
+    );
+
+    await user.type(screen.getByLabelText("Nombre y apellido"), "Cliente Demo");
+    await user.type(screen.getByLabelText("Dirección"), "Calle Falsa 123");
+    await user.type(screen.getByLabelText("Ciudad"), "CABA");
+    await user.type(screen.getByLabelText("Teléfono (opcional)"), "abc");
+    await enterPostalCode(user);
+    await user.click(screen.getByText("Finalizar compra"));
+
+    expect(onCheckout).not.toHaveBeenCalled();
+    expect(screen.getByText(/entre 6 y 15 números/)).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Teléfono (opcional)"));
+    await user.click(screen.getByText("Finalizar compra"));
+    expect(onCheckout).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not send a coupon with invalid characters to the server", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <CartScreen items={[ITEM]} productImages={{}} authToken={null} onRemove={vi.fn()} onCheckout={vi.fn()} onIncrement={vi.fn()} onDecrement={vi.fn()} />,
+    );
+
+    await user.type(screen.getByPlaceholderText("Código de cupón"), "DESC 10%");
+    await user.click(screen.getByText("Aplicar"));
+
+    expect(mockedValidateCoupon).not.toHaveBeenCalled();
+    expect(screen.getByText(/solo puede tener letras, números/)).toBeInTheDocument();
+  });
+
   it("sends the selected simulated payment method to onCheckout", async () => {
     const user = userEvent.setup();
     const onCheckout = vi.fn();

@@ -117,6 +117,8 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
 
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  // En las tablas el comprador se muestra con su email, no con el identificador interno (un UUID que no le dice nada a quien administra)
+  const userLabel = (userId: string) => users.find((u) => u.id === userId)?.email ?? (usersLoading ? "Cargando..." : "Usuario eliminado");
 
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -430,7 +432,7 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
     const rows = statsFilteredOrders.map((o) => [
       o.id,
       new Date(o.fecha).toLocaleString("es-AR"),
-      o.userId,
+      userLabel(o.userId),
       o.items.reduce((sum, i) => sum + i.quantity, 0),
       o.subtotal ?? "",
       o.shippingCost ?? "",
@@ -921,7 +923,7 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
                   {paginatedOrders.map((order) => (
                     <tr key={order.id}>
                       <td>{order.id}</td>
-                      <td className="mono">{order.userId}</td>
+                      <td>{userLabel(order.userId)}</td>
                       <td>{new Date(order.fecha).toLocaleString("es-AR")}</td>
                       <td>{order.items.reduce((sum, i) => sum + i.quantity, 0)}</td>
                       <td>{formatMoney(order.total)}</td>
@@ -1306,7 +1308,7 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
                   {pendingReturns.map((devolucion) => (
                     <tr key={devolucion.id}>
                       <td>{devolucion.id}</td>
-                      <td className="mono">{devolucion.userId}</td>
+                      <td>{userLabel(devolucion.userId)}</td>
                       <td>{devolucion.productId}</td>
                       <td>{devolucion.variant || "—"}</td>
                       <td>{devolucion.cantidad}</td>
@@ -1352,7 +1354,7 @@ export function AdminDashboardScreen({ authToken, categories, currentUserId, sit
                   {approvedReturns.map((devolucion) => (
                     <tr key={devolucion.id}>
                       <td>{devolucion.id}</td>
-                      <td className="mono">{devolucion.userId}</td>
+                      <td>{userLabel(devolucion.userId)}</td>
                       <td>{devolucion.productId}</td>
                       <td>{devolucion.variant || "—"}</td>
                       <td>{devolucion.cantidad}</td>
