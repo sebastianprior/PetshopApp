@@ -4,6 +4,7 @@ import { fetchRouletteCartDiscount, fetchShippingQuote, validateCoupon } from ".
 import { PLACEHOLDER_IMAGE, handleImageError } from "../productImage";
 import { Icon } from "../components/Icon";
 import { CartPromoBars, qualifiesForFreeShipping, qualifiesForGift } from "../components/CartPromoBars";
+import { LIMITS, POSTAL_CODE_PATTERN, validateCouponCode, validateShipping } from "../checkoutValidation";
 
 type Props = {
   items: CartItem[];
@@ -27,8 +28,6 @@ const formatMoney = (value: number) =>
 const DEFAULT_PAYMENT_CONFIG: PaymentConfig = { mercadoPago: false, simulated: true };
 
 const POSTAL_CODE_KEY = "petshop_postal_code";
-/** Código postal argentino: 4 números, con o sin letras (C1425ABC). */
-const POSTAL_CODE_PATTERN = /^[A-Za-z]?\d{4}([A-Za-z]{3})?$/;
 
 // Se recuerda el último código postal para no pedirlo de nuevo (si el navegador no deja guardar, simplemente no se recuerda)
 const rememberedPostalCode = () => {
@@ -59,6 +58,23 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
   // Con MercadoPago disponible es el medio por defecto; si no, la tarjeta de prueba aprobada
   const [medioPago, setMedioPago] = useState(paymentConfig.mercadoPago ? "mercadopago" : "tok_aprobado");
   const choseMedioPago = useRef(false);
+  // Los errores de cada campo se muestran recién cuando la persona sale del campo o intenta enviar (no mientras escribe)
+  const [touched, setTouched] = useState<Partial<Record<keyof ShippingInfo, boolean>>>({});
+  const shippingErrors = validateShipping(shipping);
+  const touch = (field: keyof ShippingInfo) => setTouched((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
+  const fieldError = (field: keyof ShippingInfo) => (touched[field] ? shippingErrors[field] : undefined);
+  const errorProps = (field: keyof ShippingInfo) => {
+    const message = fieldError(field);
+    return { onBlur: () => touch(field), "aria-invalid": message ? true : undefined, "aria-describedby": message ? `error-${field}` : undefined };
+  };
+  const errorText = (field: keyof ShippingInfo) => {
+    const message = fieldError(field);
+    return message ? (
+      <span id={`error-${field}`} className="field-error" role="alert">
+        {message}
+      </span>
+    ) : null;
+  };
 
   // La lista de medios de pago puede llegar después de abrir el carrito: mientras el cliente no haya elegido, se usa el mejor disponible
   useEffect(() => {
@@ -140,6 +156,11 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
+    const invalidCoupon = validateCouponCode(couponInput);
+    if (invalidCoupon) {
+      setCouponError(invalidCoupon);
+      return;
+    }
     setCouponError(null);
     setCouponLoading(true);
     try {
@@ -160,7 +181,21 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onCheckout(shipping, appliedCoupon?.code, medioPago);
+    const invalidFields = Object.keys(shippingErrors) as (keyof ShippingInfo)[];
+    if (invalidFields.length > 0) {
+      // Se muestran todos los errores juntos y el foco va al primer campo a corregir
+      setTouched({ nombre: true, direccion: true, ciudad: true, codigoPostal: true, telefono: true });
+      const first = [...(e.currentTarget as HTMLFormElement).elements].find(
+        (el) => el instanceof HTMLInputElement && invalidFields.includes(el.name as keyof ShippingInfo),
+      );
+      if (first instanceof HTMLElement) first.focus();
+      return;
+    }
+    onCheckout(
+      { ...shipping, nombre: shipping.nombre.trim(), direccion: shipping.direccion.trim(), ciudad: shipping.ciudad.trim(), codigoPostal: shipping.codigoPostal.trim(), telefono: shipping.telefono.trim() },
+      appliedCoupon?.code,
+      medioPago,
+    );
   };
 
   return (
@@ -254,6 +289,7 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value)}
                     placeholder="Código de cupón"
+                    maxLength={LIMITS.cupon}
                   />
                   <button type="button" className="secondary-btn" onClick={handleApplyCoupon} disabled={couponLoading}>
                     {couponLoading ? "Aplicando..." : "Aplicar"}
@@ -275,8 +311,10 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
                   pattern="[A-Za-z]?[0-9]{4}([A-Za-z]{3})?"
                   title="Código postal de 4 números (por ejemplo, 1425)"
                   placeholder="Tu código postal"
+                  name="codigoPostal"
                   value={shipping.codigoPostal}
                   onChange={(e) => setShipping({ ...shipping, codigoPostal: e.target.value })}
+                  {...errorProps("codigoPostal")}
                 />
               </label>
               {quoteLoading ? <p className="shipping-note">Calculando envío...</p> : null}
@@ -342,33 +380,54 @@ export function CartScreen({ items, authToken, productImages, promos = NO_CART_P
                 <span>Nombre y apellido</span>
                 <input
                   required
+                  name="nombre"
+                  autoComplete="name"
+                  maxLength={LIMITS.nombre}
                   value={shipping.nombre}
                   onChange={(e) => setShipping({ ...shipping, nombre: e.target.value })}
+                  {...errorProps("nombre")}
                 />
               </label>
+              {errorText("nombre")}
               <label>
                 <span>Dirección</span>
                 <input
                   required
+                  name="direccion"
+                  autoComplete="street-address"
+                  maxLength={LIMITS.direccion}
                   value={shipping.direccion}
                   onChange={(e) => setShipping({ ...shipping, direccion: e.target.value })}
+                  {...errorProps("direccion")}
                 />
               </label>
+              {errorText("direccion")}
               <label>
                 <span>Ciudad</span>
                 <input
                   required
+                  name="ciudad"
+                  autoComplete="address-level2"
+                  maxLength={LIMITS.ciudad}
                   value={shipping.ciudad}
                   onChange={(e) => setShipping({ ...shipping, ciudad: e.target.value })}
+                  {...errorProps("ciudad")}
                 />
               </label>
+              {errorText("ciudad")}
               <label>
                 <span>Teléfono (opcional)</span>
                 <input
+                  type="tel"
+                  name="telefono"
+                  autoComplete="tel"
+                  maxLength={LIMITS.telefono}
                   value={shipping.telefono}
                   onChange={(e) => setShipping({ ...shipping, telefono: e.target.value })}
+                  {...errorProps("telefono")}
                 />
               </label>
+              {errorText("telefono")}
               <label>
                 <span>{paymentConfig.mercadoPago ? "Medio de pago" : "Medio de pago (simulado)"}</span>
                 <select

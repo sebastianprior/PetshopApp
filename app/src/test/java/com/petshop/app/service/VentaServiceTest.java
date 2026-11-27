@@ -520,6 +520,23 @@ class VentaServiceTest {
         assertThat(product.stock).isEqualTo(10);
     }
 
+    @Test
+    void rejectsMalformedShippingDataWith422BeforeTouchingStock() {
+        VentaRequest html = request();
+        html.nombre = "<script>alert(1)</script>";
+        VentaRequest badPhone = request();
+        badPhone.telefono = "abc";
+        VentaRequest badCoupon = request();
+        badCoupon.cupon = "DESC 10%";
+
+        for (VentaRequest invalid : new VentaRequest[] {html, badPhone, badCoupon}) {
+            VentaOutcome outcome = service.crear("user-1", "key-" + System.nanoTime(), invalid);
+            assertThat(outcome.status()).isEqualTo(422);
+            assertThat(outcome.problemSlug()).isEqualTo("datos-envio-invalidos");
+        }
+        assertThat(product.stock).isEqualTo(10);
+    }
+
     private SiteSettings promos(boolean freeShipping, double threshold, boolean gift, String giftId, double giftMin) {
         SiteSettings settings = new SiteSettings();
         settings.freeShippingEnabled = freeShipping;

@@ -139,6 +139,10 @@ public class VentaService {
             return problem(422, "datos-envio-incompletos", "Datos de envío incompletos",
                     "Completá nombre, dirección y ciudad.");
         }
+        String datosInvalidos = DatosEnvioValidator.error(req);
+        if (datosInvalidos != null) {
+            return problem(422, "datos-envio-invalidos", "Datos de envío inválidos", datosInvalidos);
+        }
 
         Integer postalCode = ShopRules.parsePostalCode(req.codigoPostal);
         if (postalCode == null) {

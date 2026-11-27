@@ -2136,6 +2136,20 @@
   color: var(--danger);
 }
 
+/* Mensaje de validación bajo un campo del formulario de envío */
+.field-error {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.shipping-form input[aria-invalid="true"],
+.shipping-calc input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
 .pending-value {
   color: var(--text-muted);
   font-weight: 700;
